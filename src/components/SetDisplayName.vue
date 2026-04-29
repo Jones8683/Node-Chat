@@ -1,0 +1,183 @@
+<template>
+  <div class="auth-page">
+    <div class="auth-card">
+      <div class="logo">Node Chat</div>
+      <p class="subtitle">Pick a display name to get started</p>
+      <form @submit.prevent="submit">
+        <div class="field">
+          <label for="displayName"
+            >Display name
+            <span class="char-count">{{ name.length }}/12</span></label
+          >
+          <input
+            v-model="name"
+            id="displayName"
+            name="displayName"
+            type="text"
+            maxlength="12"
+            placeholder="How you'll appear in chat"
+            autocomplete="nickname"
+          />
+        </div>
+        <button type="submit" class="submit-btn" :disabled="loading">
+          {{ loading ? "Checking..." : "Let's go" }}
+        </button>
+        <p class="error" v-if="error">{{ error }}</p>
+      </form>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref } from "vue";
+import { auth, db } from "../firebase";
+import { updateProfile } from "firebase/auth";
+import { ref as dbRef, get, set } from "firebase/database";
+
+const emit = defineEmits(["done"]);
+const name = ref("");
+const error = ref("");
+const loading = ref(false);
+
+async function submit() {
+  const trimmed = name.value.trim();
+
+  if (!trimmed) {
+    error.value = "Please enter a display name";
+    return;
+  }
+  if (trimmed.length < 2) {
+    error.value = "Display name must be at least 2 characters";
+    return;
+  }
+  if (!/^[a-zA-Z0-9_\-. ]+$/.test(trimmed)) {
+    error.value = "Only letters, numbers, spaces, and _ - . are allowed";
+    return;
+  }
+
+  loading.value = true;
+  error.value = "";
+
+  try {
+    const nameKey = trimmed.toLowerCase().replace(/\s+/g, "_");
+    const nameRef = dbRef(db, `usernames/${nameKey}`);
+    const snap = await get(nameRef);
+
+    if (snap.exists() && snap.val() !== auth.currentUser.uid) {
+      error.value = "That name is already taken. Try another!";
+      loading.value = false;
+      return;
+    }
+
+    await set(nameRef, auth.currentUser.uid);
+    await updateProfile(auth.currentUser, { displayName: trimmed });
+    emit("done");
+  } catch (e) {
+    error.value = "Something went wrong. Try again.";
+  } finally {
+    loading.value = false;
+  }
+}
+</script>
+
+<style scoped>
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 380px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 36px;
+}
+
+.logo {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.subtitle {
+  color: var(--text-muted);
+  font-size: 15px;
+  margin-bottom: 28px;
+}
+
+.field {
+  margin-bottom: 14px;
+}
+
+.field label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 5px;
+}
+
+.char-count {
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.field input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  color: var(--text);
+  font-size: 15px;
+  font-family: "Satoshi", sans-serif;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.field input:focus {
+  border-color: var(--accent);
+}
+
+.field input::placeholder {
+  color: var(--text-muted);
+}
+
+.submit-btn {
+  width: 100%;
+  background: var(--text);
+  color: var(--bg);
+  border: none;
+  border-radius: var(--radius);
+  padding: 11px;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: "Satoshi", sans-serif;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: opacity 0.2s;
+}
+
+.submit-btn:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.error {
+  color: var(--danger);
+  font-size: 13px;
+  margin-top: 10px;
+  text-align: center;
+}
+</style>

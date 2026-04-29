@@ -1,0 +1,36 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg: #efe9d9;
+  --surface: #f7f2e6;
+  --surface-2: #efe8db;
+  --border: #e4ddcc;
+  --text: #2c2a27;
+  --text-muted: #8a8680;
+  --accent: #5a5af0;
+  --accent-hover: #4444d0;
+  --danger: #c0392b;
+  --radius: 6px;
+}
+
+html,
+body {
+  height: 100%;
+  width: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Satoshi", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
