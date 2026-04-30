@@ -149,7 +149,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, nextTick } from "vue";
+import { ref, onMounted, onUnmounted, nextTick, watch } from "vue";
 import { auth, db } from "../firebase";
 import { signOut } from "firebase/auth";
 import {
@@ -391,6 +391,27 @@ function handleClickOutside(e) {
     showDropdown.value = false;
   }
 }
+
+watch(
+  () => showDropdown.value,
+  async (open) => {
+    if (!open) return;
+    await nextTick();
+    const dropdown = menuRef.value?.querySelector(".dropdown");
+    if (!dropdown) return;
+    void dropdown.offsetWidth;
+  },
+);
+
+watch(
+  () => props.user && props.user.email,
+  async () => {
+    await nextTick();
+    if (!showDropdown.value) return;
+    const dropdown = menuRef.value?.querySelector(".dropdown");
+    if (dropdown) void dropdown.offsetWidth;
+  },
+);
 
 async function handleTyping() {
   if (!myTypingRef) return;
