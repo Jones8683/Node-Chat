@@ -119,11 +119,15 @@
         name="message"
         autocomplete="off"
         rows="1"
+        maxlength="2000"
         @keydown.enter.exact.prevent="sendMessage"
         @keydown="handleComposerKeydown"
         @input="handleComposerInput"
         placeholder="Type a message..."
       ></textarea>
+      <span class="char-warning" v-if="newMessage.length > 1800">{{
+        2000 - newMessage.length
+      }}</span>
       <button
         @click="sendMessage"
         class="send-btn"
@@ -149,7 +153,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, nextTick, watch } from "vue";
+import { ref, onMounted, onUnmounted, nextTick } from "vue";
 import { auth, db } from "../firebase";
 import { signOut } from "firebase/auth";
 import {
@@ -263,8 +267,8 @@ function formatMessage(text) {
     .replace(/~~(.+?)~~/gs, "<s>$1</s>")
     .replace(/`([^`]+)`/g, "<code>$1</code>")
     .replace(
-      /(https?:\/\/[^\s]+)/g,
-      '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>',
+      /(https?:\/\/[^\s<]+?)([.,!?;:)"']*(?:\s|$))/g,
+      '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>$2',
     )
     .replace(/\x00(\d+)\x00/g, (_, idx) => escapes[parseInt(idx)]);
 
@@ -392,27 +396,6 @@ function handleClickOutside(e) {
   }
 }
 
-watch(
-  () => showDropdown.value,
-  async (open) => {
-    if (!open) return;
-    await nextTick();
-    const dropdown = menuRef.value?.querySelector(".dropdown");
-    if (!dropdown) return;
-    void dropdown.offsetWidth;
-  },
-);
-
-watch(
-  () => props.user && props.user.email,
-  async () => {
-    await nextTick();
-    if (!showDropdown.value) return;
-    const dropdown = menuRef.value?.querySelector(".dropdown");
-    if (dropdown) void dropdown.offsetWidth;
-  },
-);
-
 async function handleTyping() {
   if (!myTypingRef) return;
   set(myTypingRef, { displayName: props.user.displayName });
@@ -439,7 +422,7 @@ function subscribeMessages() {
       (a, b) => (a.timestamp || 0) - (b.timestamp || 0),
     );
 
-    hasMore.value = sorted.length >= messageLimit && totalCount > messageLimit;
+    hasMore.value = sorted.length === messageLimit && totalCount > messageLimit;
 
     if (!initialLoadDone) {
       sorted.forEach((msg) => knownIds.add(msg.id));
@@ -536,6 +519,7 @@ onUnmounted(() => {
 async function sendMessage() {
   const text = sanitizeMessage(newMessage.value);
   if (!text.trim()) return;
+  if (text.length > 2000) return;
   newMessage.value = "";
   nextTick(resizeComposer);
   clearTimeout(typingTimeout);
@@ -730,7 +714,6 @@ async function logout() {
   padding: 16px 20px;
   display: flex;
   flex-direction: column;
-  gap: 0;
   min-height: 0;
   scrollbar-gutter: stable;
 }
@@ -832,7 +815,6 @@ async function logout() {
   font-size: 11px;
   color: var(--text-muted);
   flex-shrink: 0;
-  letter-spacing: 0;
   justify-self: end;
   align-self: baseline;
   text-align: right;
@@ -934,6 +916,14 @@ textarea {
 
 textarea::placeholder {
   color: var(--text-muted);
+}
+
+.char-warning {
+  font-size: 11px;
+  color: var(--danger);
+  flex-shrink: 0;
+  align-self: flex-end;
+  padding-bottom: 2px;
 }
 
 .send-btn {
