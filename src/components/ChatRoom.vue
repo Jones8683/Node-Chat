@@ -621,7 +621,9 @@ async function logout() {
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
-  width: 220px;
+  min-width: 220px;
+  width: auto;
+  max-width: calc(100vw - 32px);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -637,10 +639,20 @@ async function logout() {
   padding: 8px;
 }
 
+.dropdown-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
 .dropdown-name {
   font-size: 13px;
   font-weight: 700;
   color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dropdown-email {
