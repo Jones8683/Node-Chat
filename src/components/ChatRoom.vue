@@ -33,38 +33,17 @@
             </div>
           </div>
           <div class="divider"></div>
-          <button class="dropdown-item" @click="showDropdown = false">
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <circle cx="12" cy="8" r="4" />
-              <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
-            </svg>
-            User Settings
+          <button class="dropdown-item" @click="openSettings">
+            <User :size="14" stroke-width="2" />
+            Settings
+          </button>
+          <button v-if="isAdmin" class="dropdown-item" @click="openAdmin">
+            <ShieldCheck :size="14" stroke-width="2" />
+            Admin
           </button>
           <div class="divider"></div>
           <button class="dropdown-item danger" @click="logout">
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-              <polyline points="16 17 21 12 16 7" />
-              <line x1="21" y1="12" x2="9" y2="12" />
-            </svg>
+            <LogOut :size="14" stroke-width="2" />
             Sign Out
           </button>
         </div>
@@ -133,20 +112,7 @@
         class="send-btn"
         :disabled="!newMessage.trim()"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="15"
-          height="15"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <line x1="22" y1="2" x2="11" y2="13"></line>
-          <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-        </svg>
+        <Send :size="15" stroke-width="2" />
       </button>
     </div>
   </div>
@@ -156,6 +122,7 @@
 import { ref, onMounted, onUnmounted, nextTick } from "vue";
 import { auth, db } from "../firebase";
 import { signOut } from "firebase/auth";
+import { ShieldCheck, User, LogOut, Send } from "lucide-vue-next";
 import {
   ref as dbRef,
   push,
@@ -169,17 +136,20 @@ import {
   goOnline,
   get,
 } from "firebase/database";
+import { isUserAdmin } from "../authUtils";
 
 const props = defineProps(["user"]);
-const emit = defineEmits(["ready"]);
+const emit = defineEmits(["ready", "open-settings", "open-admin"]);
 const messages = ref([]);
 const newMessage = ref("");
+const menuRef = ref(null);
 const messageContainer = ref(null);
 const composerRef = ref(null);
-const typingUsers = ref([]);
 const showDropdown = ref(false);
-const menuRef = ref(null);
+const typingUsers = ref([]);
 const hasMore = ref(false);
+const isAdmin = ref(false);
+const isLoadingMore = ref(false);
 const MESSAGE_BATCH_SIZE = 100;
 const SCROLL_BOTTOM_THRESHOLD = 24;
 let messageLimit = MESSAGE_BATCH_SIZE;
@@ -187,7 +157,6 @@ let totalCount = 0;
 let unreadCount = 0;
 let initialLoadDone = false;
 let hasPositionedInitialScroll = false;
-const isLoadingMore = ref(false);
 let knownIds = new Set();
 let typingTimeout = null;
 let myTypingRef = null;
@@ -396,6 +365,16 @@ function handleClickOutside(e) {
   }
 }
 
+function openSettings() {
+  showDropdown.value = false;
+  emit("open-settings");
+}
+
+function openAdmin() {
+  showDropdown.value = false;
+  emit("open-admin");
+}
+
 async function handleTyping() {
   if (!myTypingRef) return;
   set(myTypingRef, { displayName: props.user.displayName });
@@ -475,6 +454,8 @@ async function loadMore() {
   const scrollEl = messageContainer.value;
   if (!scrollEl || isLoadingMore.value) return;
 
+  isAdmin.value = await isUserAdmin(props.user.uid);
+
   isLoadingMore.value = true;
   pendingScrollAnchor = captureScrollAnchor(scrollEl);
   messageLimit += MESSAGE_BATCH_SIZE;
@@ -487,6 +468,8 @@ onMounted(async () => {
 
   myTypingRef = dbRef(db, `typing/${props.user.uid}`);
   onDisconnect(myTypingRef).remove();
+
+  isAdmin.value = await isUserAdmin(props.user.uid);
 
   const countSnap = await get(dbRef(db, "messages"));
   totalCount = countSnap.exists() ? Object.keys(countSnap.val()).length : 0;

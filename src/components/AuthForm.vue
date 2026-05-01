@@ -2,8 +2,35 @@
   <div class="auth-page">
     <div class="auth-card">
       <div class="logo">Node Chat</div>
-      <p class="subtitle">Sign in to continue</p>
-      <form @submit.prevent="submit">
+      <p class="subtitle">
+        {{ isLogin ? "Sign in to continue" : "Sign up with invite" }}
+      </p>
+
+      <div class="auth-tabs">
+        <button
+          class="tab-btn"
+          :class="{ active: isLogin }"
+          @click="
+            isLogin = true;
+            error = '';
+          "
+        >
+          Sign In
+        </button>
+        <button
+          class="tab-btn"
+          :class="{ active: !isLogin }"
+          @click="
+            isLogin = false;
+            error = '';
+          "
+        >
+          Sign Up
+        </button>
+      </div>
+
+      <!-- Login Form -->
+      <form v-if="isLogin" @submit.prevent="submitLogin">
         <div class="field">
           <label for="email">Email</label>
           <input
@@ -13,6 +40,7 @@
             type="email"
             placeholder="you@example.com"
             autocomplete="email"
+            :disabled="loading"
           />
         </div>
         <div class="field">
@@ -25,50 +53,79 @@
               :type="showPassword ? 'text' : 'password'"
               placeholder="Password"
               autocomplete="current-password"
+              :disabled="loading"
             />
             <button
               type="button"
               class="toggle-pw"
               @click="showPassword = !showPassword"
+              :disabled="loading"
             >
-              <svg
-                v-if="showPassword"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path
-                  d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"
-                />
-                <path
-                  d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"
-                />
-                <line x1="1" y1="1" x2="23" y2="23" />
-              </svg>
-              <svg
-                v-else
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                <circle cx="12" cy="12" r="3" />
-              </svg>
+              <EyeOff v-if="showPassword" :size="16" stroke-width="2" />
+              <Eye v-else :size="16" stroke-width="2" />
             </button>
           </div>
         </div>
         <button type="submit" class="submit-btn" :disabled="loading">
           {{ loading ? "Signing in..." : "Sign in" }}
+        </button>
+        <p class="error" v-if="error">{{ error }}</p>
+      </form>
+
+      <!-- Signup Form -->
+      <form v-else @submit.prevent="submitSignup" autocomplete="off">
+        <div class="field">
+          <label for="invite-token">Invite Code</label>
+          <input
+            v-model="signupToken"
+            id="invite-token"
+            name="invite-token"
+            type="text"
+            placeholder="Paste your invite code"
+            autocomplete="off"
+            :disabled="loading"
+          />
+        </div>
+
+        <div class="field">
+          <label for="signup-email">Email</label>
+          <input
+            v-model="signupEmail"
+            id="signup-email"
+            name="signup-email"
+            type="email"
+            placeholder="you@example.com"
+            autocomplete="email"
+            :disabled="loading"
+          />
+        </div>
+
+        <div class="field">
+          <label for="signup-password">Password</label>
+          <div class="password-wrap">
+            <input
+              v-model="signupPassword"
+              id="signup-password"
+              name="signup-password"
+              :type="showSignupPassword ? 'text' : 'password'"
+              placeholder="At least 6 characters"
+              autocomplete="new-password"
+              :disabled="loading"
+            />
+            <button
+              type="button"
+              class="toggle-pw"
+              @click="showSignupPassword = !showSignupPassword"
+              :disabled="loading"
+            >
+              <EyeOff v-if="showSignupPassword" :size="16" stroke-width="2" />
+              <Eye v-else :size="16" stroke-width="2" />
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" class="submit-btn" :disabled="loading">
+          {{ loading ? "Creating account..." : "Create account" }}
         </button>
         <p class="error" v-if="error">{{ error }}</p>
       </form>
@@ -80,12 +137,20 @@
 import { ref } from "vue";
 import { auth } from "../firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
+import { signupWithToken } from "../authUtils";
+import { Eye, EyeOff } from "lucide-vue-next";
 
+const isLogin = ref(true);
 const email = ref("");
 const password = ref("");
 const error = ref("");
 const loading = ref(false);
 const showPassword = ref(false);
+
+const signupToken = ref("");
+const signupEmail = ref("");
+const signupPassword = ref("");
+const showSignupPassword = ref(false);
 
 function friendlyError(code) {
   switch (code) {
@@ -99,12 +164,22 @@ function friendlyError(code) {
       return "Too many attempts. Try again later.";
     case "auth/network-request-failed":
       return "Network error. Check your connection.";
+    case "auth/weak-password":
+      return "Password must be at least 6 characters.";
+    case "auth/email-already-in-use":
+      return "Email already in use.";
     default:
+      if (code && typeof code === "string" && code.includes("Invite")) {
+        return code;
+      }
+      if (code && typeof code === "string" && code.includes("Display name")) {
+        return code;
+      }
       return "Something went wrong. Try again.";
   }
 }
 
-async function submit() {
+async function submitLogin() {
   if (!email.value || !password.value) return;
   error.value = "";
   loading.value = true;
@@ -112,6 +187,44 @@ async function submit() {
     await signInWithEmailAndPassword(auth, email.value, password.value);
   } catch (e) {
     error.value = friendlyError(e.code);
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function submitSignup() {
+  if (!signupToken.value.trim()) {
+    error.value = "Please enter your invite code.";
+    return;
+  }
+
+  if (!signupEmail.value || !signupPassword.value) {
+    error.value = "Please fill in all fields.";
+    return;
+  }
+
+  loading.value = true;
+  error.value = "";
+
+  try {
+    await signupWithToken(
+      signupToken.value.trim(),
+      signupEmail.value,
+      signupPassword.value,
+    );
+    // After signup, user stays logged in - App.vue will show SetDisplayName
+    // No need to sign out or manually switch tabs
+  } catch (e) {
+    const msg = e.message || "";
+    if (msg.includes("Invite")) {
+      error.value = msg;
+    } else if (msg.includes("Display name")) {
+      error.value = msg;
+    } else if (msg.includes("email")) {
+      error.value = "Email already in use.";
+    } else {
+      error.value = msg || "Signup failed. Try again.";
+    }
   } finally {
     loading.value = false;
   }
@@ -146,7 +259,43 @@ async function submit() {
 .subtitle {
   color: var(--text-muted);
   font-size: 15px;
-  margin-bottom: 28px;
+  margin-bottom: 20px;
+}
+
+.auth-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tab-btn {
+  flex: 1;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 12px 0;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: "Satoshi", sans-serif;
+  transition: all 0.2s;
+}
+
+.tab-btn:hover {
+  color: var(--text);
+}
+
+.tab-btn.active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+.char-count {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
 }
 
 .field {
@@ -231,6 +380,31 @@ async function submit() {
 .submit-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.auth-card,
+.field input {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(44, 42, 39, 0.28) transparent;
+}
+
+.auth-card::-webkit-scrollbar,
+.field input::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.auth-card::-webkit-scrollbar-track,
+.field input::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.auth-card::-webkit-scrollbar-thumb,
+.field input::-webkit-scrollbar-thumb {
+  background: rgba(44, 42, 39, 0.22);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 
 .error {

@@ -9,23 +9,42 @@
       v-if="user && user.displayName"
       :user="user"
       @ready="handleChatReady"
+      @open-settings="showSettings = true"
+      @open-admin="showAdmin = true"
     />
     <SetDisplayName v-else-if="user && !user.displayName" @done="refreshUser" />
     <AuthForm v-else />
+
+    <SettingsModal
+      :is-open="showSettings"
+      :user="user"
+      @close="showSettings = false"
+      @refreshUser="refreshUser"
+    />
+
+    <AdminPanel
+      :is-open="showAdmin"
+      :current-user-uid="user?.uid"
+      @close="showAdmin = false"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, computed, watch } from "vue";
 import { auth } from "./firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import AuthForm from "./components/AuthForm.vue";
 import ChatRoom from "./components/ChatRoom.vue";
 import SetDisplayName from "./components/SetDisplayName.vue";
+import SettingsModal from "./components/SettingsModal.vue";
+import AdminPanel from "./components/AdminPanel.vue";
 
 const user = ref(null);
 const authReady = ref(false);
 const chatReady = ref(false);
+const showSettings = ref(false);
+const showAdmin = ref(false);
 const showLoadingPage = computed(
   () => !authReady.value || (user.value?.displayName && !chatReady.value),
 );
@@ -37,6 +56,15 @@ function refreshUser() {
 function handleChatReady() {
   chatReady.value = true;
 }
+
+const anyModalOpen = computed(() => showSettings.value || showAdmin.value);
+watch(anyModalOpen, (isOpen) => {
+  if (isOpen) {
+    document.documentElement.style.overflow = "hidden";
+  } else {
+    document.documentElement.style.overflow = "";
+  }
+});
 
 onMounted(() => {
   onAuthStateChanged(auth, (u) => {

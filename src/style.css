@@ -34,3 +34,14 @@ body {
   width: 100%;
   overflow: hidden;
 }
+
+/* Modal overlay - prevent background scroll */
+body.modal-open {
+  overflow: hidden;
+}
+
+/* Prevent scroll when modal is open */
+html.modal-open,
+html.modal-open body {
+  overflow: hidden;
+}

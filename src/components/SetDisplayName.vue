@@ -16,7 +16,7 @@
             type="text"
             maxlength="12"
             placeholder="How you'll appear in chat"
-            autocomplete="nickname"
+            autocomplete="off"
           />
         </div>
         <button type="submit" class="submit-btn" :disabled="loading">
@@ -31,7 +31,7 @@
 <script setup>
 import { ref } from "vue";
 import { auth, db } from "../firebase";
-import { updateProfile } from "firebase/auth";
+import { signOut, updateProfile } from "firebase/auth";
 import { ref as dbRef, get, set } from "firebase/database";
 
 const emit = defineEmits(["done"]);
@@ -71,6 +71,9 @@ async function submit() {
 
     await set(nameRef, auth.currentUser.uid);
     await updateProfile(auth.currentUser, { displayName: trimmed });
+    await set(dbRef(db, `users/${auth.currentUser.uid}/displayName`), trimmed);
+    // Logout after setting display name so they go to login page
+    await signOut(auth);
     emit("done");
   } catch (e) {
     error.value = "Something went wrong. Try again.";
@@ -179,5 +182,23 @@ async function submit() {
   font-size: 13px;
   margin-top: 10px;
   text-align: center;
+}
+
+.field input,
+.auth-card {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(44, 42, 39, 0.28) transparent;
+}
+
+.field input::-webkit-scrollbar,
+.auth-card::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.field input::-webkit-scrollbar-thumb,
+.auth-card::-webkit-scrollbar-thumb {
+  background: rgba(44, 42, 39, 0.22);
+  border-radius: 999px;
 }
 </style>

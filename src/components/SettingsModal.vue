@@ -1,0 +1,662 @@
+<template>
+  <transition name="modal-fade" appear>
+    <div
+      v-if="isOpen"
+      class="modal-overlay"
+      @click="closeIfClickedOutside"
+      @keydown.esc="close"
+    >
+      <div class="modal-container" role="dialog" aria-modal="true">
+        <div class="modal-header">
+          <div>
+            <h2 class="modal-title">Settings</h2>
+            <p class="modal-subtitle">Account and profile</p>
+          </div>
+          <button class="modal-close" @click="close">
+            <X :size="20" stroke-width="2" />
+          </button>
+        </div>
+
+        <div class="modal-tabs">
+          <button
+            class="tab-btn"
+            :class="{ active: activeTab === 'account' }"
+            @click="activeTab = 'account'"
+          >
+            Account
+          </button>
+          <button
+            class="tab-btn"
+            :class="{ active: activeTab === 'preferences' }"
+            @click="activeTab = 'preferences'"
+          >
+            Preferences
+          </button>
+        </div>
+
+        <div class="modal-content">
+          <div v-if="activeTab === 'account'">
+            <form
+              class="section"
+              autocomplete="off"
+              @submit.prevent="changeUsername"
+            >
+              <h3 class="section-title">PROFILE</h3>
+              <div class="current-display-name">
+                <p><strong>Current:</strong> {{ user.displayName }}</p>
+              </div>
+
+              <div class="field">
+                <label for="new-username">
+                  New Display Name
+                  <span class="char-count">{{ newUsername.length }}/12</span>
+                </label>
+                <input
+                  v-model="newUsername"
+                  id="new-username"
+                  type="text"
+                  name="settings-new-display-name"
+                  maxlength="12"
+                  placeholder="New display name"
+                  autocomplete="off"
+                  :disabled="loadingUsername"
+                />
+              </div>
+
+              <button
+                class="submit-btn"
+                type="submit"
+                :disabled="loadingUsername || !newUsername.trim()"
+              >
+                {{ loadingUsername ? "Updating..." : "Save display name" }}
+              </button>
+
+              <p v-if="errorUsername" class="error">{{ errorUsername }}</p>
+              <p v-if="successUsername" class="success">
+                {{ successUsername }}
+              </p>
+            </form>
+
+            <div class="divider"></div>
+
+            <form
+              class="section"
+              autocomplete="off"
+              @submit.prevent="changePassword"
+            >
+              <h3 class="section-title">PASSWORD</h3>
+              <div class="field">
+                <label for="current-password">Current password</label>
+                <div class="password-wrap">
+                  <input
+                    v-model="currentPassword"
+                    id="current-password"
+                    name="settings-current-password"
+                    :type="showCurrentPassword ? 'text' : 'password'"
+                    placeholder="Enter current password"
+                    autocomplete="current-password"
+                    :disabled="loadingPassword"
+                  />
+                  <button
+                    type="button"
+                    class="toggle-pw"
+                    @click="showCurrentPassword = !showCurrentPassword"
+                    :disabled="loadingPassword"
+                  >
+                    <EyeOff
+                      v-if="showCurrentPassword"
+                      :size="16"
+                      stroke-width="2"
+                    />
+                    <Eye v-else :size="16" stroke-width="2" />
+                  </button>
+                </div>
+              </div>
+
+              <div class="field">
+                <label for="new-password">New password</label>
+                <div class="password-wrap">
+                  <input
+                    v-model="newPassword"
+                    id="new-password"
+                    name="settings-new-password"
+                    :type="showNewPassword ? 'text' : 'password'"
+                    placeholder="At least 6 characters"
+                    autocomplete="new-password"
+                    :disabled="loadingPassword"
+                  />
+                  <button
+                    type="button"
+                    class="toggle-pw"
+                    @click="showNewPassword = !showNewPassword"
+                    :disabled="loadingPassword"
+                  >
+                    <EyeOff
+                      v-if="showNewPassword"
+                      :size="16"
+                      stroke-width="2"
+                    />
+                    <Eye v-else :size="16" stroke-width="2" />
+                  </button>
+                </div>
+              </div>
+
+              <div class="field">
+                <label for="confirm-password">Confirm new password</label>
+                <div class="password-wrap">
+                  <input
+                    v-model="confirmPassword"
+                    id="confirm-password"
+                    name="settings-confirm-password"
+                    :type="showConfirmPassword ? 'text' : 'password'"
+                    placeholder="Confirm new password"
+                    autocomplete="new-password"
+                    :disabled="loadingPassword"
+                  />
+                  <button
+                    type="button"
+                    class="toggle-pw"
+                    @click="showConfirmPassword = !showConfirmPassword"
+                    :disabled="loadingPassword"
+                  >
+                    <EyeOff
+                      v-if="showConfirmPassword"
+                      :size="16"
+                      stroke-width="2"
+                    />
+                    <Eye v-else :size="16" stroke-width="2" />
+                  </button>
+                </div>
+              </div>
+
+              <button
+                class="submit-btn"
+                type="submit"
+                :disabled="
+                  loadingPassword ||
+                  !newPassword.trim() ||
+                  !currentPassword.trim() ||
+                  !confirmPassword.trim()
+                "
+              >
+                {{ loadingPassword ? "Updating..." : "Change password" }}
+              </button>
+
+              <p v-if="errorPassword" class="error">{{ errorPassword }}</p>
+              <p v-if="successPassword" class="success">
+                {{ successPassword }}
+              </p>
+            </form>
+          </div>
+
+          <div v-if="activeTab === 'preferences'" class="section">
+            <p
+              style="
+                color: var(--text-muted);
+                text-align: center;
+                padding: 40px 20px;
+              "
+            >
+              Preferences coming soon
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </transition>
+</template>
+
+<script setup>
+import { ref, watch, onMounted, onUnmounted } from "vue";
+import { auth } from "../firebase";
+import { reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth";
+import { X, Eye, EyeOff } from "lucide-vue-next";
+import { changeDisplayName, changeUserPassword } from "../authUtils";
+
+const props = defineProps({ isOpen: Boolean, user: Object });
+const emit = defineEmits(["close", "refreshUser"]);
+
+const activeTab = ref("account");
+const newUsername = ref("");
+const loadingUsername = ref(false);
+const errorUsername = ref("");
+const successUsername = ref("");
+
+const currentPassword = ref("");
+const newPassword = ref("");
+const confirmPassword = ref("");
+const loadingPassword = ref(false);
+const errorPassword = ref("");
+const successPassword = ref("");
+
+const showCurrentPassword = ref(false);
+const showNewPassword = ref(false);
+const showConfirmPassword = ref(false);
+
+watch(
+  () => props.isOpen,
+  (isOpen) => {
+    if (isOpen) {
+      newUsername.value = "";
+      loadingUsername.value = false;
+      errorUsername.value = "";
+      successUsername.value = "";
+      currentPassword.value = "";
+      newPassword.value = "";
+      confirmPassword.value = "";
+      loadingPassword.value = false;
+      errorPassword.value = "";
+      successPassword.value = "";
+      showCurrentPassword.value = false;
+      showNewPassword.value = false;
+      showConfirmPassword.value = false;
+    }
+  },
+);
+
+function closeIfClickedOutside(e) {
+  if (e.target === e.currentTarget) close();
+}
+
+function close() {
+  emit("close");
+}
+
+function onKeyDown(e) {
+  if (e.key === "Escape") close();
+}
+
+onMounted(() => window.addEventListener("keydown", onKeyDown));
+onUnmounted(() => window.removeEventListener("keydown", onKeyDown));
+
+async function changeUsername() {
+  const trimmed = newUsername.value.trim();
+
+  if (!trimmed) {
+    errorUsername.value = "Please enter a display name";
+    return;
+  }
+  if (trimmed.length < 2) {
+    errorUsername.value = "Display name must be at least 2 characters";
+    return;
+  }
+  if (!/^[a-zA-Z0-9_\-. ]+$/.test(trimmed)) {
+    errorUsername.value =
+      "Only letters, numbers, spaces, and _ - . are allowed";
+    return;
+  }
+  if (trimmed === props.user.displayName) {
+    errorUsername.value = "New name must be different from current";
+    return;
+  }
+
+  loadingUsername.value = true;
+  errorUsername.value = "";
+  successUsername.value = "";
+
+  try {
+    await changeDisplayName(props.user.uid, trimmed);
+    successUsername.value = "Display name updated!";
+    newUsername.value = "";
+    emit("refreshUser");
+    setTimeout(() => {
+      successUsername.value = "";
+    }, 3000);
+  } catch (e) {
+    errorUsername.value = e.message || "Failed to update display name";
+  } finally {
+    loadingUsername.value = false;
+  }
+}
+
+async function changePassword() {
+  if (!currentPassword.value) {
+    errorPassword.value = "Please enter your current password";
+    return;
+  }
+  if (!newPassword.value) {
+    errorPassword.value = "Please enter a new password";
+    return;
+  }
+  if (newPassword.value.length < 6) {
+    errorPassword.value = "New password must be at least 6 characters";
+    return;
+  }
+  if (newPassword.value !== confirmPassword.value) {
+    errorPassword.value = "Passwords do not match";
+    return;
+  }
+  if (newPassword.value === currentPassword.value) {
+    errorPassword.value = "New password must be different from current";
+    return;
+  }
+
+  loadingPassword.value = true;
+  errorPassword.value = "";
+  successPassword.value = "";
+
+  try {
+    const user = auth.currentUser;
+    const credential = EmailAuthProvider.credential(
+      user.email,
+      currentPassword.value,
+    );
+    await reauthenticateWithCredential(user, credential);
+    await changeUserPassword(newPassword.value);
+
+    successPassword.value = "Password updated!";
+    currentPassword.value = "";
+    newPassword.value = "";
+    confirmPassword.value = "";
+    setTimeout(() => {
+      successPassword.value = "";
+    }, 3000);
+  } catch (e) {
+    if (e.code === "auth/wrong-password") {
+      errorPassword.value = "Current password is incorrect";
+    } else {
+      errorPassword.value = e.message || "Failed to update password";
+    }
+  } finally {
+    loadingPassword.value = false;
+  }
+}
+</script>
+
+<style scoped>
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 20px;
+  overflow-y: auto;
+  transition: background 160ms ease;
+}
+
+.modal-container {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 700px;
+  height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  transform: translateY(0);
+  transition:
+    transform 180ms ease,
+    opacity 180ms ease;
+}
+
+/* modal transition */
+.modal-fade-enter-active,
+.modal-fade-leave-active {
+  transition:
+    opacity 200ms ease,
+    transform 200ms ease;
+}
+.modal-fade-enter-from,
+.modal-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-8px) scale(0.995);
+}
+.modal-fade-enter-to,
+.modal-fade-leave-from {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.modal-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 4px 0;
+}
+
+.modal-subtitle {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  transition: color 0.2s;
+}
+
+.modal-close:hover {
+  color: var(--text);
+}
+
+.modal-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 14px 14px 0 14px;
+  border-bottom: 1px solid transparent;
+  flex-shrink: 0;
+}
+
+.tab-btn {
+  flex: 1;
+  background: rgba(44, 42, 39, 0.03);
+  border: 1px solid rgba(44, 42, 39, 0.08);
+  border-radius: 999px;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 12px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: "Satoshi", sans-serif;
+  transition: all 0.2s;
+}
+
+.tab-btn:hover {
+  color: var(--text);
+}
+
+.tab-btn.active {
+  color: var(--text);
+  border-color: rgba(90, 90, 240, 0.22);
+  background: rgba(90, 90, 240, 0.08);
+}
+
+.modal-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+  overscroll-behavior-y: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(44, 42, 39, 0.28) transparent;
+}
+
+.modal-content::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.modal-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.modal-content::-webkit-scrollbar-thumb {
+  background: rgba(44, 42, 39, 0.22);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.section {
+  padding: 28px 24px;
+}
+
+.section {
+  padding: 32px;
+}
+
+.section-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin: 0 0 24px 0;
+}
+
+.current-display-name {
+  margin-bottom: 28px;
+}
+
+.current-display-name p {
+  font-size: 14px;
+  color: var(--text);
+  margin: 0;
+}
+
+.current-display-name strong {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin: 0;
+}
+
+.field {
+  margin-bottom: 24px;
+}
+
+.field label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.char-count {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.field input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  color: var(--text);
+  font-size: 15px;
+  font-family: "Satoshi", sans-serif;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.field input:focus {
+  border-color: var(--accent);
+}
+
+.field input::placeholder {
+  color: var(--text-muted);
+}
+
+.field input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: var(--surface);
+}
+
+.concealed {
+  -webkit-text-security: disc;
+}
+
+.password-wrap {
+  position: relative;
+}
+
+.password-wrap input {
+  padding-right: 48px;
+}
+
+.toggle-pw {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  transition: color 0.2s;
+}
+
+.toggle-pw:hover:not(:disabled) {
+  color: var(--text);
+}
+
+.toggle-pw:disabled {
+  cursor: not-allowed;
+}
+
+.submit-btn {
+  width: 100%;
+  background: var(--text);
+  color: var(--bg);
+  border: none;
+  border-radius: var(--radius);
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: "Satoshi", sans-serif;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.submit-btn:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.error {
+  color: var(--danger);
+  font-size: 13px;
+  margin: 12px 0 0 0;
+}
+
+.success {
+  color: var(--accent);
+  font-size: 13px;
+  margin: 12px 0 0 0;
+}
+</style>
