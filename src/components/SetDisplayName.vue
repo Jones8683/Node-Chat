@@ -72,7 +72,6 @@ async function submit() {
     await set(nameRef, auth.currentUser.uid);
     await updateProfile(auth.currentUser, { displayName: trimmed });
     await set(dbRef(db, `users/${auth.currentUser.uid}/displayName`), trimmed);
-    // Logout after setting display name so they go to login page
     await signOut(auth);
     emit("done");
   } catch (e) {

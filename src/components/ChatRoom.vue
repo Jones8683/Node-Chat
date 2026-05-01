@@ -51,7 +51,7 @@
       <div class="header-title">Node Chat</div>
     </div>
 
-    <div class="messages" ref="messageContainer" @scroll="handleMessageScroll">
+    <div class="messages" ref="messageContainer">
       <button
         class="load-more"
         v-if="hasMore"
@@ -465,6 +465,9 @@ async function loadMore() {
 onMounted(async () => {
   document.addEventListener("visibilitychange", handleVisibilityChange);
   document.addEventListener("click", handleClickOutside);
+  messageContainer.value?.addEventListener("scroll", handleMessageScroll, {
+    passive: true,
+  });
 
   myTypingRef = dbRef(db, `typing/${props.user.uid}`);
   onDisconnect(myTypingRef).remove();
@@ -493,6 +496,7 @@ onMounted(async () => {
 onUnmounted(() => {
   document.removeEventListener("visibilitychange", handleVisibilityChange);
   document.removeEventListener("click", handleClickOutside);
+  messageContainer.value?.removeEventListener("scroll", handleMessageScroll);
   clearTimeout(typingTimeout);
   if (messagesListener) messagesListener();
   if (typingListener) typingListener();

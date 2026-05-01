@@ -246,6 +246,10 @@ export async function promoteToAdmin(uid) {
   await set(dbRef(db, `admins/${uid}`), true);
 }
 
+export async function demoteFromAdmin(uid) {
+  await remove(dbRef(db, `admins/${uid}`));
+}
+
 export async function getUserByEmail(email) {
   const snap = await get(dbRef(db, "users"));
   if (!snap.exists()) return null;

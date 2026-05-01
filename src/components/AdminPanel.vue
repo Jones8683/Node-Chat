@@ -98,6 +98,16 @@
           <div v-if="activeTab === 'users'">
             <div v-if="loadingUsers" class="loading">Loading users...</div>
             <div v-else>
+              <div v-if="!usersError" class="stats-section">
+                <div class="stat-item">
+                  <div class="stat-value">{{ totalUsersCount }}</div>
+                  <div class="stat-label">Total Users</div>
+                </div>
+                <div class="stat-item">
+                  <div class="stat-value">{{ adminCount }}</div>
+                  <div class="stat-label">Admins</div>
+                </div>
+              </div>
               <div v-if="usersError" class="error users-error">
                 {{ usersError }}
               </div>
@@ -131,7 +141,16 @@
                     >
                       <Crown :size="14" stroke-width="2" />
                     </button>
-                    <div v-else class="admin-badge">Admin</div>
+                    <div v-else class="admin-badge">
+                      Admin
+                      <button
+                        class="demote-btn"
+                        @click="promptDemoteUser(u.uid, u.displayName)"
+                        title="Demote from admin"
+                      >
+                        <X :size="12" stroke-width="2" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -177,6 +196,7 @@ import {
   getValidInvites,
   getAllUsers,
   promoteToAdmin,
+  demoteFromAdmin,
   isUserAdmin,
   deleteInviteToken,
 } from "../authUtils";
@@ -198,6 +218,9 @@ const users = ref([]);
 const loadingUsers = ref(false);
 const adminUsers = ref(new Set());
 const usersError = ref("");
+
+const totalUsersCount = ref(0);
+const adminCount = ref(0);
 
 const copyFeedback = ref(false);
 
@@ -294,9 +317,13 @@ async function loadUsers() {
     // Filter out users with missing displayNames (data inconsistency)
     users.value = allUsers.filter((u) => u.displayName && u.displayName.trim());
 
+    totalUsersCount.value = users.value.length;
+    adminCount.value = 0;
+
     for (const u of users.value) {
       if (await isUserAdmin(u.uid)) {
         adminUsers.value.add(u.uid);
+        adminCount.value++;
       }
     }
   } catch (e) {
@@ -316,6 +343,7 @@ async function loadUsers() {
           createdAt: Date.now(),
         },
       ];
+      totalUsersCount.value = 1;
     }
   } finally {
     loadingUsers.value = false;
@@ -353,9 +381,35 @@ async function promoteUserConfirmed(uid) {
   try {
     await promoteToAdmin(uid);
     adminUsers.value.add(uid);
+    adminCount.value++;
     confirmAction.value.show = false;
   } catch (e) {
     alert("Failed to promote user: " + (e.message || "Unknown error"));
+  } finally {
+    confirmAction.value.loading = false;
+  }
+}
+
+function promptDemoteUser(uid, displayName) {
+  confirmAction.value = {
+    show: true,
+    title: "Demote from Admin?",
+    message: `Remove admin privileges from ${displayName}?`,
+    action: "Demote",
+    confirm: () => demoteUserConfirmed(uid),
+    loading: false,
+  };
+}
+
+async function demoteUserConfirmed(uid) {
+  confirmAction.value.loading = true;
+  try {
+    await demoteFromAdmin(uid);
+    adminUsers.value.delete(uid);
+    adminCount.value--;
+    confirmAction.value.show = false;
+  } catch (e) {
+    alert("Failed to demote user: " + (e.message || "Unknown error"));
   } finally {
     confirmAction.value.loading = false;
   }
@@ -781,6 +835,56 @@ function cancelConfirm() {
   border: 1px solid rgba(90, 90, 240, 0.2);
   border-radius: 999px;
   padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+}
+
+.demote-btn {
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s;
+}
+
+.demote-btn:hover {
+  opacity: 0.7;
+}
+
+.stats-section {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.stat-item {
+  flex: 1;
+  background: rgba(90, 90, 240, 0.08);
+  border: 1px solid rgba(90, 90, 240, 0.2);
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+
+.stat-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .user-details {

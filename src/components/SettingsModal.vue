@@ -94,7 +94,7 @@
                     name="settings-current-password"
                     :type="showCurrentPassword ? 'text' : 'password'"
                     placeholder="Enter current password"
-                    autocomplete="current-password"
+                    autocomplete="off"
                     :disabled="loadingPassword"
                   />
                   <button
