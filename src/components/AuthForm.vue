@@ -48,6 +48,10 @@
                   name="invite-token"
                   type="text"
                   placeholder="Enter your invite code"
+                  maxlength="7"
+                  @input="
+                    signupToken = $event.target.value.toUpperCase().slice(0, 7)
+                  "
                   autocomplete="off"
                   :disabled="loading || isLogin"
                   :tabindex="isLogin ? -1 : 0"
