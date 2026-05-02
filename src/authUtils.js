@@ -153,23 +153,18 @@ export async function changeDisplayName(uid, newDisplayName) {
       ? oldDisplayName.toLowerCase().replace(/\s+/g, "_")
       : null;
 
-  // Remove old username entry if it exists
   if (oldNameKey) {
     await remove(dbRef(db, `usernames/${oldNameKey}`));
   }
 
-  // Add new username entry
   await set(dbRef(db, `usernames/${nameKey}`), uid);
 
-  // Update auth profile
   await updateProfile(user, { displayName: newDisplayName });
 
-  // Update user node
   await update(dbRef(db, `users/${uid}`), {
     displayName: newDisplayName,
   });
 
-  // Update messages with new display name (separate from user data)
   const messagesSnap = await get(dbRef(db, "messages"));
   if (messagesSnap.exists()) {
     const messages = messagesSnap.val();
@@ -226,7 +221,6 @@ export async function deleteUserAccount(uid) {
     }
   }
 
-  // Clean up username entry (defensive check for empty displayName)
   if (userData.displayName && userData.displayName.trim()) {
     const nameKey = userData.displayName.toLowerCase().replace(/\s+/g, "_");
     await remove(dbRef(db, `usernames/${nameKey}`));
@@ -235,7 +229,6 @@ export async function deleteUserAccount(uid) {
   await remove(dbRef(db, `users/${uid}`));
   await remove(dbRef(db, `admins/${uid}`));
 
-  // Delete from Firebase Auth if it's the current user
   const currentUser = auth.currentUser;
   if (currentUser && currentUser.uid === uid) {
     await currentUser.delete();

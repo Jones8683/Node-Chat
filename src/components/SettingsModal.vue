@@ -416,7 +416,6 @@ async function changePassword() {
     opacity 180ms ease;
 }
 
-/* modal transition */
 .modal-fade-enter-active,
 .modal-fade-leave-active {
   transition:

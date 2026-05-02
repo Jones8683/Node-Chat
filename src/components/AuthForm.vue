@@ -34,7 +34,6 @@
 
       <form @submit.prevent="handleSubmit" autocomplete="off">
         <fieldset class="auth-fields" :disabled="loading" :aria-busy="loading">
-          <!-- Invite Code — slides open only for signup -->
           <div
             class="field-collapse"
             :class="{ 'field-collapse--open': !isLogin }"
@@ -245,7 +244,6 @@ async function submitSignup() {
   padding: 36px;
 }
 
-/* Collapsible invite-code field — grid-row trick for smooth height animation */
 .field-collapse {
   display: grid;
   grid-template-rows: 0fr;

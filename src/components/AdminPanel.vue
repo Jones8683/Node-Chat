@@ -314,7 +314,6 @@ async function loadUsers() {
   try {
     const allUsers = await getAllUsers();
 
-    // Filter out users with missing displayNames (data inconsistency)
     users.value = allUsers.filter((u) => u.displayName && u.displayName.trim());
 
     totalUsersCount.value = users.value.length;
@@ -453,7 +452,6 @@ function cancelConfirm() {
     opacity 180ms ease;
 }
 
-/* modal transition */
 .modal-fade-enter-active,
 .modal-fade-leave-active {
   transition:
