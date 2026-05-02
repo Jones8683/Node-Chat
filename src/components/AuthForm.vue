@@ -133,7 +133,11 @@
                   @click="showSignupPassword = !showSignupPassword"
                   :disabled="loading"
                 >
-                  <EyeOff v-if="showSignupPassword" :size="16" stroke-width="2" />
+                  <EyeOff
+                    v-if="showSignupPassword"
+                    :size="16"
+                    stroke-width="2"
+                  />
                   <Eye v-else :size="16" stroke-width="2" />
                 </button>
               </div>
@@ -308,21 +312,21 @@ async function submitSignup() {
   padding: 36px;
   box-shadow: 0 24px 70px rgba(24, 24, 24, 0.08);
   transform: translateY(0);
-  animation: auth-card-in 360ms cubic-bezier(.2,.9,.3,1) both;
+  animation: auth-card-in 360ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
 }
 
 .auth-stage {
   position: relative;
   overflow: hidden;
-  transition: height 320ms cubic-bezier(.2,.9,.25,1);
+  transition: height 320ms cubic-bezier(0.2, 0.9, 0.25, 1);
 }
 
 .auth-panel {
   width: 100%;
   transition:
-    opacity 220ms cubic-bezier(.2,.9,.3,1),
-    transform 220ms cubic-bezier(.2,.9,.3,1),
-    filter 220ms cubic-bezier(.2,.9,.3,1);
+    opacity 220ms cubic-bezier(0.2, 0.9, 0.3, 1),
+    transform 220ms cubic-bezier(0.2, 0.9, 0.3, 1),
+    filter 220ms cubic-bezier(0.2, 0.9, 0.3, 1);
   will-change: opacity, transform;
 }
 
@@ -374,7 +378,11 @@ async function submitSignup() {
 
 .tab-btn {
   flex: 1;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0));
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.18),
+    rgba(255, 255, 255, 0)
+  );
   border: none;
   border-bottom: 2px solid transparent;
   color: var(--text-muted);
@@ -544,5 +552,4 @@ async function submitSignup() {
     transform: translateY(0) scale(1);
   }
 }
-
 </style>
