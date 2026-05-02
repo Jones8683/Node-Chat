@@ -29,112 +29,129 @@
         </button>
       </div>
 
-      <!-- Login Form -->
-      <form v-if="isLogin" @submit.prevent="submitLogin">
-        <div class="field">
-          <label for="email">Email</label>
-          <input
-            v-model="email"
-            id="email"
-            name="email"
-            type="email"
-            placeholder="you@example.com"
-            autocomplete="email"
-            :disabled="loading"
-          />
-        </div>
-        <div class="field">
-          <label for="password">Password</label>
-          <div class="password-wrap">
-            <input
-              v-model="password"
-              id="password"
-              name="password"
-              :type="showPassword ? 'text' : 'password'"
-              placeholder="Password"
-              autocomplete="current-password"
-              :disabled="loading"
-            />
-            <button
-              type="button"
-              class="toggle-pw"
-              @click="showPassword = !showPassword"
-              :disabled="loading"
-            >
-              <EyeOff v-if="showPassword" :size="16" stroke-width="2" />
-              <Eye v-else :size="16" stroke-width="2" />
+      <div class="auth-stage" :style="{ height: `${stageHeight}px` }">
+        <form
+          ref="loginFormEl"
+          class="auth-panel"
+          :class="{ 'is-active': isLogin, 'is-inactive': !isLogin }"
+          :aria-hidden="!isLogin"
+          @submit.prevent="submitLogin"
+        >
+          <fieldset class="auth-fields" :disabled="loading || !isLogin">
+            <div class="field">
+              <label for="email">Email</label>
+              <input
+                v-model="email"
+                id="email"
+                name="email"
+                type="email"
+                placeholder="you@example.com"
+                autocomplete="email"
+                :disabled="loading"
+              />
+            </div>
+            <div class="field">
+              <label for="password">Password</label>
+              <div class="password-wrap">
+                <input
+                  v-model="password"
+                  id="password"
+                  name="password"
+                  :type="showPassword ? 'text' : 'password'"
+                  placeholder="Password"
+                  autocomplete="current-password"
+                  :disabled="loading"
+                />
+                <button
+                  type="button"
+                  class="toggle-pw"
+                  @click="showPassword = !showPassword"
+                  :disabled="loading"
+                >
+                  <EyeOff v-if="showPassword" :size="16" stroke-width="2" />
+                  <Eye v-else :size="16" stroke-width="2" />
+                </button>
+              </div>
+            </div>
+            <button type="submit" class="submit-btn" :disabled="loading">
+              {{ loading ? "Signing in..." : "Sign in" }}
             </button>
-          </div>
-        </div>
-        <button type="submit" class="submit-btn" :disabled="loading">
-          {{ loading ? "Signing in..." : "Sign in" }}
-        </button>
-        <p class="error" v-if="error">{{ error }}</p>
-      </form>
+            <p class="error" v-if="error">{{ error }}</p>
+          </fieldset>
+        </form>
 
-      <!-- Signup Form -->
-      <form v-else @submit.prevent="submitSignup" autocomplete="off">
-        <div class="field">
-          <label for="invite-token">Invite Code</label>
-          <input
-            v-model="signupToken"
-            id="invite-token"
-            name="invite-token"
-            type="text"
-            placeholder="Paste your invite code"
-            autocomplete="off"
-            :disabled="loading"
-          />
-        </div>
+        <form
+          ref="signupFormEl"
+          class="auth-panel"
+          :class="{ 'is-active': !isLogin, 'is-inactive': isLogin }"
+          :aria-hidden="isLogin"
+          @submit.prevent="submitSignup"
+          autocomplete="off"
+        >
+          <fieldset class="auth-fields" :disabled="loading || isLogin">
+            <div class="field">
+              <label for="invite-token">Invite Code</label>
+              <input
+                v-model="signupToken"
+                id="invite-token"
+                name="invite-token"
+                type="text"
+                placeholder="Paste your invite code"
+                autocomplete="off"
+                :disabled="loading"
+              />
+            </div>
 
-        <div class="field">
-          <label for="signup-email">Email</label>
-          <input
-            v-model="signupEmail"
-            id="signup-email"
-            name="signup-email"
-            type="email"
-            placeholder="you@example.com"
-            autocomplete="email"
-            :disabled="loading"
-          />
-        </div>
+            <div class="field">
+              <label for="signup-email">Email</label>
+              <input
+                v-model="signupEmail"
+                id="signup-email"
+                name="signup-email"
+                type="email"
+                placeholder="you@example.com"
+                autocomplete="email"
+                :disabled="loading"
+              />
+            </div>
 
-        <div class="field">
-          <label for="signup-password">Password</label>
-          <div class="password-wrap">
-            <input
-              v-model="signupPassword"
-              id="signup-password"
-              name="signup-password"
-              :type="showSignupPassword ? 'text' : 'password'"
-              placeholder="At least 6 characters"
-              autocomplete="new-password"
-              :disabled="loading"
-            />
-            <button
-              type="button"
-              class="toggle-pw"
-              @click="showSignupPassword = !showSignupPassword"
-              :disabled="loading"
-            >
-              <EyeOff v-if="showSignupPassword" :size="16" stroke-width="2" />
-              <Eye v-else :size="16" stroke-width="2" />
+            <div class="field">
+              <label for="signup-password">Password</label>
+              <div class="password-wrap">
+                <input
+                  v-model="signupPassword"
+                  id="signup-password"
+                  name="signup-password"
+                  :type="showSignupPassword ? 'text' : 'password'"
+                  placeholder="At least 6 characters"
+                  autocomplete="new-password"
+                  :disabled="loading"
+                />
+                <button
+                  type="button"
+                  class="toggle-pw"
+                  @click="showSignupPassword = !showSignupPassword"
+                  :disabled="loading"
+                >
+                  <EyeOff v-if="showSignupPassword" :size="16" stroke-width="2" />
+                  <Eye v-else :size="16" stroke-width="2" />
+                </button>
+              </div>
+            </div>
+
+            <button type="submit" class="submit-btn" :disabled="loading">
+              {{ loading ? "Creating account..." : "Create account" }}
             </button>
-          </div>
-        </div>
-
-        <button type="submit" class="submit-btn" :disabled="loading">
-          {{ loading ? "Creating account..." : "Create account" }}
-        </button>
-        <p class="error" v-if="error">{{ error }}</p>
-      </form>
+            <p class="error" v-if="error">{{ error }}</p>
+          </fieldset>
+        </form>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { auth } from "../firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { signupWithToken } from "../authUtils";
@@ -151,6 +168,50 @@ const signupToken = ref("");
 const signupEmail = ref("");
 const signupPassword = ref("");
 const showSignupPassword = ref(false);
+
+const stageHeight = ref(380);
+const loginFormEl = ref(null);
+const signupFormEl = ref(null);
+
+let resizeObserver = null;
+
+function syncStageHeight() {
+  const activeForm = isLogin.value ? loginFormEl.value : signupFormEl.value;
+  if (!activeForm) return;
+  stageHeight.value = activeForm.offsetHeight;
+}
+
+function attachObserver() {
+  if (resizeObserver) {
+    resizeObserver.disconnect();
+  }
+
+  const activeForm = isLogin.value ? loginFormEl.value : signupFormEl.value;
+  if (!activeForm) return;
+
+  resizeObserver = new ResizeObserver(() => {
+    syncStageHeight();
+  });
+
+  resizeObserver.observe(activeForm);
+  syncStageHeight();
+}
+
+watch(isLogin, async () => {
+  await nextTick();
+  attachObserver();
+});
+
+onMounted(async () => {
+  await nextTick();
+  attachObserver();
+});
+
+onBeforeUnmount(() => {
+  if (resizeObserver) {
+    resizeObserver.disconnect();
+  }
+});
 
 function friendlyError(code) {
   switch (code) {
@@ -212,8 +273,6 @@ async function submitSignup() {
       signupEmail.value,
       signupPassword.value,
     );
-    // After signup, user stays logged in - App.vue will show SetDisplayName
-    // No need to sign out or manually switch tabs
   } catch (e) {
     const msg = e.message || "";
     if (msg.includes("Invite")) {
@@ -247,6 +306,50 @@ async function submitSignup() {
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 36px;
+  box-shadow: 0 24px 70px rgba(24, 24, 24, 0.08);
+  transform: translateY(0);
+  animation: auth-card-in 360ms cubic-bezier(.2,.9,.3,1) both;
+}
+
+.auth-stage {
+  position: relative;
+  overflow: hidden;
+  transition: height 320ms cubic-bezier(.2,.9,.25,1);
+}
+
+.auth-panel {
+  width: 100%;
+  transition:
+    opacity 220ms cubic-bezier(.2,.9,.3,1),
+    transform 220ms cubic-bezier(.2,.9,.3,1),
+    filter 220ms cubic-bezier(.2,.9,.3,1);
+  will-change: opacity, transform;
+}
+
+.auth-panel.is-active {
+  position: relative;
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+  z-index: 2;
+  filter: blur(0);
+}
+
+.auth-panel.is-inactive {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transform: translateY(14px) scale(0.982);
+  pointer-events: none;
+  z-index: 1;
+  filter: blur(1px);
+}
+
+.auth-fields {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
 }
 
 .logo {
@@ -271,7 +374,7 @@ async function submitSignup() {
 
 .tab-btn {
   flex: 1;
-  background: none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0));
   border: none;
   border-bottom: 2px solid transparent;
   color: var(--text-muted);
@@ -280,16 +383,22 @@ async function submitSignup() {
   font-size: 13px;
   font-weight: 600;
   font-family: "Satoshi", sans-serif;
-  transition: all 0.2s;
+  transition:
+    color 180ms ease,
+    background-color 180ms ease,
+    border-color 180ms ease,
+    transform 180ms ease;
 }
 
 .tab-btn:hover {
   color: var(--text);
+  transform: translateY(-1px);
 }
 
 .tab-btn.active {
   color: var(--text);
   border-bottom-color: var(--accent);
+  background: rgba(90, 90, 240, 0.05);
 }
 
 .char-count {
@@ -320,11 +429,17 @@ async function submitSignup() {
   font-size: 15px;
   font-family: "Satoshi", sans-serif;
   outline: none;
-  transition: border-color 0.2s;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease,
+    background-color 180ms ease;
 }
 
 .field input:focus {
   border-color: var(--accent);
+  box-shadow: 0 0 0 4px rgba(90, 90, 240, 0.08);
+  transform: translateY(-1px);
 }
 
 .field input::placeholder {
@@ -351,11 +466,14 @@ async function submitSignup() {
   padding: 4px;
   display: flex;
   align-items: center;
-  transition: color 0.2s;
+  transition:
+    color 180ms ease,
+    transform 180ms ease;
 }
 
 .toggle-pw:hover {
   color: var(--text);
+  transform: translateY(-50%) scale(1.05);
 }
 
 .submit-btn {
@@ -370,11 +488,16 @@ async function submitSignup() {
   font-family: "Satoshi", sans-serif;
   cursor: pointer;
   margin-top: 8px;
-  transition: opacity 0.2s;
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease,
+    box-shadow 180ms ease;
 }
 
 .submit-btn:hover:not(:disabled) {
   opacity: 0.85;
+  transform: translateY(-1px);
+  box-shadow: 0 12px 22px rgba(44, 42, 39, 0.08);
 }
 
 .submit-btn:disabled {
@@ -382,24 +505,20 @@ async function submitSignup() {
   cursor: not-allowed;
 }
 
-.auth-card,
 .field input {
   scrollbar-width: thin;
   scrollbar-color: rgba(44, 42, 39, 0.28) transparent;
 }
 
-.auth-card::-webkit-scrollbar,
 .field input::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
-.auth-card::-webkit-scrollbar-track,
 .field input::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.auth-card::-webkit-scrollbar-thumb,
 .field input::-webkit-scrollbar-thumb {
   background: rgba(44, 42, 39, 0.22);
   border-radius: 999px;
@@ -414,9 +533,16 @@ async function submitSignup() {
   text-align: center;
 }
 
-input[type="password"]::-ms-reveal,
-input[type="password"]::-webkit-contacts-auto-fill-button,
-input::-webkit-credentials-auto-fill-button {
-  display: none;
+@keyframes auth-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.99);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
+
 </style>
