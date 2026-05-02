@@ -96,7 +96,7 @@ async function submit() {
   max-width: 380px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 14px;
   padding: 36px;
 }
 
@@ -158,7 +158,7 @@ async function submit() {
   color: var(--bg);
   border: none;
   border-radius: var(--radius);
-  padding: 11px;
+  padding: 13px 11px;
   font-size: 15px;
   font-weight: 600;
   font-family: "Satoshi", sans-serif;

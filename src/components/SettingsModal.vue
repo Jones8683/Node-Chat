@@ -102,6 +102,8 @@
                     class="toggle-pw"
                     @click="showCurrentPassword = !showCurrentPassword"
                     :disabled="loadingPassword"
+                    :aria-pressed="showCurrentPassword"
+                    :aria-label="showCurrentPassword ? 'Hide current password' : 'Show current password'"
                   >
                     <EyeOff
                       v-if="showCurrentPassword"
@@ -130,6 +132,8 @@
                     class="toggle-pw"
                     @click="showNewPassword = !showNewPassword"
                     :disabled="loadingPassword"
+                    :aria-pressed="showNewPassword"
+                    :aria-label="showNewPassword ? 'Hide new password' : 'Show new password'"
                   >
                     <EyeOff
                       v-if="showNewPassword"
@@ -158,6 +162,8 @@
                     class="toggle-pw"
                     @click="showConfirmPassword = !showConfirmPassword"
                     :disabled="loadingPassword"
+                    :aria-pressed="showConfirmPassword"
+                    :aria-label="showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'"
                   >
                     <EyeOff
                       v-if="showConfirmPassword"
@@ -367,14 +373,16 @@ async function changePassword() {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(0, 0, 0, 0.38);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 200;
   padding: 20px;
   overflow-y: auto;
-  transition: background 160ms ease;
+  transition: background 160ms ease, backdrop-filter 160ms ease;
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
 }
 
 .modal-container {
@@ -631,8 +639,8 @@ async function changePassword() {
   color: var(--bg);
   border: none;
   border-radius: var(--radius);
-  padding: 12px;
-  font-size: 14px;
+  padding: 13px 11px;
+  font-size: 15px;
   font-weight: 600;
   font-family: "Satoshi", sans-serif;
   cursor: pointer;

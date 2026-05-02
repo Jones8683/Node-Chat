@@ -33,7 +33,7 @@
       </div>
 
       <form @submit.prevent="handleSubmit" autocomplete="off">
-        <fieldset class="auth-fields" :disabled="loading">
+        <fieldset class="auth-fields" :disabled="loading" :aria-busy="loading">
           <!-- Invite Code — slides open only for signup -->
           <div
             class="field-collapse"
@@ -86,6 +86,8 @@
                 class="toggle-pw"
                 @click="showPassword = !showPassword"
                 :disabled="loading"
+                :aria-pressed="showPassword"
+                :aria-label="showPassword ? 'Hide password' : 'Show password'"
               >
                 <EyeOff v-if="showPassword" :size="16" stroke-width="2" />
                 <Eye v-else :size="16" stroke-width="2" />
@@ -109,7 +111,7 @@
             </span>
           </button>
 
-          <p class="error" v-if="error">{{ error }}</p>
+          <p class="error" v-if="error" aria-live="polite">{{ error }}</p>
         </fieldset>
       </form>
     </div>
