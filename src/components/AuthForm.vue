@@ -3,7 +3,7 @@
     <div class="auth-card">
       <div class="logo">Node Chat</div>
       <p class="subtitle">
-        {{ isLogin ? "Sign in to continue" : "Sign up with invite" }}
+        {{ isLogin ? "Log in to continue" : "Sign up with invite" }}
       </p>
 
       <div class="auth-tabs" role="tablist" aria-label="Authentication mode">
@@ -15,12 +15,9 @@
             type="button"
             role="tab"
             :aria-selected="isLogin"
-            @click="
-              isLogin = true;
-              error = '';
-            "
+            @click="switchMode(true)"
           >
-            Sign In
+            Log In
           </button>
           <button
             class="tab-btn"
@@ -28,143 +25,99 @@
             type="button"
             role="tab"
             :aria-selected="!isLogin"
-            @click="
-              isLogin = false;
-              error = '';
-            "
+            @click="switchMode(false)"
           >
             Sign Up
           </button>
         </div>
       </div>
 
-      <div class="auth-stage" :style="{ height: `${stageHeight}px` }">
-        <form
-          ref="loginFormEl"
-          class="auth-panel"
-          :class="{ 'is-active': isLogin, 'is-inactive': !isLogin }"
-          :aria-hidden="!isLogin"
-          @submit.prevent="submitLogin"
-        >
-          <fieldset class="auth-fields" :disabled="loading || !isLogin">
-            <div class="field">
-              <label for="email">Email</label>
-              <input
-                v-model="email"
-                id="email"
-                name="email"
-                type="email"
-                placeholder="you@example.com"
-                autocomplete="email"
-                :disabled="loading"
-              />
-            </div>
-            <div class="field">
-              <label for="password">Password</label>
-              <div class="password-wrap">
+      <form @submit.prevent="handleSubmit" autocomplete="off">
+        <fieldset class="auth-fields" :disabled="loading">
+          <!-- Invite Code — slides open only for signup -->
+          <div
+            class="field-collapse"
+            :class="{ 'field-collapse--open': !isLogin }"
+          >
+            <div class="field-collapse-inner">
+              <div class="field">
+                <label for="invite-token">Invite Code</label>
                 <input
-                  v-model="password"
-                  id="password"
-                  name="password"
-                  :type="showPassword ? 'text' : 'password'"
-                  placeholder="Password"
-                  autocomplete="current-password"
-                  :disabled="loading"
+                  v-model="signupToken"
+                  id="invite-token"
+                  name="invite-token"
+                  type="text"
+                  placeholder="Enter your invite code"
+                  autocomplete="off"
+                  :disabled="loading || isLogin"
+                  :tabindex="isLogin ? -1 : 0"
                 />
-                <button
-                  type="button"
-                  class="toggle-pw"
-                  @click="showPassword = !showPassword"
-                  :disabled="loading"
-                >
-                  <EyeOff v-if="showPassword" :size="16" stroke-width="2" />
-                  <Eye v-else :size="16" stroke-width="2" />
-                </button>
               </div>
             </div>
-            <button type="submit" class="submit-btn" :disabled="loading">
-              {{ loading ? "Signing in..." : "Sign in" }}
-            </button>
-            <p class="error" v-if="error">{{ error }}</p>
-          </fieldset>
-        </form>
+          </div>
 
-        <form
-          ref="signupFormEl"
-          class="auth-panel"
-          :class="{ 'is-active': !isLogin, 'is-inactive': isLogin }"
-          :aria-hidden="isLogin"
-          @submit.prevent="submitSignup"
-          autocomplete="off"
-        >
-          <fieldset class="auth-fields" :disabled="loading || isLogin">
-            <div class="field">
-              <label for="invite-token">Invite Code</label>
+          <div class="field">
+            <label for="email">Email</label>
+            <input
+              v-model="email"
+              id="email"
+              name="email"
+              type="email"
+              placeholder="you@example.com"
+              autocomplete="email"
+              :disabled="loading"
+            />
+          </div>
+
+          <div class="field">
+            <label for="password">Password</label>
+            <div class="password-wrap">
               <input
-                v-model="signupToken"
-                id="invite-token"
-                name="invite-token"
-                type="text"
-                placeholder="Paste your invite code"
-                autocomplete="off"
+                v-model="password"
+                id="password"
+                name="password"
+                :type="showPassword ? 'text' : 'password'"
+                :placeholder="isLogin ? 'Password' : 'At least 6 characters'"
+                :autocomplete="isLogin ? 'current-password' : 'new-password'"
                 :disabled="loading"
               />
-            </div>
-
-            <div class="field">
-              <label for="signup-email">Email</label>
-              <input
-                v-model="signupEmail"
-                id="signup-email"
-                name="signup-email"
-                type="email"
-                placeholder="you@example.com"
-                autocomplete="email"
+              <button
+                type="button"
+                class="toggle-pw"
+                @click="showPassword = !showPassword"
                 :disabled="loading"
-              />
+              >
+                <EyeOff v-if="showPassword" :size="16" stroke-width="2" />
+                <Eye v-else :size="16" stroke-width="2" />
+              </button>
             </div>
+          </div>
 
-            <div class="field">
-              <label for="signup-password">Password</label>
-              <div class="password-wrap">
-                <input
-                  v-model="signupPassword"
-                  id="signup-password"
-                  name="signup-password"
-                  :type="showSignupPassword ? 'text' : 'password'"
-                  placeholder="At least 6 characters"
-                  autocomplete="new-password"
-                  :disabled="loading"
-                />
-                <button
-                  type="button"
-                  class="toggle-pw"
-                  @click="showSignupPassword = !showSignupPassword"
-                  :disabled="loading"
-                >
-                  <EyeOff
-                    v-if="showSignupPassword"
-                    :size="16"
-                    stroke-width="2"
-                  />
-                  <Eye v-else :size="16" stroke-width="2" />
-                </button>
-              </div>
-            </div>
+          <button type="submit" class="submit-btn" :disabled="loading">
+            <span
+              class="btn-label-track"
+              :class="{ 'btn-label-track--signup': !isLogin }"
+            >
+              <span class="btn-label-item btn-label-signin">
+                {{ loading && isLogin ? "Logging in..." : "Log in" }}
+              </span>
+              <span class="btn-label-item btn-label-createacc">
+                {{
+                  loading && !isLogin ? "Creating account..." : "Create account"
+                }}
+              </span>
+            </span>
+          </button>
 
-            <button type="submit" class="submit-btn" :disabled="loading">
-              {{ loading ? "Creating account..." : "Create account" }}
-            </button>
-            <p class="error" v-if="error">{{ error }}</p>
-          </fieldset>
-        </form>
-      </div>
+          <p class="error" v-if="error">{{ error }}</p>
+        </fieldset>
+      </form>
     </div>
   </div>
 </template>
 
 <script setup>
-import { nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { ref } from "vue";
 import { auth } from "../firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { signupWithToken } from "../authUtils";
@@ -176,55 +129,12 @@ const password = ref("");
 const error = ref("");
 const loading = ref(false);
 const showPassword = ref(false);
-
 const signupToken = ref("");
-const signupEmail = ref("");
-const signupPassword = ref("");
-const showSignupPassword = ref(false);
 
-const stageHeight = ref(380);
-const loginFormEl = ref(null);
-const signupFormEl = ref(null);
-
-let resizeObserver = null;
-
-function syncStageHeight() {
-  const activeForm = isLogin.value ? loginFormEl.value : signupFormEl.value;
-  if (!activeForm) return;
-  stageHeight.value = activeForm.offsetHeight;
+function switchMode(login) {
+  isLogin.value = login;
+  error.value = "";
 }
-
-function attachObserver() {
-  if (resizeObserver) {
-    resizeObserver.disconnect();
-  }
-
-  const activeForm = isLogin.value ? loginFormEl.value : signupFormEl.value;
-  if (!activeForm) return;
-
-  resizeObserver = new ResizeObserver(() => {
-    syncStageHeight();
-  });
-
-  resizeObserver.observe(activeForm);
-  syncStageHeight();
-}
-
-watch(isLogin, async () => {
-  await nextTick();
-  attachObserver();
-});
-
-onMounted(async () => {
-  await nextTick();
-  attachObserver();
-});
-
-onBeforeUnmount(() => {
-  if (resizeObserver) {
-    resizeObserver.disconnect();
-  }
-});
 
 function friendlyError(code) {
   switch (code) {
@@ -253,6 +163,14 @@ function friendlyError(code) {
   }
 }
 
+async function handleSubmit() {
+  if (isLogin.value) {
+    await submitLogin();
+  } else {
+    await submitSignup();
+  }
+}
+
 async function submitLogin() {
   if (!email.value || !password.value) return;
   error.value = "";
@@ -272,7 +190,7 @@ async function submitSignup() {
     return;
   }
 
-  if (!signupEmail.value || !signupPassword.value) {
+  if (!email.value || !password.value) {
     error.value = "Please fill in all fields.";
     return;
   }
@@ -283,8 +201,8 @@ async function submitSignup() {
   try {
     await signupWithToken(
       signupToken.value.trim(),
-      signupEmail.value,
-      signupPassword.value,
+      email.value,
+      password.value,
     );
   } catch (e) {
     const msg = e.message || "";
@@ -321,36 +239,65 @@ async function submitSignup() {
   padding: 36px;
 }
 
-.auth-stage {
-  position: relative;
-  overflow: hidden;
-  transition: height 320ms cubic-bezier(0.2, 0.9, 0.25, 1);
-}
-
-.auth-panel {
-  width: 100%;
+/* Collapsible invite-code field — grid-row trick for smooth height animation */
+.field-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
   transition:
-    opacity 220ms cubic-bezier(0.2, 0.9, 0.3, 1),
-    transform 220ms cubic-bezier(0.2, 0.9, 0.3, 1),
-    filter 220ms cubic-bezier(0.2, 0.9, 0.3, 1);
-  will-change: opacity, transform;
+    grid-template-rows 320ms cubic-bezier(0.2, 0.9, 0.25, 1),
+    opacity 240ms ease;
 }
 
-.auth-panel.is-active {
-  position: relative;
+.field-collapse--open {
+  grid-template-rows: 1fr;
   opacity: 1;
-  transform: translateY(0) scale(1);
-  pointer-events: auto;
-  z-index: 2;
 }
 
-.auth-panel.is-inactive {
+.field-collapse-inner {
+  overflow: hidden;
+}
+
+.btn-label-track {
+  display: block;
+  position: relative;
+  height: 1.2em;
+  overflow: hidden;
+}
+
+.btn-label-item {
+  display: flex;
   position: absolute;
   inset: 0;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  transform-origin: center;
+  transition:
+    transform 260ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 260ms ease-out;
+}
+
+.btn-label-signin {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.btn-label-createacc {
+  transform: translateY(110%);
   opacity: 0;
-  transform: translateY(14px) scale(0.982);
-  pointer-events: none;
-  z-index: 1;
+}
+
+.btn-label-track--signup .btn-label-signin {
+  transform: translateY(-110%);
+  opacity: 0;
+}
+
+.btn-label-track--signup .btn-label-createacc {
+  transform: translateY(0);
+  opacity: 1;
 }
 
 .auth-fields {
@@ -510,7 +457,7 @@ async function submitSignup() {
   color: var(--bg);
   border: none;
   border-radius: var(--radius);
-  padding: 11px;
+  padding: 13px 11px;
   font-size: 15px;
   font-weight: 600;
   font-family: "Satoshi", sans-serif;
