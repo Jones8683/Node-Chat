@@ -44,7 +44,6 @@ html.modal-open body {
   overflow: hidden;
 }
 
-/* Remove autofill background color while keeping autofill functionality */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus {

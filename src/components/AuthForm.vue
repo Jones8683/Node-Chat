@@ -393,7 +393,7 @@ async function submitSignup() {
   inset: 5px auto 5px 5px;
   width: calc(50% - 5px);
   border-radius: 999px;
-  background: linear-gradient(180deg, #ffffff 0%, #f1ede4 100%);
+  background: linear-gradient(180deg, #fffdf8 0%, #f8f5ed 100%);
   box-shadow:
     0 6px 14px rgba(44, 42, 39, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.78);
