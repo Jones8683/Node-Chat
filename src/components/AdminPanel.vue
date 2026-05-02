@@ -1046,4 +1046,83 @@ function cancelConfirm() {
   font-weight: 600;
   z-index: 400;
 }
+
+.modal-close:focus-visible,
+.tab-btn:focus-visible,
+.action-btn:focus-visible,
+.copy-btn:focus-visible,
+.delete-btn-invite:focus-visible,
+.admin-btn:focus-visible,
+.demote-btn:focus-visible,
+.cancel-btn:focus-visible,
+.danger-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(90, 90, 240, 0.18);
+}
+
+.tab-btn:active {
+  transform: translateY(1px);
+}
+
+.action-btn,
+.copy-btn,
+.cancel-btn,
+.danger-btn,
+.delete-btn-invite,
+.admin-btn,
+.delete-btn,
+.demote-btn {
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease,
+    background-color 180ms ease;
+}
+
+.action-btn:hover:not(:disabled),
+.copy-btn:hover,
+.cancel-btn:hover,
+.danger-btn:hover:not(:disabled),
+.delete-btn-invite:hover,
+.admin-btn:hover,
+.delete-btn:hover,
+.demote-btn:hover {
+  transform: translateY(-1px);
+}
+
+.invite-item,
+.user-item {
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease;
+}
+
+.invite-item:hover,
+.user-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(20, 20, 20, 0.06);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal-overlay,
+  .modal-container,
+  .modal-fade-enter-active,
+  .modal-fade-leave-active,
+  .tab-btn,
+  .action-btn,
+  .copy-btn,
+  .delete-btn-invite,
+  .admin-btn,
+  .delete-btn,
+  .demote-btn,
+  .cancel-btn,
+  .danger-btn,
+  .invite-item,
+  .user-item {
+    transition: none !important;
+  }
+}
 </style>

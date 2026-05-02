@@ -409,6 +409,7 @@ async function changePassword() {
   display: flex;
   flex-direction: column;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  will-change: transform, opacity;
   transform: translateY(0);
   transition:
     transform 180ms ease,
@@ -470,6 +471,15 @@ async function changePassword() {
   color: var(--text);
 }
 
+.modal-close:focus-visible,
+.tab-btn:focus-visible,
+.submit-btn:focus-visible,
+.toggle-pw:focus-visible,
+.field input:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(90, 90, 240, 0.18);
+}
+
 .modal-tabs {
   display: flex;
   gap: 8px;
@@ -494,6 +504,10 @@ async function changePassword() {
 
 .tab-btn:hover {
   color: var(--text);
+}
+
+.tab-btn:active {
+  transform: translateY(1px);
 }
 
 .tab-btn.active {
@@ -595,11 +609,15 @@ async function changePassword() {
   font-size: 15px;
   font-family: "Satoshi", sans-serif;
   outline: none;
-  transition: border-color 0.2s;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
 }
 
 .field input:focus {
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(90, 90, 240, 0.12);
 }
 
 .field input::placeholder {
@@ -636,11 +654,14 @@ async function changePassword() {
   padding: 4px;
   display: flex;
   align-items: center;
-  transition: color 0.2s;
+  transition:
+    color 180ms ease,
+    transform 180ms ease;
 }
 
 .toggle-pw:hover:not(:disabled) {
   color: var(--text);
+  transform: translateY(-50%) scale(1.05);
 }
 
 .toggle-pw:disabled {
@@ -658,11 +679,20 @@ async function changePassword() {
   font-weight: 600;
   font-family: "Satoshi", sans-serif;
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease,
+    box-shadow 180ms ease;
 }
 
 .submit-btn:hover:not(:disabled) {
   opacity: 0.85;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 18px rgba(44, 42, 39, 0.06);
+}
+
+.submit-btn:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .submit-btn:disabled {
@@ -680,5 +710,18 @@ async function changePassword() {
   color: var(--accent);
   font-size: 13px;
   margin: 12px 0 0 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal-container,
+  .modal-overlay,
+  .modal-fade-enter-active,
+  .modal-fade-leave-active,
+  .tab-btn,
+  .submit-btn,
+  .toggle-pw,
+  .field input {
+    transition: none !important;
+  }
 }
 </style>
