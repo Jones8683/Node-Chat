@@ -6,27 +6,36 @@
         {{ isLogin ? "Sign in to continue" : "Sign up with invite" }}
       </p>
 
-      <div class="auth-tabs">
-        <button
-          class="tab-btn"
-          :class="{ active: isLogin }"
-          @click="
-            isLogin = true;
-            error = '';
-          "
-        >
-          Sign In
-        </button>
-        <button
-          class="tab-btn"
-          :class="{ active: !isLogin }"
-          @click="
-            isLogin = false;
-            error = '';
-          "
-        >
-          Sign Up
-        </button>
+      <div class="auth-tabs" role="tablist" aria-label="Authentication mode">
+        <div class="auth-tabs-track">
+          <div class="auth-tabs-pill" :class="{ signup: !isLogin }"></div>
+          <button
+            class="tab-btn"
+            :class="{ active: isLogin }"
+            type="button"
+            role="tab"
+            :aria-selected="isLogin"
+            @click="
+              isLogin = true;
+              error = '';
+            "
+          >
+            Sign In
+          </button>
+          <button
+            class="tab-btn"
+            :class="{ active: !isLogin }"
+            type="button"
+            role="tab"
+            :aria-selected="!isLogin"
+            @click="
+              isLogin = false;
+              error = '';
+            "
+          >
+            Sign Up
+          </button>
+        </div>
       </div>
 
       <div class="auth-stage" :style="{ height: `${stageHeight}px` }">
@@ -308,11 +317,8 @@ async function submitSignup() {
   max-width: 380px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 14px;
   padding: 36px;
-  box-shadow: 0 24px 70px rgba(24, 24, 24, 0.08);
-  transform: translateY(0);
-  animation: auth-card-in 360ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
 }
 
 .auth-stage {
@@ -336,7 +342,6 @@ async function submitSignup() {
   transform: translateY(0) scale(1);
   pointer-events: auto;
   z-index: 2;
-  filter: blur(0);
 }
 
 .auth-panel.is-inactive {
@@ -346,7 +351,6 @@ async function submitSignup() {
   transform: translateY(14px) scale(0.982);
   pointer-events: none;
   z-index: 1;
-  filter: blur(1px);
 }
 
 .auth-fields {
@@ -370,43 +374,60 @@ async function submitSignup() {
 }
 
 .auth-tabs {
-  display: flex;
-  gap: 0;
   margin-bottom: 20px;
-  border-bottom: 1px solid var(--border);
+}
+
+.auth-tabs-track {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 5px;
+  background: rgba(244, 238, 225, 0.96);
+  border: 1px solid rgba(44, 42, 39, 0.09);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.auth-tabs-pill {
+  position: absolute;
+  inset: 5px auto 5px 5px;
+  width: calc(50% - 5px);
+  border-radius: 999px;
+  background: #fffdf8;
+  box-shadow:
+    0 6px 14px rgba(44, 42, 39, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.78);
+  transform: translateX(0);
+  transition: transform 220ms cubic-bezier(0.2, 0.9, 0.25, 1);
+}
+
+.auth-tabs-pill.signup {
+  transform: translateX(100%);
 }
 
 .tab-btn {
+  position: relative;
+  z-index: 1;
   flex: 1;
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.18),
-    rgba(255, 255, 255, 0)
-  );
+  background: transparent;
   border: none;
-  border-bottom: 2px solid transparent;
   color: var(--text-muted);
   cursor: pointer;
-  padding: 12px 0;
-  font-size: 13px;
+  padding: 14px 0;
+  font-size: 14px;
   font-weight: 600;
   font-family: "Satoshi", sans-serif;
   transition:
     color 180ms ease,
-    background-color 180ms ease,
-    border-color 180ms ease,
     transform 180ms ease;
 }
 
 .tab-btn:hover {
   color: var(--text);
-  transform: translateY(-1px);
 }
 
 .tab-btn.active {
   color: var(--text);
-  border-bottom-color: var(--accent);
-  background: rgba(90, 90, 240, 0.05);
 }
 
 .char-count {
@@ -446,8 +467,7 @@ async function submitSignup() {
 
 .field input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 4px rgba(90, 90, 240, 0.08);
-  transform: translateY(-1px);
+  box-shadow: none;
 }
 
 .field input::placeholder {
@@ -505,7 +525,7 @@ async function submitSignup() {
 .submit-btn:hover:not(:disabled) {
   opacity: 0.85;
   transform: translateY(-1px);
-  box-shadow: 0 12px 22px rgba(44, 42, 39, 0.08);
+  box-shadow: 0 10px 18px rgba(44, 42, 39, 0.06);
 }
 
 .submit-btn:disabled {
@@ -539,17 +559,5 @@ async function submitSignup() {
   font-size: 13px;
   margin-top: 10px;
   text-align: center;
-}
-
-@keyframes auth-card-in {
-  from {
-    opacity: 0;
-    transform: translateY(10px) scale(0.99);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
 }
 </style>
