@@ -103,7 +103,11 @@
                     @click="showCurrentPassword = !showCurrentPassword"
                     :disabled="loadingPassword"
                     :aria-pressed="showCurrentPassword"
-                    :aria-label="showCurrentPassword ? 'Hide current password' : 'Show current password'"
+                    :aria-label="
+                      showCurrentPassword
+                        ? 'Hide current password'
+                        : 'Show current password'
+                    "
                   >
                     <EyeOff
                       v-if="showCurrentPassword"
@@ -133,7 +137,11 @@
                     @click="showNewPassword = !showNewPassword"
                     :disabled="loadingPassword"
                     :aria-pressed="showNewPassword"
-                    :aria-label="showNewPassword ? 'Hide new password' : 'Show new password'"
+                    :aria-label="
+                      showNewPassword
+                        ? 'Hide new password'
+                        : 'Show new password'
+                    "
                   >
                     <EyeOff
                       v-if="showNewPassword"
@@ -163,7 +171,11 @@
                     @click="showConfirmPassword = !showConfirmPassword"
                     :disabled="loadingPassword"
                     :aria-pressed="showConfirmPassword"
-                    :aria-label="showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'"
+                    :aria-label="
+                      showConfirmPassword
+                        ? 'Hide confirm password'
+                        : 'Show confirm password'
+                    "
                   >
                     <EyeOff
                       v-if="showConfirmPassword"
@@ -380,7 +392,9 @@ async function changePassword() {
   z-index: 200;
   padding: 20px;
   overflow-y: auto;
-  transition: background 160ms ease, backdrop-filter 160ms ease;
+  transition:
+    background 160ms ease,
+    backdrop-filter 160ms ease;
   -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
 }

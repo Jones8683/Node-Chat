@@ -431,7 +431,9 @@ function cancelConfirm() {
   z-index: 200;
   padding: 20px;
   overflow-y: auto;
-  transition: background 160ms ease, backdrop-filter 160ms ease;
+  transition:
+    background 160ms ease,
+    backdrop-filter 160ms ease;
   -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
 }
