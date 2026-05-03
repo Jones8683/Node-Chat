@@ -3,7 +3,12 @@
     <div class="header" @wheel="forwardWheelToMessages">
       <div class="user-menu" ref="menuRef">
         <button class="user-btn" @click="showDropdown = !showDropdown">
-          <div class="avatar" :style="{ background: getAvatarColor(user.displayName) }">{{ user.displayName[0].toUpperCase() }}</div>
+          <div
+            class="avatar"
+            :style="{ background: getAvatarColor(user.displayName) }"
+          >
+            {{ user.displayName[0].toUpperCase() }}
+          </div>
           <span class="username">{{ user.displayName }}</span>
           <svg
             class="chevron"
@@ -23,31 +28,38 @@
           </svg>
         </button>
         <transition name="dropdown-fade">
-        <div class="dropdown" v-if="showDropdown">
-          <div class="dropdown-profile">
-            <div class="avatar large" :style="{ background: getAvatarColor(user.displayName) }">
-              {{ user.displayName[0].toUpperCase() }}
+          <div class="dropdown" v-if="showDropdown">
+            <div class="dropdown-profile">
+              <div
+                class="avatar large"
+                :style="{ background: getAvatarColor(user.displayName) }"
+              >
+                {{ user.displayName[0].toUpperCase() }}
+              </div>
+              <div class="dropdown-info">
+                <div class="dropdown-name">{{ user.displayName }}</div>
+                <div class="dropdown-email">{{ user.email }}</div>
+              </div>
             </div>
-            <div class="dropdown-info">
-              <div class="dropdown-name">{{ user.displayName }}</div>
-              <div class="dropdown-email">{{ user.email }}</div>
-            </div>
+            <div class="divider"></div>
+            <button class="dropdown-item" @click="openSettings">
+              <User :size="14" stroke-width="2" />
+              Settings
+            </button>
+            <button
+              v-if="isAdmin"
+              class="dropdown-item admin-item"
+              @click="openAdmin"
+            >
+              <ShieldCheck :size="14" stroke-width="2" />
+              Admin
+            </button>
+            <div class="divider"></div>
+            <button class="dropdown-item danger" @click="logout">
+              <LogOut :size="14" stroke-width="2" />
+              Sign Out
+            </button>
           </div>
-          <div class="divider"></div>
-          <button class="dropdown-item" @click="openSettings">
-            <User :size="14" stroke-width="2" />
-            Settings
-          </button>
-          <button v-if="isAdmin" class="dropdown-item admin-item" @click="openAdmin">
-            <ShieldCheck :size="14" stroke-width="2" />
-            Admin
-          </button>
-          <div class="divider"></div>
-          <button class="dropdown-item danger" @click="logout">
-            <LogOut :size="14" stroke-width="2" />
-            Sign Out
-          </button>
-        </div>
         </transition>
       </div>
       <img :src="'/icon.png'" class="header-logo" alt="Node Chat" />
@@ -81,11 +93,16 @@
               v-else
               class="message"
               :data-message-id="item.id"
-              :class="{ 'message--editing': editingId === item.id, 'message--start': item.isGroupStart }"
+              :class="{
+                'message--editing': editingId === item.id,
+                'message--start': item.isGroupStart,
+              }"
             >
               <div v-if="item.isGroupStart" class="msg-header">
                 <span class="msg-name">{{ item.displayName }}</span>
-                <span class="msg-time">{{ formatTimestamp(item.timestamp) }}</span>
+                <span class="msg-time">{{
+                  formatTimestamp(item.timestamp)
+                }}</span>
               </div>
 
               <template v-if="editingId === item.id">
@@ -104,9 +121,17 @@
 
               <template v-else>
                 <div class="msg-body">
-                  <span class="text"><span v-html="formatMessage(item.text)"></span><span v-if="item.editedAt" class="edited-label"> (edited)</span></span>
+                  <span class="text"
+                    ><span v-html="formatMessage(item.text)"></span
+                    ><span v-if="item.editedAt" class="edited-label">
+                      (edited)</span
+                    ></span
+                  >
                 </div>
-                <div class="msg-actions" v-if="item.uid === user.uid || isAdmin">
+                <div
+                  class="msg-actions"
+                  v-if="item.uid === user.uid || isAdmin"
+                >
                   <button
                     v-if="item.uid === user.uid"
                     class="msg-action-btn"
@@ -129,8 +154,14 @@
         </div>
 
         <transition name="jump-fade">
-          <button v-if="showJumpButton" class="jump-to-bottom" @click="scrollToBottom">
-            <span v-if="scrollUnread > 0" class="jump-unread">{{ scrollUnread }}</span>
+          <button
+            v-if="showJumpButton"
+            class="jump-to-bottom"
+            @click="scrollToBottom"
+          >
+            <span v-if="scrollUnread > 0" class="jump-unread">{{
+              scrollUnread
+            }}</span>
             <ChevronDown :size="16" stroke-width="2.5" />
           </button>
         </transition>
@@ -146,7 +177,9 @@
               <template v-for="(name, i) in typingUsers" :key="name">
                 <strong>{{ name }}</strong>
                 <template v-if="i < typingUsers.length - 2">, </template>
-                <template v-else-if="i === typingUsers.length - 2"> and </template>
+                <template v-else-if="i === typingUsers.length - 2">
+                  and
+                </template>
               </template>
               {{ typingUsers.length === 1 ? "is" : "are" }} typing...
             </span>
@@ -198,27 +231,36 @@
               :class="{ 'online-item--you': u.uid === props.user.uid }"
               :style="{ animationDelay: `${i * 45}ms` }"
             >
-              <div class="online-avatar" :style="{ background: getAvatarColor(u.displayName) }">
+              <div
+                class="online-avatar"
+                :style="{ background: getAvatarColor(u.displayName) }"
+              >
                 {{ u.displayName[0].toUpperCase() }}
                 <span class="online-avatar-dot"></span>
               </div>
               <span class="online-item-name">{{ u.displayName }}</span>
-              <span v-if="u.uid === props.user.uid" class="online-you-tag">You</span>
+              <span v-if="u.uid === props.user.uid" class="online-you-tag"
+                >You</span
+              >
             </div>
             <template v-if="offlineMembers.length">
-              <div class="panel-section-label">Recently seen</div>
+              <div class="panel-section-label">
+                Offline — {{ offlineMembers.length }}
+              </div>
               <div
                 v-for="u in offlineMembers"
                 :key="u.uid"
                 class="online-item offline-item"
               >
-                <div class="online-avatar offline-avatar" :style="{ background: getAvatarColor(u.displayName) }">
+                <div
+                  class="online-avatar offline-avatar"
+                  :style="{ background: getAvatarColor(u.displayName) }"
+                >
                   {{ u.displayName[0].toUpperCase() }}
                 </div>
-                <div class="offline-item-body">
-                  <span class="online-item-name offline-name">{{ u.displayName }}</span>
-                  <span class="lastseen-text">{{ formatLastSeen(u.lastSeen) }}</span>
-                </div>
+                <span class="online-item-name offline-name">{{
+                  u.displayName
+                }}</span>
               </div>
             </template>
           </div>
@@ -227,13 +269,22 @@
     </div>
 
     <teleport to="body">
-      <div v-if="deleteDialog.show" class="delete-overlay" @click="cancelDelete">
+      <div
+        v-if="deleteDialog.show"
+        class="delete-overlay"
+        @click="cancelDelete"
+      >
         <div class="delete-box" @click.stop>
           <h3>Delete Message?</h3>
-          <p>Delete <strong>{{ deleteDialog.name }}</strong>'s message? This cannot be undone.</p>
+          <p>
+            Delete <strong>{{ deleteDialog.name }}</strong
+            >'s message? This cannot be undone.
+          </p>
           <div class="delete-actions">
             <button class="del-cancel-btn" @click="cancelDelete">Cancel</button>
-            <button class="del-confirm-btn" @click="confirmDelete">Delete</button>
+            <button class="del-confirm-btn" @click="confirmDelete">
+              Delete
+            </button>
           </div>
         </div>
       </div>
@@ -245,7 +296,16 @@
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
 import { auth, db } from "../firebase";
 import { signOut } from "firebase/auth";
-import { ShieldCheck, User, Users, LogOut, Send, Pencil, Trash2, ChevronDown } from "lucide-vue-next";
+import {
+  ShieldCheck,
+  User,
+  Users,
+  LogOut,
+  Send,
+  Pencil,
+  Trash2,
+  ChevronDown,
+} from "lucide-vue-next";
 import {
   ref as dbRef,
   push,
@@ -272,12 +332,21 @@ const SHOW_JUMP_THRESHOLD = 110;
 const GROUP_TIMEOUT = 5 * 60 * 1000;
 const onlineUsers = ref([]);
 const showOnlinePanel = ref(false);
-const AVATAR_COLORS = ["#6366f1","#8b5cf6","#ec4899","#f43f5e","#f97316","#22c55e","#14b8a6","#3b82f6"];
+const AVATAR_COLORS = [
+  "#6366f1",
+  "#8b5cf6",
+  "#ec4899",
+  "#f43f5e",
+  "#f97316",
+  "#22c55e",
+  "#14b8a6",
+  "#3b82f6",
+];
 
 function getAvatarColor(name) {
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
-    hash = ((hash << 5) - hash) + name.charCodeAt(i);
+    hash = (hash << 5) - hash + name.charCodeAt(i);
     hash |= 0;
   }
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
@@ -297,21 +366,35 @@ function formatDateLabel(timestamp) {
   yesterday.setDate(today.getDate() - 1);
   if (d.toDateString() === today.toDateString()) return "Today";
   if (d.toDateString() === yesterday.toDateString()) return "Yesterday";
-  return d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+  return d.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
 }
 
 const groupedMessages = computed(() => {
   const result = [];
   let lastDateKey = null;
   messages.value.forEach((msg, i) => {
-    const dateKey = msg.timestamp ? new Date(msg.timestamp).toDateString() : null;
+    const dateKey = msg.timestamp
+      ? new Date(msg.timestamp).toDateString()
+      : null;
     if (dateKey && dateKey !== lastDateKey) {
       lastDateKey = dateKey;
-      result.push({ type: "date", id: `date-${dateKey}`, label: formatDateLabel(msg.timestamp) });
+      result.push({
+        type: "date",
+        id: `date-${dateKey}`,
+        label: formatDateLabel(msg.timestamp),
+      });
     }
     const prev = i > 0 ? messages.value[i - 1] : null;
-    const crossedDate = prev && prev.timestamp && msg.timestamp &&
-      new Date(prev.timestamp).toDateString() !== new Date(msg.timestamp).toDateString();
+    const crossedDate =
+      prev &&
+      prev.timestamp &&
+      msg.timestamp &&
+      new Date(prev.timestamp).toDateString() !==
+        new Date(msg.timestamp).toDateString();
     const isGroupStart =
       !prev ||
       prev.uid !== msg.uid ||
@@ -357,11 +440,10 @@ let hasEmittedReady = false;
 
 const offlineMembers = computed(() => {
   const onlineUids = new Set(onlineUsers.value.map((u) => u.uid));
-  const cutoff = 7 * 24 * 3600000;
   return Object.entries(allUsers.value)
-    .filter(([uid, data]) => !onlineUids.has(uid) && data.lastSeen && Date.now() - data.lastSeen < cutoff)
-    .map(([uid, data]) => ({ uid, displayName: data.displayName || "?", lastSeen: data.lastSeen }))
-    .sort((a, b) => b.lastSeen - a.lastSeen);
+    .filter(([uid, data]) => !onlineUids.has(uid) && data.displayName)
+    .map(([uid, data]) => ({ uid, displayName: data.displayName }))
+    .sort((a, b) => a.displayName.localeCompare(b.displayName));
 });
 
 function formatLastSeen(ts) {
@@ -533,7 +615,9 @@ function formatTimestamp(timestamp) {
 function handleComposerKeydown(e) {
   if (e.key === "ArrowUp" && !newMessage.value.trim()) {
     e.preventDefault();
-    const lastOwn = [...messages.value].reverse().find((m) => m.uid === props.user.uid);
+    const lastOwn = [...messages.value]
+      .reverse()
+      .find((m) => m.uid === props.user.uid);
     if (lastOwn) startEdit(lastOwn);
     return;
   }
@@ -713,15 +797,23 @@ onMounted(async () => {
 
   myPresenceRef = dbRef(db, `presence/${props.user.uid}`);
   onDisconnect(myPresenceRef).remove();
-  set(myPresenceRef, { displayName: props.user.displayName, uid: props.user.uid });
-  onDisconnect(dbRef(db, `users/${props.user.uid}/lastSeen`)).set(serverTimestamp());
+  set(myPresenceRef, {
+    displayName: props.user.displayName,
+    uid: props.user.uid,
+  });
+  onDisconnect(dbRef(db, `users/${props.user.uid}/lastSeen`)).set(
+    serverTimestamp(),
+  );
 
   usersListener = onValue(dbRef(db, "users"), (snap) => {
     allUsers.value = snap.exists() ? snap.val() : {};
   });
 
   presenceListener = onValue(dbRef(db, "presence"), (snap) => {
-    if (!snap.exists()) { onlineUsers.value = []; return; }
+    if (!snap.exists()) {
+      onlineUsers.value = [];
+      return;
+    }
     onlineUsers.value = Object.entries(snap.val())
       .map(([uid, data]) => ({ uid, displayName: data.displayName || "?" }))
       .sort((a, b) => {
@@ -790,9 +882,15 @@ function resizeEditInput(el) {
 
 async function saveEdit(id) {
   const text = sanitizeMessage(editText.value);
-  if (!text.trim()) { cancelEdit(); return; }
+  if (!text.trim()) {
+    cancelEdit();
+    return;
+  }
   const original = messages.value.find((m) => m.id === id);
-  if (original && sanitizeMessage(original.text) === text) { cancelEdit(); return; }
+  if (original && sanitizeMessage(original.text) === text) {
+    cancelEdit();
+    return;
+  }
   editingId.value = null;
   editText.value = "";
   await update(dbRef(db, `messages/${id}`), {
@@ -807,7 +905,11 @@ async function promptDelete(id) {
     await remove(dbRef(db, `messages/${id}`));
     return;
   }
-  deleteDialog.value = { show: true, id, name: msg?.displayName || "this message" };
+  deleteDialog.value = {
+    show: true,
+    id,
+    name: msg?.displayName || "this message",
+  };
 }
 
 function cancelDelete() {
@@ -949,10 +1051,14 @@ async function logout() {
 }
 
 .dropdown-fade-enter-active {
-  transition: opacity 160ms ease, transform 160ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    opacity 160ms ease,
+    transform 160ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 .dropdown-fade-leave-active {
-  transition: opacity 120ms ease, transform 120ms ease;
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
 }
 .dropdown-fade-enter-from {
   opacity: 0;
@@ -974,7 +1080,9 @@ async function logout() {
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 6px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.13), 0 1px 4px rgba(0,0,0,0.06);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.13),
+    0 1px 4px rgba(0, 0, 0, 0.06);
   z-index: 100;
 }
 
@@ -1139,15 +1247,21 @@ async function logout() {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.22), 0 1px 4px rgba(0, 0, 0, 0.1);
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.22),
+    0 1px 4px rgba(0, 0, 0, 0.1);
   color: var(--surface);
-  transition: transform 0.15s, box-shadow 0.15s;
+  transition:
+    transform 0.15s,
+    box-shadow 0.15s;
   z-index: 20;
 }
 
 .jump-to-bottom:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.26), 0 2px 6px rgba(0, 0, 0, 0.1);
+  box-shadow:
+    0 8px 28px rgba(0, 0, 0, 0.26),
+    0 2px 6px rgba(0, 0, 0, 0.1);
 }
 
 .jump-unread {
@@ -1169,14 +1283,18 @@ async function logout() {
   line-height: 1;
   pointer-events: none;
   border: 1.5px solid var(--border);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.14);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.14);
 }
 
 .jump-fade-enter-active {
-  transition: opacity 0.18s ease, transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .jump-fade-leave-active {
-  transition: opacity 0.14s ease, transform 0.14s ease;
+  transition:
+    opacity 0.14s ease,
+    transform 0.14s ease;
 }
 .jump-fade-enter-from {
   opacity: 0;
@@ -1574,7 +1692,10 @@ textarea::placeholder {
   font-size: 12px;
   font-weight: 600;
   font-family: "Satoshi", sans-serif;
-  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  transition:
+    border-color 0.15s,
+    color 0.15s,
+    background 0.15s;
   flex-shrink: 0;
   justify-self: end;
 }
@@ -1628,8 +1749,13 @@ textarea::placeholder {
 }
 
 @keyframes presencePulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
-  50% { box-shadow: 0 0 0 5px rgba(34, 197, 94, 0); }
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(34, 197, 94, 0);
+  }
 }
 
 .online-panel-title {
@@ -1673,8 +1799,14 @@ textarea::placeholder {
 }
 
 @keyframes itemIn {
-  from { opacity: 0; transform: translateX(10px); }
-  to   { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .online-item:hover {
@@ -1748,23 +1880,9 @@ textarea::placeholder {
   filter: grayscale(0.45);
 }
 
-.offline-item-body {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  min-width: 0;
-  flex: 1;
-}
-
 .offline-name {
   flex: unset;
   font-size: 13px;
-}
-
-.lastseen-text {
-  font-size: 11px;
-  color: var(--text-muted);
-  font-weight: 500;
 }
 
 .online-you-tag {
@@ -1781,11 +1899,15 @@ textarea::placeholder {
 }
 
 .panel-slide-enter-active {
-  transition: width 0.26s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+  transition:
+    width 0.26s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.2s ease;
   overflow: hidden;
 }
 .panel-slide-leave-active {
-  transition: width 0.22s ease-in, opacity 0.18s ease-in;
+  transition:
+    width 0.22s ease-in,
+    opacity 0.18s ease-in;
   overflow: hidden;
 }
 .panel-slide-enter-from,

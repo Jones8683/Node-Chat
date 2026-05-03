@@ -25,7 +25,10 @@
           <button
             class="tab-btn"
             :class="{ active: activeTab === 'users' }"
-            @click="activeTab = 'users'; loadUsers();"
+            @click="
+              activeTab = 'users';
+              loadUsers();
+            "
           >
             Users
           </button>
@@ -40,14 +43,18 @@
                 @click="generateInvite"
                 :disabled="generatingInvite"
               >
-                {{ generatingInvite ? "Generating..." : "Generate Invite Code" }}
+                {{
+                  generatingInvite ? "Generating..." : "Generate Invite Code"
+                }}
               </button>
               <p v-if="errorInvite" class="error">{{ errorInvite }}</p>
             </div>
 
             <div class="section">
               <h3 class="section-title">Active Invites</h3>
-              <div v-if="loadingInvites" class="loading">Loading invites...</div>
+              <div v-if="loadingInvites" class="loading">
+                Loading invites...
+              </div>
               <div v-else-if="invites.length === 0" class="empty-state">
                 No active invites yet. Generate one above.
               </div>
@@ -101,8 +108,12 @@
                   <div class="stat-label">Admins</div>
                 </div>
               </div>
-              <div v-if="usersError" class="error users-error">{{ usersError }}</div>
-              <div v-if="users.length === 0" class="empty-state">No users found</div>
+              <div v-if="usersError" class="error users-error">
+                {{ usersError }}
+              </div>
+              <div v-if="users.length === 0" class="empty-state">
+                No users found
+              </div>
               <div v-else class="users-list">
                 <div class="user-item" v-for="u in users" :key="u.uid">
                   <div class="user-info">
@@ -121,8 +132,18 @@
                               maxlength="12"
                               autofocus
                             />
-                            <button class="username-save-btn" @click="saveUsername(u.uid)">Save</button>
-                            <button class="username-cancel-btn" @click="cancelEditUsername">Cancel</button>
+                            <button
+                              class="username-save-btn"
+                              @click="saveUsername(u.uid)"
+                            >
+                              Save
+                            </button>
+                            <button
+                              class="username-cancel-btn"
+                              @click="cancelEditUsername"
+                            >
+                              Cancel
+                            </button>
                           </div>
                         </template>
                         <template v-else>
@@ -132,13 +153,19 @@
                             stroke-width="2.5"
                             class="crown-icon"
                           />
-                          <span class="user-name">{{ u.displayName || "(no name)" }}</span>
+                          <span class="user-name">{{
+                            u.displayName || "(no name)"
+                          }}</span>
                         </template>
                       </div>
                       <div class="user-meta">
-                        <span class="user-email">{{ u.email || "(no email)" }}</span>
+                        <span class="user-email">{{
+                          u.email || "(no email)"
+                        }}</span>
                         <span v-if="u.createdAt" class="user-meta-sep">·</span>
-                        <span v-if="u.createdAt" class="user-created">{{ formatDate(u.createdAt) }}</span>
+                        <span v-if="u.createdAt" class="user-created">{{
+                          formatDate(u.createdAt)
+                        }}</span>
                       </div>
                     </div>
                   </div>
@@ -184,13 +211,19 @@
                 <button class="cancel-btn" @click="cancelConfirm">OK</button>
               </template>
               <template v-else>
-                <button class="cancel-btn" @click="cancelConfirm">Cancel</button>
+                <button class="cancel-btn" @click="cancelConfirm">
+                  Cancel
+                </button>
                 <button
                   class="danger-btn"
                   @click="confirmAction.confirm"
                   :disabled="confirmAction.loading"
                 >
-                  {{ confirmAction.loading ? "Processing..." : confirmAction.action }}
+                  {{
+                    confirmAction.loading
+                      ? "Processing..."
+                      : confirmAction.action
+                  }}
                 </button>
               </template>
             </div>
@@ -310,7 +343,9 @@ async function generateInvite() {
 function copyToClipboard(token) {
   navigator.clipboard.writeText(token).then(() => {
     copyFeedback.value = true;
-    setTimeout(() => { copyFeedback.value = false; }, 2000);
+    setTimeout(() => {
+      copyFeedback.value = false;
+    }, 2000);
   });
 }
 
@@ -344,7 +379,7 @@ async function loadUsers() {
           adminUsers.value.add(u.uid);
           adminCount.value++;
         }
-      })
+      }),
     );
   } catch (e) {
     console.error("Failed to load users:", e);
@@ -535,7 +570,9 @@ async function saveUsername(uid) {
 
 .modal-fade-enter-active,
 .modal-fade-leave-active {
-  transition: opacity 200ms ease, transform 200ms ease;
+  transition:
+    opacity 200ms ease,
+    transform 200ms ease;
 }
 .modal-fade-enter-from,
 .modal-fade-leave-to {
@@ -623,8 +660,12 @@ async function saveUsername(uid) {
   scrollbar-color: rgba(44, 42, 39, 0.28) transparent;
 }
 
-.modal-content::-webkit-scrollbar { width: 8px; }
-.modal-content::-webkit-scrollbar-track { background: transparent; }
+.modal-content::-webkit-scrollbar {
+  width: 8px;
+}
+.modal-content::-webkit-scrollbar-track {
+  background: transparent;
+}
 .modal-content::-webkit-scrollbar-thumb {
   background: rgba(44, 42, 39, 0.22);
   border-radius: 999px;
@@ -635,7 +676,9 @@ async function saveUsername(uid) {
 .section {
   margin-bottom: 28px;
 }
-.section:last-child { margin-bottom: 0; }
+.section:last-child {
+  margin-bottom: 0;
+}
 
 .section-title {
   font-size: 11px;
@@ -657,12 +700,20 @@ async function saveUsername(uid) {
   font-weight: 600;
   font-family: "Satoshi", sans-serif;
   cursor: pointer;
-  transition: opacity 0.2s, transform 180ms ease;
+  transition:
+    opacity 0.2s,
+    transform 180ms ease;
   margin-bottom: 12px;
 }
 
-.action-btn:hover:not(:disabled) { opacity: 0.85; transform: translateY(-1px); }
-.action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.action-btn:hover:not(:disabled) {
+  opacity: 0.85;
+  transform: translateY(-1px);
+}
+.action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 .error {
   color: var(--danger);
@@ -670,9 +721,12 @@ async function saveUsername(uid) {
   margin-top: 10px;
 }
 
-.users-error { margin: 0 0 16px 0; }
+.users-error {
+  margin: 0 0 16px 0;
+}
 
-.loading, .empty-state {
+.loading,
+.empty-state {
   text-align: center;
   color: var(--text-muted);
   padding: 40px 20px;
@@ -689,13 +743,19 @@ async function saveUsername(uid) {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  background: linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(248,247,245,0.96) 100%);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.92) 0%,
+    rgba(248, 247, 245, 0.96) 100%
+  );
   border: 1px solid rgba(44, 42, 39, 0.07);
   border-radius: 14px;
   padding: 14px;
   gap: 14px;
   box-shadow: 0 10px 28px rgba(20, 20, 20, 0.05);
-  transition: transform 180ms ease, box-shadow 180ms ease;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease;
 }
 
 .invite-item:hover {
@@ -703,7 +763,10 @@ async function saveUsername(uid) {
   box-shadow: 0 12px 32px rgba(20, 20, 20, 0.08);
 }
 
-.invite-info { flex: 1; min-width: 0; }
+.invite-info {
+  flex: 1;
+  min-width: 0;
+}
 
 .invite-token-row {
   display: flex;
@@ -741,7 +804,11 @@ async function saveUsername(uid) {
   margin-top: 8px;
 }
 
-.invite-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.invite-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
 
 .copy-btn {
   background: var(--text);
@@ -756,11 +823,16 @@ async function saveUsername(uid) {
   font-size: 12px;
   font-weight: 600;
   font-family: "Satoshi", sans-serif;
-  transition: opacity 0.2s, transform 180ms ease;
+  transition:
+    opacity 0.2s,
+    transform 180ms ease;
   white-space: nowrap;
 }
 
-.copy-btn:hover { opacity: 0.85; transform: translateY(-1px); }
+.copy-btn:hover {
+  opacity: 0.85;
+  transform: translateY(-1px);
+}
 
 .delete-btn-invite {
   background: none;
@@ -827,7 +899,9 @@ async function saveUsername(uid) {
   border-radius: 12px;
   padding: 12px 14px;
   gap: 12px;
-  transition: transform 180ms ease, box-shadow 180ms ease;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease;
 }
 
 .user-item:hover {
@@ -987,7 +1061,9 @@ async function saveUsername(uid) {
   transition: border-color 0.15s;
 }
 
-.username-edit-input:focus { border-color: var(--accent); }
+.username-edit-input:focus {
+  border-color: var(--accent);
+}
 
 .username-save-btn {
   background: var(--text);
@@ -1003,7 +1079,9 @@ async function saveUsername(uid) {
   white-space: nowrap;
 }
 
-.username-save-btn:hover { opacity: 0.82; }
+.username-save-btn:hover {
+  opacity: 0.82;
+}
 
 .username-cancel-btn {
   background: none;
@@ -1019,7 +1097,9 @@ async function saveUsername(uid) {
   white-space: nowrap;
 }
 
-.username-cancel-btn:hover { color: var(--text); }
+.username-cancel-btn:hover {
+  color: var(--text);
+}
 
 .confirmation-overlay {
   position: fixed;
@@ -1055,7 +1135,10 @@ async function saveUsername(uid) {
   line-height: 1.5;
 }
 
-.confirmation-actions { display: flex; gap: 10px; }
+.confirmation-actions {
+  display: flex;
+  gap: 10px;
+}
 
 .cancel-btn,
 .danger-btn {
@@ -1067,7 +1150,9 @@ async function saveUsername(uid) {
   font-weight: 600;
   font-family: "Satoshi", sans-serif;
   cursor: pointer;
-  transition: opacity 0.2s, transform 180ms ease;
+  transition:
+    opacity 0.2s,
+    transform 180ms ease;
 }
 
 .cancel-btn {
@@ -1075,15 +1160,24 @@ async function saveUsername(uid) {
   color: var(--text);
 }
 
-.cancel-btn:hover { opacity: 0.8; transform: translateY(-1px); }
+.cancel-btn:hover {
+  opacity: 0.8;
+  transform: translateY(-1px);
+}
 
 .danger-btn {
   background: var(--danger);
   color: white;
 }
 
-.danger-btn:hover:not(:disabled) { opacity: 0.85; transform: translateY(-1px); }
-.danger-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.danger-btn:hover:not(:disabled) {
+  opacity: 0.85;
+  transform: translateY(-1px);
+}
+.danger-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 .copy-feedback {
   position: fixed;

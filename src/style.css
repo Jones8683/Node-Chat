@@ -63,31 +63,49 @@ textarea::-webkit-scrollbar-button {
 }
 
 /* Messages */
-.messages::-webkit-scrollbar        { width: 5px; }
-.messages::-webkit-scrollbar-track  { background: transparent; }
-.messages::-webkit-scrollbar-thumb  {
+.messages::-webkit-scrollbar {
+  width: 5px;
+}
+.messages::-webkit-scrollbar-track {
+  background: transparent;
+}
+.messages::-webkit-scrollbar-thumb {
   background: rgba(44, 42, 39, 0.1);
   border-radius: 999px;
 }
-.messages::-webkit-scrollbar-thumb:hover { background: rgba(44, 42, 39, 0.25); }
+.messages::-webkit-scrollbar-thumb:hover {
+  background: rgba(44, 42, 39, 0.25);
+}
 
 /* Online panel */
-.online-panel-list::-webkit-scrollbar        { width: 4px; }
-.online-panel-list::-webkit-scrollbar-track  { background: transparent; }
-.online-panel-list::-webkit-scrollbar-thumb  {
+.online-panel-list::-webkit-scrollbar {
+  width: 4px;
+}
+.online-panel-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+.online-panel-list::-webkit-scrollbar-thumb {
   background: rgba(44, 42, 39, 0.1);
   border-radius: 999px;
 }
-.online-panel-list::-webkit-scrollbar-thumb:hover { background: rgba(44, 42, 39, 0.22); }
+.online-panel-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(44, 42, 39, 0.22);
+}
 
 /* Textarea */
-textarea::-webkit-scrollbar        { width: 4px; }
-textarea::-webkit-scrollbar-track  { background: transparent; }
-textarea::-webkit-scrollbar-thumb  {
+textarea::-webkit-scrollbar {
+  width: 4px;
+}
+textarea::-webkit-scrollbar-track {
+  background: transparent;
+}
+textarea::-webkit-scrollbar-thumb {
   background: rgba(44, 42, 39, 0.1);
   border-radius: 999px;
 }
-textarea::-webkit-scrollbar-thumb:hover { background: rgba(44, 42, 39, 0.25); }
+textarea::-webkit-scrollbar-thumb:hover {
+  background: rgba(44, 42, 39, 0.25);
+}
 
 /* ─── Firefox-only scrollbars (scrollbar-width / scrollbar-color) ─── */
 /* Kept separate so they don't interfere with the WebKit rules above in Chrome */

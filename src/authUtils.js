@@ -260,4 +260,3 @@ export async function promoteToAdmin(uid) {
 export async function demoteFromAdmin(uid) {
   await remove(dbRef(db, `admins/${uid}`));
 }
-
