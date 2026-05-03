@@ -817,11 +817,11 @@ async function executePurge() {
       const q = query(messagesNode, orderByKey(), limiter);
       const snap = await get(q);
       if (snap.exists()) {
-        const deletions = {};
+        const removals = [];
         snap.forEach((child) => {
-          deletions[child.key] = null;
+          removals.push(remove(dbRef(db, `messages/${child.key}`)));
         });
-        await update(messagesNode, deletions);
+        await Promise.all(removals);
       }
     }
     confirmAction.value.show = false;

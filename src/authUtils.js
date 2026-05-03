@@ -156,17 +156,17 @@ export async function changeDisplayName(uid, newDisplayName) {
   const messagesSnap = await get(dbRef(db, "messages"));
   if (messagesSnap.exists()) {
     const msgs = messagesSnap.val();
-    const updates = {};
     for (const [msgId, msg] of Object.entries(msgs)) {
+      const payload = {};
       if (msg.uid === uid) {
-        updates[`${msgId}/displayName`] = newDisplayName;
+        payload.displayName = newDisplayName;
       }
       if (msg.replyTo?.uid === uid) {
-        updates[`${msgId}/replyTo/displayName`] = newDisplayName;
+        payload["replyTo/displayName"] = newDisplayName;
       }
-    }
-    if (Object.keys(updates).length > 0) {
-      await update(dbRef(db, "messages"), updates);
+      if (Object.keys(payload).length > 0) {
+        await update(dbRef(db, `messages/${msgId}`), payload);
+      }
     }
   }
 }
@@ -234,17 +234,17 @@ export async function adminRenameUser(uid, newDisplayName) {
   const messagesSnap = await get(dbRef(db, "messages"));
   if (messagesSnap.exists()) {
     const msgs = messagesSnap.val();
-    const updates = {};
     for (const [msgId, msg] of Object.entries(msgs)) {
+      const payload = {};
       if (msg.uid === uid) {
-        updates[`${msgId}/displayName`] = newDisplayName;
+        payload.displayName = newDisplayName;
       }
       if (msg.replyTo?.uid === uid) {
-        updates[`${msgId}/replyTo/displayName`] = newDisplayName;
+        payload["replyTo/displayName"] = newDisplayName;
       }
-    }
-    if (Object.keys(updates).length > 0) {
-      await update(dbRef(db, "messages"), updates);
+      if (Object.keys(payload).length > 0) {
+        await update(dbRef(db, `messages/${msgId}`), payload);
+      }
     }
   }
 }
