@@ -48,9 +48,7 @@
                   type="text"
                   placeholder="Enter your invite code"
                   maxlength="7"
-                  @input="
-                    signupToken = $event.target.value.toUpperCase().slice(0, 7)
-                  "
+                  @input="signupToken = $event.target.value.toUpperCase().slice(0, 7)"
                   autocomplete="off"
                   :disabled="loading || isLogin"
                   :tabindex="isLogin ? -1 : 0"
@@ -122,13 +120,21 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { ref, watch, onMounted } from "vue";
 import { auth } from "../firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { signupWithToken } from "../authUtils";
 import { Eye, EyeOff } from "lucide-vue-next";
 
 const isLogin = ref(true);
+
+onMounted(() => {
+  document.title = "Log In • Node Chat";
+});
+
+watch(isLogin, (val) => {
+  document.title = val ? "Log In • Node Chat" : "Sign Up • Node Chat";
+});
 const email = ref("");
 const password = ref("");
 const error = ref("");
@@ -210,15 +216,15 @@ async function submitSignup() {
       password.value,
     );
   } catch (e) {
-    const msg = e.message || "";
-    if (msg.includes("Invite")) {
-      error.value = msg;
-    } else if (msg.includes("Display name")) {
-      error.value = msg;
-    } else if (msg.includes("email")) {
-      error.value = "Email already in use.";
+    if (e.code) {
+      error.value = friendlyError(e.code);
     } else {
-      error.value = msg || "Signup failed. Try again.";
+      const msg = e.message || "";
+      if (msg.includes("Invite") || msg.includes("Display name")) {
+        error.value = msg;
+      } else {
+        error.value = msg || "Signup failed. Try again.";
+      }
     }
   } finally {
     loading.value = false;
@@ -227,12 +233,26 @@ async function submitSignup() {
 </script>
 
 <style scoped>
+@keyframes cardIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.982);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .auth-page {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
+  background-image: url("data:image/svg+xml,%3Csvg width='24' height='24' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='12' cy='12' r='1.1' fill='%232c2a27' opacity='0.09'/%3E%3C/svg%3E");
+  background-size: 24px 24px;
+  background-position: center center;
 }
 
 .auth-card {
@@ -242,6 +262,7 @@ async function submitSignup() {
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 36px;
+  animation: cardIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .field-collapse {
@@ -266,7 +287,6 @@ async function submitSignup() {
   display: block;
   position: relative;
   height: 1.2em;
-  overflow: hidden;
 }
 
 .btn-label-item {
@@ -277,11 +297,9 @@ async function submitSignup() {
   justify-content: center;
   text-align: center;
   will-change: transform, opacity;
-  backface-visibility: hidden;
-  transform-origin: center;
   transition:
-    transform 260ms cubic-bezier(0.16, 1, 0.3, 1),
-    opacity 260ms ease-out;
+    transform 240ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    opacity 200ms ease;
 }
 
 .btn-label-signin {
@@ -290,12 +308,12 @@ async function submitSignup() {
 }
 
 .btn-label-createacc {
-  transform: translateY(110%);
+  transform: translateY(6px);
   opacity: 0;
 }
 
 .btn-label-track--signup .btn-label-signin {
-  transform: translateY(-110%);
+  transform: translateY(-6px);
   opacity: 0;
 }
 
@@ -379,12 +397,6 @@ async function submitSignup() {
 
 .tab-btn.active {
   color: var(--text);
-}
-
-.char-count {
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--text-muted);
 }
 
 .field {

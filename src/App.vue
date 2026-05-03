@@ -32,8 +32,9 @@
 
 <script setup>
 import { ref, onMounted, computed, watch } from "vue";
-import { auth } from "./firebase";
+import { auth, db } from "./firebase";
 import { onAuthStateChanged } from "firebase/auth";
+import { ref as dbRef, onValue } from "firebase/database";
 import AuthForm from "./components/AuthForm.vue";
 import ChatRoom from "./components/ChatRoom.vue";
 import SetDisplayName from "./components/SetDisplayName.vue";
@@ -49,8 +50,11 @@ const showLoadingPage = computed(
   () => !authReady.value || (user.value?.displayName && !chatReady.value),
 );
 
+let userDbUnsub = null;
+
 function refreshUser() {
-  user.value = { ...auth.currentUser };
+  if (!auth.currentUser) return;
+  user.value = { ...auth.currentUser, displayName: user.value?.displayName ?? auth.currentUser.displayName ?? "" };
 }
 
 function handleChatReady() {
@@ -68,7 +72,21 @@ watch(anyModalOpen, (isOpen) => {
 
 onMounted(() => {
   onAuthStateChanged(auth, (u) => {
-    user.value = u ? { ...u } : null;
+    if (userDbUnsub) {
+      userDbUnsub();
+      userDbUnsub = null;
+    }
+
+    if (u) {
+      const userRef = dbRef(db, `users/${u.uid}`);
+      userDbUnsub = onValue(userRef, (snap) => {
+        const data = snap.val() || {};
+        user.value = { ...u, displayName: data.displayName || u.displayName || "" };
+      });
+    } else {
+      user.value = null;
+    }
+
     authReady.value = true;
     chatReady.value = false;
   });

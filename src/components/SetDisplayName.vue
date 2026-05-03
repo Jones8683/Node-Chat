@@ -29,9 +29,13 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { ref, onMounted } from "vue";
+
+onMounted(() => {
+  document.title = "Set Up Profile • Node Chat";
+});
 import { auth, db } from "../firebase";
-import { signOut, updateProfile } from "firebase/auth";
+import { updateProfile } from "firebase/auth";
 import { ref as dbRef, get, set } from "firebase/database";
 
 const emit = defineEmits(["done"]);
@@ -72,7 +76,6 @@ async function submit() {
     await set(nameRef, auth.currentUser.uid);
     await updateProfile(auth.currentUser, { displayName: trimmed });
     await set(dbRef(db, `users/${auth.currentUser.uid}/displayName`), trimmed);
-    await signOut(auth);
     emit("done");
   } catch (e) {
     error.value = "Something went wrong. Try again.";
@@ -89,6 +92,20 @@ async function submit() {
   align-items: center;
   justify-content: center;
   padding: 20px;
+  background-image: url("data:image/svg+xml,%3Csvg width='24' height='24' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='12' cy='12' r='1.1' fill='%232c2a27' opacity='0.09'/%3E%3C/svg%3E");
+  background-size: 24px 24px;
+  background-position: center center;
+}
+
+@keyframes cardIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.982);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .auth-card {
@@ -98,6 +115,7 @@ async function submit() {
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 36px;
+  animation: cardIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .logo {
@@ -169,6 +187,8 @@ async function submit() {
 
 .submit-btn:hover:not(:disabled) {
   opacity: 0.85;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 18px rgba(44, 42, 39, 0.06);
 }
 
 .submit-btn:disabled {

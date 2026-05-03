@@ -25,10 +25,7 @@
           <button
             class="tab-btn"
             :class="{ active: activeTab === 'users' }"
-            @click="
-              activeTab = 'users';
-              loadUsers();
-            "
+            @click="activeTab = 'users'; loadUsers();"
           >
             Users
           </button>
@@ -37,24 +34,20 @@
         <div class="modal-content">
           <div v-if="activeTab === 'invites'">
             <div class="section">
-              <h3 class="section-title">Generate New Invite</h3>
+              <h3 class="section-title">Generate New Invite Code</h3>
               <button
                 class="action-btn"
                 @click="generateInvite"
                 :disabled="generatingInvite"
               >
-                {{
-                  generatingInvite ? "Generating..." : "Generate Invite Link"
-                }}
+                {{ generatingInvite ? "Generating..." : "Generate Invite Code" }}
               </button>
               <p v-if="errorInvite" class="error">{{ errorInvite }}</p>
             </div>
 
             <div class="section">
               <h3 class="section-title">Active Invites</h3>
-              <div v-if="loadingInvites" class="loading">
-                Loading invites...
-              </div>
+              <div v-if="loadingInvites" class="loading">Loading invites...</div>
               <div v-else-if="invites.length === 0" class="empty-state">
                 No active invites yet. Generate one above.
               </div>
@@ -108,12 +101,8 @@
                   <div class="stat-label">Admins</div>
                 </div>
               </div>
-              <div v-if="usersError" class="error users-error">
-                {{ usersError }}
-              </div>
-              <div v-if="users.length === 0" class="empty-state">
-                No users found
-              </div>
+              <div v-if="usersError" class="error users-error">{{ usersError }}</div>
+              <div v-if="users.length === 0" class="empty-state">No users found</div>
               <div v-else class="users-list">
                 <div class="user-item" v-for="u in users" :key="u.uid">
                   <div class="user-info">
@@ -121,36 +110,60 @@
                       {{ (u.displayName || "?")[0].toUpperCase() }}
                     </div>
                     <div class="user-details">
-                      <div class="user-name">
-                        {{ u.displayName || "(no name)" }}
+                      <div class="user-name-slot">
+                        <template v-if="editingUserId === u.uid">
+                          <div class="username-edit-row">
+                            <input
+                              class="username-edit-input"
+                              v-model="editingUserName"
+                              @keydown.enter="saveUsername(u.uid)"
+                              @keydown.esc="cancelEditUsername"
+                              maxlength="12"
+                              autofocus
+                            />
+                            <button class="username-save-btn" @click="saveUsername(u.uid)">Save</button>
+                            <button class="username-cancel-btn" @click="cancelEditUsername">Cancel</button>
+                          </div>
+                        </template>
+                        <template v-else>
+                          <Crown
+                            v-if="isUserAdminStatus(u.uid)"
+                            :size="12"
+                            stroke-width="2.5"
+                            class="crown-icon"
+                          />
+                          <span class="user-name">{{ u.displayName || "(no name)" }}</span>
+                        </template>
                       </div>
-                      <div class="user-email">
-                        {{ u.email || "(no email)" }}
-                      </div>
-                      <div class="user-created">
-                        Joined {{ formatDate(u.createdAt) }}
+                      <div class="user-meta">
+                        <span class="user-email">{{ u.email || "(no email)" }}</span>
+                        <span v-if="u.createdAt" class="user-meta-sep">·</span>
+                        <span v-if="u.createdAt" class="user-created">{{ formatDate(u.createdAt) }}</span>
                       </div>
                     </div>
                   </div>
                   <div class="user-actions">
                     <button
-                      v-if="!isUserAdminStatus(u.uid)"
-                      class="admin-btn"
-                      @click="promptPromoteUser(u.uid, u.displayName)"
-                      title="Promote to admin"
+                      class="edit-name-btn"
+                      @click="startEditUsername(u)"
+                      title="Edit username"
                     >
-                      <Crown :size="14" stroke-width="2" />
+                      <Pencil :size="13" stroke-width="2" />
                     </button>
-                    <div v-else class="admin-badge">
-                      Admin
-                      <button
-                        class="demote-btn"
-                        @click="promptDemoteUser(u.uid, u.displayName)"
-                        title="Demote from admin"
-                      >
-                        <X :size="12" stroke-width="2" />
-                      </button>
-                    </div>
+                    <button
+                      v-if="!isUserAdminStatus(u.uid)"
+                      class="role-btn"
+                      @click="promptPromoteUser(u.uid, u.displayName)"
+                    >
+                      Promote
+                    </button>
+                    <button
+                      v-else
+                      class="role-btn demote-btn"
+                      @click="promptDemoteUser(u.uid, u.displayName)"
+                    >
+                      Demote
+                    </button>
                   </div>
                 </div>
               </div>
@@ -167,16 +180,19 @@
             <h3>{{ confirmAction.title }}</h3>
             <p>{{ confirmAction.message }}</p>
             <div class="confirmation-actions">
-              <button class="cancel-btn" @click="cancelConfirm">Cancel</button>
-              <button
-                class="danger-btn"
-                @click="confirmAction.confirm"
-                :disabled="confirmAction.loading"
-              >
-                {{
-                  confirmAction.loading ? "Processing..." : confirmAction.action
-                }}
-              </button>
+              <template v-if="confirmAction.infoOnly">
+                <button class="cancel-btn" @click="cancelConfirm">OK</button>
+              </template>
+              <template v-else>
+                <button class="cancel-btn" @click="cancelConfirm">Cancel</button>
+                <button
+                  class="danger-btn"
+                  @click="confirmAction.confirm"
+                  :disabled="confirmAction.loading"
+                >
+                  {{ confirmAction.loading ? "Processing..." : confirmAction.action }}
+                </button>
+              </template>
             </div>
           </div>
         </div>
@@ -190,7 +206,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from "vue";
 import { auth } from "../firebase";
-import { X, Copy, Trash2, Crown } from "lucide-vue-next";
+import { X, Copy, Trash2, Pencil, Crown } from "lucide-vue-next";
 import {
   createInviteToken,
   getValidInvites,
@@ -198,7 +214,9 @@ import {
   promoteToAdmin,
   demoteFromAdmin,
   isUserAdmin,
+  getOwnerUid,
   deleteInviteToken,
+  adminRenameUser,
 } from "../authUtils";
 
 const props = defineProps({
@@ -217,12 +235,16 @@ const errorInvite = ref("");
 const users = ref([]);
 const loadingUsers = ref(false);
 const adminUsers = ref(new Set());
+const ownerUsers = ref(new Set());
 const usersError = ref("");
 
 const totalUsersCount = ref(0);
 const adminCount = ref(0);
 
 const copyFeedback = ref(false);
+
+const editingUserId = ref(null);
+const editingUserName = ref("");
 
 const confirmAction = ref({
   show: false,
@@ -231,46 +253,41 @@ const confirmAction = ref({
   action: "",
   confirm: null,
   loading: false,
+  infoOnly: false,
 });
 
 onMounted(() => {
   loadInvites();
-});
-
-function closeIfClickedOutside(e) {
-  if (e.target === e.currentTarget) {
-    close();
-  }
-}
-
-function close() {
-  emit("close");
-}
-
-async function loadInvites() {
-  loadingInvites.value = true;
-  errorInvite.value = "";
-  try {
-    const loaded = await getValidInvites();
-    invites.value = loaded || [];
-  } catch (e) {
-    console.error("Error loading invites:", e);
-  } finally {
-    loadingInvites.value = false;
-  }
-}
-
-function onKeyDown(e) {
-  if (e.key === "Escape") close();
-}
-
-onMounted(() => {
   window.addEventListener("keydown", onKeyDown);
 });
 
 onUnmounted(() => {
   window.removeEventListener("keydown", onKeyDown);
 });
+
+function closeIfClickedOutside(e) {
+  if (e.target === e.currentTarget) close();
+}
+
+function close() {
+  emit("close");
+}
+
+function onKeyDown(e) {
+  if (e.key === "Escape") close();
+}
+
+async function loadInvites() {
+  loadingInvites.value = true;
+  errorInvite.value = "";
+  try {
+    invites.value = (await getValidInvites()) || [];
+  } catch (e) {
+    console.error("Error loading invites:", e);
+  } finally {
+    loadingInvites.value = false;
+  }
+}
 
 async function generateInvite() {
   generatingInvite.value = true;
@@ -293,9 +310,7 @@ async function generateInvite() {
 function copyToClipboard(token) {
   navigator.clipboard.writeText(token).then(() => {
     copyFeedback.value = true;
-    setTimeout(() => {
-      copyFeedback.value = false;
-    }, 2000);
+    setTimeout(() => { copyFeedback.value = false; }, 2000);
   });
 }
 
@@ -311,20 +326,26 @@ async function deleteInvite(token) {
 async function loadUsers() {
   loadingUsers.value = true;
   usersError.value = "";
+  adminUsers.value = new Set();
+  ownerUsers.value = new Set();
   try {
     const allUsers = await getAllUsers();
-
     users.value = allUsers.filter((u) => u.displayName && u.displayName.trim());
-
     totalUsersCount.value = users.value.length;
     adminCount.value = 0;
 
-    for (const u of users.value) {
-      if (await isUserAdmin(u.uid)) {
-        adminUsers.value.add(u.uid);
-        adminCount.value++;
-      }
-    }
+    const ownerUid = await getOwnerUid();
+    if (ownerUid) ownerUsers.value.add(ownerUid);
+
+    await Promise.all(
+      users.value.map(async (u) => {
+        const admin = await isUserAdmin(u.uid);
+        if (admin) {
+          adminUsers.value.add(u.uid);
+          adminCount.value++;
+        }
+      })
+    );
   } catch (e) {
     console.error("Failed to load users:", e);
     usersError.value =
@@ -339,7 +360,9 @@ async function loadUsers() {
           uid: auth.currentUser.uid,
           displayName: auth.currentUser.displayName || "You",
           email: auth.currentUser.email || "",
-          createdAt: Date.now(),
+          createdAt: auth.currentUser.metadata?.creationTime
+            ? new Date(auth.currentUser.metadata.creationTime).getTime()
+            : null,
         },
       ];
       totalUsersCount.value = 1;
@@ -353,18 +376,36 @@ function isUserAdminStatus(uid) {
   return adminUsers.value.has(uid);
 }
 
+function isUserOwnerStatus(uid) {
+  return ownerUsers.value.has(uid);
+}
+
 function formatDate(timestamp) {
   if (!timestamp) return "";
-  const date = new Date(timestamp);
-  return date.toLocaleDateString("en-US", {
+  return new Date(timestamp).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
+    year: "numeric",
   });
 }
 
+function showOwnerBlock(displayName, action) {
+  confirmAction.value = {
+    show: true,
+    title: "Cannot Edit Owner",
+    message: `${displayName} is the owner and cannot be ${action}.`,
+    action: "",
+    confirm: null,
+    loading: false,
+    infoOnly: true,
+  };
+}
+
 function promptPromoteUser(uid, displayName) {
+  if (isUserOwnerStatus(uid)) {
+    showOwnerBlock(displayName, "modified");
+    return;
+  }
   confirmAction.value = {
     show: true,
     title: "Promote to Admin?",
@@ -372,6 +413,7 @@ function promptPromoteUser(uid, displayName) {
     action: "Promote",
     confirm: () => promoteUserConfirmed(uid),
     loading: false,
+    infoOnly: false,
   };
 }
 
@@ -390,6 +432,22 @@ async function promoteUserConfirmed(uid) {
 }
 
 function promptDemoteUser(uid, displayName) {
+  if (isUserOwnerStatus(uid) && uid !== props.currentUserUid) {
+    showOwnerBlock(displayName, "demoted");
+    return;
+  }
+  if (uid === props.currentUserUid) {
+    confirmAction.value = {
+      show: true,
+      title: "Cannot Demote Yourself",
+      message: "You cannot remove your own admin privileges.",
+      action: "",
+      confirm: null,
+      loading: false,
+      infoOnly: true,
+    };
+    return;
+  }
   confirmAction.value = {
     show: true,
     title: "Demote from Admin?",
@@ -397,6 +455,7 @@ function promptDemoteUser(uid, displayName) {
     action: "Demote",
     confirm: () => demoteUserConfirmed(uid),
     loading: false,
+    infoOnly: false,
   };
 }
 
@@ -417,6 +476,33 @@ async function demoteUserConfirmed(uid) {
 function cancelConfirm() {
   confirmAction.value.show = false;
 }
+
+function startEditUsername(u) {
+  if (isUserOwnerStatus(u.uid) && u.uid !== props.currentUserUid) {
+    showOwnerBlock(u.displayName || "This user", "renamed");
+    return;
+  }
+  editingUserId.value = u.uid;
+  editingUserName.value = u.displayName || "";
+}
+
+function cancelEditUsername() {
+  editingUserId.value = null;
+  editingUserName.value = "";
+}
+
+async function saveUsername(uid) {
+  const name = editingUserName.value.trim();
+  if (!name) return;
+  try {
+    await adminRenameUser(uid, name);
+    const u = users.value.find((x) => x.uid === uid);
+    if (u) u.displayName = name;
+    cancelEditUsername();
+  } catch (e) {
+    alert("Failed to update username: " + (e.message || "Unknown error"));
+  }
+}
 </script>
 
 <style scoped>
@@ -430,9 +516,6 @@ function cancelConfirm() {
   z-index: 200;
   padding: 20px;
   overflow-y: auto;
-  transition:
-    background 160ms ease,
-    backdrop-filter 160ms ease;
   -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
 }
@@ -447,20 +530,17 @@ function cancelConfirm() {
   display: flex;
   flex-direction: column;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
-  transition:
-    transform 180ms ease,
-    opacity 180ms ease;
+  position: relative;
 }
 
 .modal-fade-enter-active,
 .modal-fade-leave-active {
-  transition:
-    opacity 200ms ease,
-    transform 200ms ease;
+  transition: opacity 200ms ease, transform 200ms ease;
 }
 .modal-fade-enter-from,
 .modal-fade-leave-to {
   opacity: 0;
+  transform: translateY(-6px) scale(0.998);
 }
 .modal-fade-enter-to,
 .modal-fade-leave-from {
@@ -472,7 +552,7 @@ function cancelConfirm() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px;
+  padding: 20px 24px;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
@@ -503,7 +583,6 @@ function cancelConfirm() {
   display: flex;
   gap: 8px;
   padding: 14px 14px 0 14px;
-  border-bottom: 1px solid transparent;
   flex-shrink: 0;
 }
 
@@ -531,31 +610,22 @@ function cancelConfirm() {
   background: rgba(90, 90, 240, 0.08);
 }
 
+.tab-btn:active {
+  transform: translateY(1px);
+}
+
 .modal-content {
   flex: 1;
   overflow-y: auto;
-  padding: 28px 24px;
+  padding: 24px;
   overscroll-behavior-y: contain;
   scrollbar-width: thin;
   scrollbar-color: rgba(44, 42, 39, 0.28) transparent;
 }
 
-.modal-content::-webkit-scrollbar,
-.invites-list::-webkit-scrollbar,
-.users-list::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-.modal-content::-webkit-scrollbar-track,
-.invites-list::-webkit-scrollbar-track,
-.users-list::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.modal-content::-webkit-scrollbar-thumb,
-.invites-list::-webkit-scrollbar-thumb,
-.users-list::-webkit-scrollbar-thumb {
+.modal-content::-webkit-scrollbar { width: 8px; }
+.modal-content::-webkit-scrollbar-track { background: transparent; }
+.modal-content::-webkit-scrollbar-thumb {
   background: rgba(44, 42, 39, 0.22);
   border-radius: 999px;
   border: 2px solid transparent;
@@ -565,10 +635,7 @@ function cancelConfirm() {
 .section {
   margin-bottom: 28px;
 }
-
-.section:last-child {
-  margin-bottom: 0;
-}
+.section:last-child { margin-bottom: 0; }
 
 .section-title {
   font-size: 11px;
@@ -576,7 +643,7 @@ function cancelConfirm() {
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 1px;
-  margin: 0 0 16px 0;
+  margin: 0 0 14px 0;
 }
 
 .action-btn {
@@ -590,41 +657,26 @@ function cancelConfirm() {
   font-weight: 600;
   font-family: "Satoshi", sans-serif;
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition: opacity 0.2s, transform 180ms ease;
   margin-bottom: 12px;
 }
 
-.action-btn:hover:not(:disabled) {
-  opacity: 0.85;
-}
-
-.action-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+.action-btn:hover:not(:disabled) { opacity: 0.85; transform: translateY(-1px); }
+.action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .error {
   color: var(--danger);
   font-size: 13px;
   margin-top: 10px;
-  text-align: center;
 }
 
-.users-error {
-  margin: 0 0 16px 0;
-  text-align: left;
-}
+.users-error { margin: 0 0 16px 0; }
 
-.loading {
+.loading, .empty-state {
   text-align: center;
   color: var(--text-muted);
   padding: 40px 20px;
-}
-
-.empty-state {
-  text-align: center;
-  color: var(--text-muted);
-  padding: 40px 20px;
+  font-size: 14px;
 }
 
 .invites-list {
@@ -637,22 +689,21 @@ function cancelConfirm() {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.92) 0%,
-    rgba(248, 247, 245, 0.96) 100%
-  );
+  background: linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(248,247,245,0.96) 100%);
   border: 1px solid rgba(44, 42, 39, 0.07);
   border-radius: 14px;
   padding: 14px;
   gap: 14px;
   box-shadow: 0 10px 28px rgba(20, 20, 20, 0.05);
+  transition: transform 180ms ease, box-shadow 180ms ease;
 }
 
-.invite-info {
-  flex: 1;
-  min-width: 0;
+.invite-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 32px rgba(20, 20, 20, 0.08);
 }
+
+.invite-info { flex: 1; min-width: 0; }
 
 .invite-token-row {
   display: flex;
@@ -690,11 +741,7 @@ function cancelConfirm() {
   margin-top: 8px;
 }
 
-.invite-actions {
-  display: flex;
-  gap: 8px;
-  flex-shrink: 0;
-}
+.invite-actions { display: flex; gap: 8px; flex-shrink: 0; }
 
 .copy-btn {
   background: var(--text);
@@ -709,13 +756,11 @@ function cancelConfirm() {
   font-size: 12px;
   font-weight: 600;
   font-family: "Satoshi", sans-serif;
-  transition: opacity 0.2s;
+  transition: opacity 0.2s, transform 180ms ease;
   white-space: nowrap;
 }
 
-.copy-btn:hover {
-  opacity: 0.85;
-}
+.copy-btn:hover { opacity: 0.85; transform: translateY(-1px); }
 
 .delete-btn-invite {
   background: none;
@@ -726,30 +771,68 @@ function cancelConfirm() {
   display: flex;
   align-items: center;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 180ms ease;
 }
 
 .delete-btn-invite:hover {
   background: var(--surface-2);
   border-color: var(--danger);
   color: var(--danger);
+  transform: translateY(-1px);
+}
+
+.stats-section {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.stat-item {
+  flex: 1;
+  background: rgba(90, 90, 240, 0.06);
+  border: 1px solid rgba(90, 90, 240, 0.16);
+  border-radius: 12px;
+  padding: 14px 16px;
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 4px;
+  line-height: 1;
+}
+
+.stat-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .users-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
 .user-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.88);
   border: 1px solid rgba(44, 42, 39, 0.07);
-  border-radius: 14px;
-  padding: 14px;
+  border-radius: 12px;
+  padding: 12px 14px;
   gap: 12px;
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.user-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(20, 20, 20, 0.06);
 }
 
 .user-info {
@@ -761,12 +844,12 @@ function cancelConfirm() {
 }
 
 .user-avatar {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   background: var(--accent);
   color: var(--bg);
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -777,140 +860,55 @@ function cancelConfirm() {
 .user-details {
   flex: 1;
   min-width: 0;
+}
+
+.user-name-slot {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 3px;
+}
+
+.crown-icon {
+  color: #c9a84c;
+  flex-shrink: 0;
 }
 
 .user-name {
   font-size: 14px;
   font-weight: 600;
   color: var(--text);
-  margin-bottom: 2px;
-}
-
-.user-email {
-  font-size: 12px;
-  color: var(--text-muted);
-  margin-bottom: 4px;
-}
-
-.user-created {
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-.user-actions {
-  display: flex;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-.admin-btn,
-.delete-btn {
-  background: rgba(44, 42, 39, 0.03);
-  border: 1px solid rgba(44, 42, 39, 0.1);
-  color: var(--text);
-  border-radius: 999px;
-  padding: 8px;
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.admin-btn:hover {
-  background: var(--surface-2);
-  border-color: var(--accent);
-}
-
-.delete-btn:hover {
-  background: var(--surface-2);
-  border-color: var(--danger);
-  color: var(--danger);
-}
-
-.admin-badge {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--accent);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  background: rgba(90, 90, 240, 0.1);
-  border: 1px solid rgba(90, 90, 240, 0.2);
-  border-radius: 999px;
-  padding: 6px 10px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  position: relative;
-}
-
-.demote-btn {
-  background: none;
-  border: none;
-  color: var(--accent);
-  cursor: pointer;
-  padding: 2px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: opacity 0.2s;
-}
-
-.demote-btn:hover {
-  opacity: 0.7;
-}
-
-.stats-section {
-  display: flex;
-  gap: 16px;
-  margin-bottom: 24px;
-}
-
-.stat-item {
-  flex: 1;
-  background: rgba(90, 90, 240, 0.08);
-  border: 1px solid rgba(90, 90, 240, 0.2);
-  border-radius: 12px;
-  padding: 16px;
-  text-align: center;
-}
-
-.stat-value {
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--accent);
-  margin-bottom: 6px;
-}
-
-.stat-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.user-details {
-  flex: 1;
-  min-width: 0;
-}
-
-.user-name {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text);
-}
-
-.user-email {
-  font-size: 11px;
-  color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.user-created {
-  font-size: 11px;
+.user-meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.user-email {
+  font-size: 12px;
   color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.user-meta-sep {
+  font-size: 12px;
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+.user-created {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
 }
 
 .user-actions {
@@ -920,48 +918,113 @@ function cancelConfirm() {
   align-items: center;
 }
 
-.admin-btn,
-.delete-btn {
+.edit-name-btn {
+  background: rgba(44, 42, 39, 0.03);
+  border: 1px solid rgba(44, 42, 39, 0.1);
+  color: var(--text-muted);
+  border-radius: 999px;
+  padding: 7px 9px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  transition: all 180ms ease;
+}
+
+.edit-name-btn:hover {
+  background: var(--surface-2);
+  color: var(--text);
+  border-color: rgba(44, 42, 39, 0.2);
+  transform: translateY(-1px);
+}
+
+.role-btn {
   background: rgba(44, 42, 39, 0.03);
   border: 1px solid rgba(44, 42, 39, 0.1);
   color: var(--text);
   border-radius: 999px;
-  padding: 6px;
-  display: flex;
-  align-items: center;
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: "Satoshi", sans-serif;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 180ms ease;
+  white-space: nowrap;
 }
 
-.admin-btn:hover {
+.role-btn:hover {
   background: var(--surface-2);
   border-color: var(--accent);
+  transform: translateY(-1px);
 }
 
-.delete-btn:hover {
-  background: rgba(192, 57, 43, 0.08);
-  border-color: var(--danger);
+.demote-btn {
+  border-color: rgba(192, 57, 43, 0.2);
   color: var(--danger);
 }
 
-.admin-badge {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--accent);
-  background: rgba(90, 90, 240, 0.1);
-  border: 1px solid rgba(90, 90, 240, 0.2);
-  border-radius: 999px;
-  padding: 4px 8px;
-  white-space: nowrap;
+.demote-btn:hover {
+  background: rgba(192, 57, 43, 0.06);
+  border-color: var(--danger);
+}
+
+.username-edit-row {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 6px;
 }
+
+.username-edit-input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: "Satoshi", sans-serif;
+  color: var(--text);
+  outline: none;
+  width: 130px;
+  transition: border-color 0.15s;
+}
+
+.username-edit-input:focus { border-color: var(--accent); }
+
+.username-save-btn {
+  background: var(--text);
+  border: none;
+  color: var(--bg);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: "Satoshi", sans-serif;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  white-space: nowrap;
+}
+
+.username-save-btn:hover { opacity: 0.82; }
+
+.username-cancel-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: "Satoshi", sans-serif;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+  transition: color 0.15s;
+  white-space: nowrap;
+}
+
+.username-cancel-btn:hover { color: var(--text); }
 
 .confirmation-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -973,7 +1036,8 @@ function cancelConfirm() {
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 24px;
-  max-width: 380px;
+  max-width: 360px;
+  width: calc(100% - 40px);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
 }
 
@@ -981,19 +1045,17 @@ function cancelConfirm() {
   font-size: 15px;
   font-weight: 700;
   color: var(--text);
-  margin-bottom: 8px;
+  margin: 0 0 8px 0;
 }
 
 .confirmation-box p {
   font-size: 14px;
   color: var(--text-muted);
-  margin-bottom: 20px;
+  margin: 0 0 20px 0;
+  line-height: 1.5;
 }
 
-.confirmation-actions {
-  display: flex;
-  gap: 10px;
-}
+.confirmation-actions { display: flex; gap: 10px; }
 
 .cancel-btn,
 .danger-btn {
@@ -1005,7 +1067,7 @@ function cancelConfirm() {
   font-weight: 600;
   font-family: "Satoshi", sans-serif;
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition: opacity 0.2s, transform 180ms ease;
 }
 
 .cancel-btn {
@@ -1013,23 +1075,15 @@ function cancelConfirm() {
   color: var(--text);
 }
 
-.cancel-btn:hover {
-  opacity: 0.8;
-}
+.cancel-btn:hover { opacity: 0.8; transform: translateY(-1px); }
 
 .danger-btn {
   background: var(--danger);
   color: white;
 }
 
-.danger-btn:hover:not(:disabled) {
-  opacity: 0.85;
-}
-
-.danger-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+.danger-btn:hover:not(:disabled) { opacity: 0.85; transform: translateY(-1px); }
+.danger-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .copy-feedback {
   position: fixed;
@@ -1038,70 +1092,12 @@ function cancelConfirm() {
   transform: translateX(-50%);
   background: var(--text);
   color: var(--bg);
-  padding: 12px 20px;
+  padding: 10px 20px;
   border-radius: var(--radius);
   font-size: 13px;
   font-weight: 600;
   z-index: 400;
-}
-
-.modal-close:focus-visible,
-.tab-btn:focus-visible,
-.action-btn:focus-visible,
-.copy-btn:focus-visible,
-.delete-btn-invite:focus-visible,
-.admin-btn:focus-visible,
-.demote-btn:focus-visible,
-.cancel-btn:focus-visible,
-.danger-btn:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(90, 90, 240, 0.18);
-}
-
-.tab-btn:active {
-  transform: translateY(1px);
-}
-
-.action-btn,
-.copy-btn,
-.cancel-btn,
-.danger-btn,
-.delete-btn-invite,
-.admin-btn,
-.delete-btn,
-.demote-btn {
-  transition:
-    opacity 180ms ease,
-    transform 180ms ease,
-    box-shadow 180ms ease,
-    border-color 180ms ease,
-    color 180ms ease,
-    background-color 180ms ease;
-}
-
-.action-btn:hover:not(:disabled),
-.copy-btn:hover,
-.cancel-btn:hover,
-.danger-btn:hover:not(:disabled),
-.delete-btn-invite:hover,
-.admin-btn:hover,
-.delete-btn:hover,
-.demote-btn:hover {
-  transform: translateY(-1px);
-}
-
-.invite-item,
-.user-item {
-  transition:
-    transform 180ms ease,
-    box-shadow 180ms ease,
-    border-color 180ms ease;
-}
-
-.invite-item:hover,
-.user-item:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 12px 24px rgba(20, 20, 20, 0.06);
+  pointer-events: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1113,9 +1109,8 @@ function cancelConfirm() {
   .action-btn,
   .copy-btn,
   .delete-btn-invite,
-  .admin-btn,
-  .delete-btn,
-  .demote-btn,
+  .role-btn,
+  .edit-name-btn,
   .cancel-btn,
   .danger-btn,
   .invite-item,

@@ -370,8 +370,13 @@ async function changePassword() {
       successPassword.value = "";
     }, 3000);
   } catch (e) {
-    if (e.code === "auth/wrong-password") {
+    if (
+      e.code === "auth/wrong-password" ||
+      e.code === "auth/invalid-credential"
+    ) {
       errorPassword.value = "Current password is incorrect";
+    } else if (e.code === "auth/too-many-requests") {
+      errorPassword.value = "Too many attempts. Try again later.";
     } else {
       errorPassword.value = e.message || "Failed to update password";
     }
@@ -541,10 +546,6 @@ async function changePassword() {
 }
 
 .section {
-  padding: 28px 24px;
-}
-
-.section {
   padding: 32px;
 }
 
@@ -616,7 +617,7 @@ async function changePassword() {
 
 .field input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(90, 90, 240, 0.12);
+  box-shadow: none;
 }
 
 .field input::placeholder {

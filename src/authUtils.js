@@ -147,33 +147,33 @@ export async function changeDisplayName(uid, newDisplayName) {
     throw new Error("Not authorized");
   }
 
-  const oldDisplayName = user.displayName;
+  const userSnap = await get(dbRef(db, `users/${uid}`));
+  const dbDisplayName = userSnap.exists() ? userSnap.val().displayName : null;
+  const oldDisplayName = dbDisplayName || user.displayName;
   const oldNameKey =
     oldDisplayName && oldDisplayName.trim()
       ? oldDisplayName.toLowerCase().replace(/\s+/g, "_")
       : null;
 
-  if (oldNameKey) {
+  if (oldNameKey && oldNameKey !== nameKey) {
     await remove(dbRef(db, `usernames/${oldNameKey}`));
   }
 
   await set(dbRef(db, `usernames/${nameKey}`), uid);
-
   await updateProfile(user, { displayName: newDisplayName });
-
-  await update(dbRef(db, `users/${uid}`), {
-    displayName: newDisplayName,
-  });
+  await update(dbRef(db, `users/${uid}`), { displayName: newDisplayName });
 
   const messagesSnap = await get(dbRef(db, "messages"));
   if (messagesSnap.exists()) {
-    const messages = messagesSnap.val();
-    for (const [msgId, msg] of Object.entries(messages)) {
+    const msgs = messagesSnap.val();
+    const updates = {};
+    for (const [msgId, msg] of Object.entries(msgs)) {
       if (msg.uid === uid) {
-        await update(dbRef(db, `messages/${msgId}`), {
-          displayName: newDisplayName,
-        });
+        updates[`${msgId}/displayName`] = newDisplayName;
       }
+    }
+    if (Object.keys(updates).length > 0) {
+      await update(dbRef(db, "messages"), updates);
     }
   }
 }
@@ -192,6 +192,20 @@ export async function isUserAdmin(uid) {
   return snap.exists() && snap.val() === true;
 }
 
+export async function getOwnerUid() {
+  try {
+    const snap = await get(dbRef(db, "owner"));
+    return snap.exists() ? snap.val() : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function isUserOwner(uid) {
+  const ownerUid = await getOwnerUid();
+  return ownerUid === uid;
+}
+
 export async function getAllUsers() {
   const snap = await get(dbRef(db, "users"));
   if (!snap.exists()) return [];
@@ -202,36 +216,40 @@ export async function getAllUsers() {
   }));
 }
 
-export async function deleteUserAccount(uid) {
+export async function adminRenameUser(uid, newDisplayName) {
   const userSnap = await get(dbRef(db, `users/${uid}`));
-  if (!userSnap.exists()) {
-    throw new Error("User not found");
+  if (!userSnap.exists()) throw new Error("User not found");
+  const userData = userSnap.val();
+
+  const newNameKey = newDisplayName.toLowerCase().replace(/\s+/g, "_");
+  const snap = await get(dbRef(db, `usernames/${newNameKey}`));
+  if (snap.exists() && snap.val() !== uid) {
+    throw new Error("Display name already taken");
   }
 
-  const userData = userSnap.val();
+  const oldDisplayName = userData.displayName;
+  if (oldDisplayName && oldDisplayName.trim()) {
+    const oldKey = oldDisplayName.toLowerCase().replace(/\s+/g, "_");
+    if (oldKey !== newNameKey) {
+      await remove(dbRef(db, `usernames/${oldKey}`));
+    }
+  }
+  await set(dbRef(db, `usernames/${newNameKey}`), uid);
+
+  await update(dbRef(db, `users/${uid}`), { displayName: newDisplayName });
 
   const messagesSnap = await get(dbRef(db, "messages"));
   if (messagesSnap.exists()) {
-    const messages = messagesSnap.val();
-
-    for (const [msgId, msg] of Object.entries(messages)) {
+    const msgs = messagesSnap.val();
+    const updates = {};
+    for (const [msgId, msg] of Object.entries(msgs)) {
       if (msg.uid === uid) {
-        await remove(dbRef(db, `messages/${msgId}`));
+        updates[`${msgId}/displayName`] = newDisplayName;
       }
     }
-  }
-
-  if (userData.displayName && userData.displayName.trim()) {
-    const nameKey = userData.displayName.toLowerCase().replace(/\s+/g, "_");
-    await remove(dbRef(db, `usernames/${nameKey}`));
-  }
-
-  await remove(dbRef(db, `users/${uid}`));
-  await remove(dbRef(db, `admins/${uid}`));
-
-  const currentUser = auth.currentUser;
-  if (currentUser && currentUser.uid === uid) {
-    await currentUser.delete();
+    if (Object.keys(updates).length > 0) {
+      await update(dbRef(db, "messages"), updates);
+    }
   }
 }
 
@@ -243,15 +261,3 @@ export async function demoteFromAdmin(uid) {
   await remove(dbRef(db, `admins/${uid}`));
 }
 
-export async function getUserByEmail(email) {
-  const snap = await get(dbRef(db, "users"));
-  if (!snap.exists()) return null;
-
-  for (const [uid, user] of Object.entries(snap.val())) {
-    if (user.email === email) {
-      return { uid, ...user };
-    }
-  }
-
-  return null;
-}
