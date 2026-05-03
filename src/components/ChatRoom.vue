@@ -510,7 +510,7 @@ const showJumpButton = ref(false);
 const scrollUnread = ref(0);
 const SHOW_JUMP_THRESHOLD = 110;
 const GROUP_TIMEOUT = 5 * 60 * 1000;
-const onlineUsers = ref([]);
+const presenceUsers = ref({});
 const showOnlinePanel = ref(false);
 const AVATAR_COLORS = [
   "#6366f1",
@@ -539,6 +539,27 @@ function getAvatarColor(name, uid = null, storedColor = null) {
   }
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 }
+
+function getLatestUser(uid, fallback = {}) {
+  return { ...(allUsers.value[uid] || {}), ...fallback };
+}
+
+const onlineUsers = computed(() => {
+  return Object.entries(presenceUsers.value)
+    .map(([uid, data]) => {
+      const user = getLatestUser(uid, data);
+      return {
+        uid,
+        displayName: user.displayName || data.displayName || "?",
+        avatarColor: user.preferences?.avatarColor || data.avatarColor || null,
+      };
+    })
+    .sort((a, b) => {
+      if (a.uid === props.user.uid) return -1;
+      if (b.uid === props.user.uid) return 1;
+      return a.displayName.localeCompare(b.displayName);
+    });
+});
 
 function formatDateLabel(timestamp) {
   if (!timestamp) return "";
@@ -597,7 +618,7 @@ const headerRef = ref(null);
 const typingAreaRef = ref(null);
 const inputRowRef = ref(null);
 const showDropdown = ref(false);
-const typingUsers = ref([]);
+const typingUsersRaw = ref({});
 const hasMore = ref(false);
 const isAdmin = ref(false);
 const isLoadingMore = ref(false);
@@ -667,6 +688,15 @@ function formatLastSeen(ts) {
     day: "numeric",
   });
 }
+
+const typingUsers = computed(() => {
+  return Object.entries(typingUsersRaw.value)
+    .filter(([uid]) => uid !== props.user.uid)
+    .map(
+      ([uid, data]) =>
+        getLatestUser(uid, data).displayName || data.displayName || "?",
+    );
+});
 
 function isNearBottom(scrollEl) {
   if (!scrollEl) return true;
@@ -1145,21 +1175,7 @@ onMounted(async () => {
   });
 
   presenceListener = onValue(dbRef(db, "presence"), (snap) => {
-    if (!snap.exists()) {
-      onlineUsers.value = [];
-      return;
-    }
-    onlineUsers.value = Object.entries(snap.val())
-      .map(([uid, data]) => ({
-        uid,
-        displayName: data.displayName || "?",
-        avatarColor: data.avatarColor || null,
-      }))
-      .sort((a, b) => {
-        if (a.uid === props.user.uid) return -1;
-        if (b.uid === props.user.uid) return 1;
-        return a.displayName.localeCompare(b.displayName);
-      });
+    presenceUsers.value = snap.exists() ? snap.val() : {};
   });
 
   isAdmin.value = await isUserAdmin(props.user.uid);
@@ -1178,12 +1194,10 @@ onMounted(async () => {
   typingListener = onValue(dbRef(db, "typing"), (snapshot) => {
     const data = snapshot.val();
     if (!data) {
-      typingUsers.value = [];
+      typingUsersRaw.value = {};
       return;
     }
-    typingUsers.value = Object.entries(data)
-      .filter(([uid]) => uid !== props.user.uid)
-      .map(([, val]) => val.displayName);
+    typingUsersRaw.value = data;
   });
 
   subscribeMessages();
