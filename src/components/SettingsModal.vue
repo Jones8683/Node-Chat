@@ -36,19 +36,48 @@
 
         <div class="modal-content">
           <div v-if="activeTab === 'account'">
+            <div class="section">
+              <h3 class="section-title">PROFILE</h3>
+              <div class="profile-header">
+                <div
+                  class="profile-avatar"
+                  :style="{ background: currentAvatarColor }"
+                >
+                  {{ user.displayName?.[0]?.toUpperCase() }}
+                </div>
+                <div class="profile-meta">
+                  <div class="profile-name">{{ user.displayName }}</div>
+                  <div class="profile-email">{{ user.email }}</div>
+                </div>
+              </div>
+              <div class="avatar-color-row">
+                <span class="avatar-color-label">Color</span>
+                <div class="color-swatches">
+                  <button
+                    v-for="c in AVATAR_PALETTE"
+                    :key="c"
+                    class="color-swatch"
+                    :class="{ selected: avatarColor === c }"
+                    :style="{ background: c }"
+                    :disabled="savingColor"
+                    @click="setAvatarColor(c)"
+                    :aria-label="`Set avatar color to ${c}`"
+                  ></button>
+                </div>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
             <form
               class="section"
               autocomplete="off"
               @submit.prevent="changeUsername"
             >
-              <h3 class="section-title">PROFILE</h3>
-              <div class="current-display-name">
-                <p><strong>Current:</strong> {{ user.displayName }}</p>
-              </div>
-
+              <h3 class="section-title">DISPLAY NAME</h3>
               <div class="field">
                 <label for="new-username">
-                  New Display Name
+                  New name
                   <span class="char-count">{{ newUsername.length }}/12</span>
                 </label>
                 <input
@@ -57,7 +86,7 @@
                   type="text"
                   name="settings-new-display-name"
                   maxlength="12"
-                  placeholder="New display name"
+                  :placeholder="user.displayName"
                   autocomplete="off"
                   :disabled="loadingUsername"
                 />
@@ -68,7 +97,7 @@
                 type="submit"
                 :disabled="loadingUsername || !newUsername.trim()"
               >
-                {{ loadingUsername ? "Updating..." : "Save display name" }}
+                {{ loadingUsername ? "Updating..." : "Save" }}
               </button>
 
               <p v-if="errorUsername" class="error">{{ errorUsername }}</p>
@@ -208,14 +237,27 @@
           </div>
 
           <div v-if="activeTab === 'preferences'" class="section">
-            <p
-              style="
-                color: var(--text-muted);
-                text-align: center;
-                padding: 40px 20px;
-              "
-            >
-              Preferences coming soon
+            <h3 class="section-title">NOTIFICATIONS</h3>
+            <div class="pref-row">
+              <div class="pref-info">
+                <div class="pref-label">Browser notifications</div>
+                <div class="pref-desc">
+                  Get notified for new messages when the tab isn't active
+                </div>
+              </div>
+              <button
+                class="toggle-btn"
+                :class="{ active: notificationsEnabled, saving: savingNotif }"
+                @click="toggleNotifications"
+                :aria-pressed="notificationsEnabled"
+              >
+                <span class="toggle-thumb"></span>
+              </button>
+            </div>
+            <p v-if="notifError" class="error notif-error">{{ notifError }}</p>
+            <p v-if="notifBlocked" class="notif-hint">
+              Notifications are blocked by your browser. Click the lock icon in
+              the address bar to allow them, then try again.
             </p>
           </div>
         </div>
@@ -225,9 +267,10 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onUnmounted } from "vue";
-import { auth } from "../firebase";
+import { ref, watch, onMounted, onUnmounted, computed } from "vue";
+import { auth, db } from "../firebase";
 import { reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth";
+import { ref as dbRef, update } from "firebase/database";
 import { X, Eye, EyeOff } from "lucide-vue-next";
 import { changeDisplayName, changeUserPassword } from "../authUtils";
 
@@ -251,6 +294,70 @@ const showCurrentPassword = ref(false);
 const showNewPassword = ref(false);
 const showConfirmPassword = ref(false);
 
+const AVATAR_PALETTE = [
+  "#6366f1",
+  "#8b5cf6",
+  "#a855f7",
+  "#ec4899",
+  "#f43f5e",
+  "#ef4444",
+  "#f97316",
+  "#fb923c",
+  "#eab308",
+  "#84cc16",
+  "#22c55e",
+  "#14b8a6",
+  "#06b6d4",
+  "#3b82f6",
+  "#64748b",
+];
+
+const FALLBACK_COLORS = [
+  "#6366f1",
+  "#8b5cf6",
+  "#ec4899",
+  "#f43f5e",
+  "#f97316",
+  "#22c55e",
+  "#14b8a6",
+  "#3b82f6",
+];
+function hashColor(name) {
+  let hash = 0;
+  for (let i = 0; i < (name || "").length; i++) {
+    hash = (hash << 5) - hash + name.charCodeAt(i);
+    hash |= 0;
+  }
+  return FALLBACK_COLORS[Math.abs(hash) % FALLBACK_COLORS.length];
+}
+
+const avatarColor = computed(
+  () => props.user?.preferences?.avatarColor || null,
+);
+const currentAvatarColor = computed(
+  () => avatarColor.value || hashColor(props.user?.displayName || "?"),
+);
+const savingColor = ref(false);
+
+async function setAvatarColor(color) {
+  if (savingColor.value) return;
+  savingColor.value = true;
+  try {
+    await update(dbRef(db, `users/${props.user.uid}/preferences`), {
+      avatarColor: color ?? null,
+    });
+  } finally {
+    savingColor.value = false;
+  }
+}
+
+const notificationsEnabled = computed(
+  () => !!props.user?.preferences?.notificationsEnabled,
+);
+const savingNotif = ref(false);
+const notifError = ref("");
+const notifBlocked = ref(false);
+
 watch(
   () => props.isOpen,
   (isOpen) => {
@@ -268,9 +375,47 @@ watch(
       showCurrentPassword.value = false;
       showNewPassword.value = false;
       showConfirmPassword.value = false;
+      notifError.value = "";
+      notifBlocked.value = false;
     }
   },
 );
+
+async function toggleNotifications() {
+  notifError.value = "";
+  notifBlocked.value = false;
+
+  const enabling = !notificationsEnabled.value;
+
+  if (enabling) {
+    if (!("Notification" in window)) {
+      notifError.value = "Your browser doesn't support notifications.";
+      return;
+    }
+    if (Notification.permission === "denied") {
+      notifBlocked.value = true;
+      return;
+    }
+    if (Notification.permission !== "granted") {
+      const result = await Notification.requestPermission();
+      if (result !== "granted") {
+        notifBlocked.value = true;
+        return;
+      }
+    }
+  }
+
+  savingNotif.value = true;
+  try {
+    await update(dbRef(db, `users/${props.user.uid}/preferences`), {
+      notificationsEnabled: enabling,
+    });
+  } catch {
+    notifError.value = "Failed to save preference. Try again.";
+  } finally {
+    savingNotif.value = false;
+  }
+}
 
 function closeIfClickedOutside(e) {
   if (e.target === e.currentTarget) close();
@@ -397,11 +542,6 @@ async function changePassword() {
   z-index: 200;
   padding: 20px;
   overflow-y: auto;
-  transition:
-    background 160ms ease,
-    backdrop-filter 160ms ease;
-  -webkit-backdrop-filter: blur(4px);
-  backdrop-filter: blur(4px);
 }
 
 .modal-container {
@@ -414,11 +554,6 @@ async function changePassword() {
   display: flex;
   flex-direction: column;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
-  will-change: transform, opacity;
-  transform: translateY(0);
-  transition:
-    transform 180ms ease,
-    opacity 180ms ease;
 }
 
 .modal-fade-enter-active,
@@ -494,8 +629,8 @@ async function changePassword() {
 
 .tab-btn {
   flex: 1;
-  background: rgba(44, 42, 39, 0.03);
-  border: 1px solid rgba(44, 42, 39, 0.08);
+  background: var(--bg);
+  border: 1px solid var(--border);
   border-radius: 999px;
   color: var(--text-muted);
   cursor: pointer;
@@ -558,19 +693,63 @@ async function changePassword() {
   margin: 0 0 24px 0;
 }
 
-.current-display-name {
-  margin-bottom: 28px;
+.profile-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
 }
 
-.current-display-name p {
-  font-size: 14px;
+.profile-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 17px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.13);
+}
+
+.profile-meta {
+  min-width: 0;
+  flex: 1;
+}
+
+.profile-name {
+  font-size: 16px;
+  font-weight: 700;
   color: var(--text);
-  margin: 0;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.current-display-name strong {
+.profile-email {
+  font-size: 12px;
   color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.avatar-color-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.avatar-color-label {
+  font-size: 12px;
   font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .divider {
@@ -628,10 +807,6 @@ async function changePassword() {
   opacity: 0.5;
   cursor: not-allowed;
   background: var(--surface);
-}
-
-.concealed {
-  -webkit-text-security: disc;
 }
 
 .password-wrap {
@@ -712,6 +887,151 @@ async function changePassword() {
   margin: 12px 0 0 0;
 }
 
+.color-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  flex: 1;
+  min-width: 0;
+}
+
+.color-swatch {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  padding: 0;
+  flex-shrink: 0;
+  transition:
+    transform 160ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 160ms ease;
+  outline: none;
+}
+
+.color-swatch:hover {
+  transform: scale(1.22);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
+}
+
+.color-swatch:disabled {
+  pointer-events: none;
+}
+
+.color-swatch.selected::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E")
+    center/12px no-repeat;
+}
+
+.pref-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.pref-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.pref-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 3px;
+}
+
+.pref-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.toggle-btn {
+  position: relative;
+  width: 48px;
+  height: 28px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(44, 42, 39, 0.18);
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  transition:
+    background 280ms ease,
+    box-shadow 280ms ease;
+  outline: none;
+}
+
+.toggle-btn:focus-visible {
+  box-shadow: 0 0 0 3px rgba(90, 90, 240, 0.22);
+}
+
+.toggle-btn.active {
+  background: var(--accent);
+  box-shadow: 0 2px 8px rgba(90, 90, 240, 0.28);
+}
+
+.toggle-btn.saving {
+  pointer-events: none;
+}
+
+.toggle-thumb {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow:
+    0 1px 5px rgba(0, 0, 0, 0.22),
+    0 0 0 0.5px rgba(0, 0, 0, 0.06);
+  transition:
+    transform 350ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    width 180ms ease,
+    border-radius 180ms ease;
+  will-change: transform;
+}
+
+.toggle-btn:active .toggle-thumb {
+  width: 24px;
+  border-radius: 10px;
+}
+
+.toggle-btn.active .toggle-thumb {
+  transform: translateX(20px);
+}
+
+.toggle-btn.active:active .toggle-thumb {
+  transform: translateX(16px);
+  width: 24px;
+  border-radius: 10px;
+}
+
+.notif-error {
+  margin-top: 10px;
+}
+
+.notif-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 10px;
+  line-height: 1.5;
+  background: rgba(44, 42, 39, 0.04);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .modal-container,
   .modal-overlay,
@@ -720,6 +1040,8 @@ async function changePassword() {
   .tab-btn,
   .submit-btn,
   .toggle-pw,
+  .toggle-btn,
+  .toggle-thumb,
   .field input {
     transition: none !important;
   }

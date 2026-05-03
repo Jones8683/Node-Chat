@@ -53,7 +53,6 @@ input:-webkit-autofill:focus {
 
 /* ─── WebKit custom scrollbars (Chrome / Edge / Safari) ─── */
 
-/* Hide arrow buttons — must match the same elements that define ::-webkit-scrollbar */
 .messages::-webkit-scrollbar-button,
 .online-panel-list::-webkit-scrollbar-button,
 textarea::-webkit-scrollbar-button {
@@ -107,8 +106,7 @@ textarea::-webkit-scrollbar-thumb:hover {
   background: rgba(44, 42, 39, 0.25);
 }
 
-/* ─── Firefox-only scrollbars (scrollbar-width / scrollbar-color) ─── */
-/* Kept separate so they don't interfere with the WebKit rules above in Chrome */
+/* ─── Firefox-only scrollbars ─── */
 @supports (-moz-appearance: none) {
   .messages,
   .online-panel-list,

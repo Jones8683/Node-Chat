@@ -32,6 +32,13 @@
           >
             Users
           </button>
+          <button
+            class="tab-btn"
+            :class="{ active: activeTab === 'controls' }"
+            @click="activeTab = 'controls'"
+          >
+            Controls
+          </button>
         </div>
 
         <div class="modal-content">
@@ -89,6 +96,150 @@
                     >
                       <Trash2 :size="14" stroke-width="2" />
                     </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="activeTab === 'controls'">
+            <div class="controls-section">
+              <div class="controls-section-title">Moderation</div>
+              <div class="control-card-flat">
+                <div class="lock-row">
+                  <div class="control-card-top" style="flex: 1; min-width: 0">
+                    <div class="control-title">Lock Chat</div>
+                    <div class="control-desc">
+                      Prevent non-admins from sending messages.
+                    </div>
+                  </div>
+                  <button
+                    class="lock-toggle-btn"
+                    :class="{ 'lock-toggle-btn--locked': chatLocked }"
+                    @click="toggleChatLock"
+                    :disabled="lockLoading"
+                  >
+                    <Lock v-if="!chatLocked" :size="12" stroke-width="2.5" />
+                    <Unlock v-else :size="12" stroke-width="2.5" />
+                    {{
+                      lockLoading
+                        ? "..."
+                        : chatLocked
+                          ? "Unlock Chat"
+                          : "Lock Chat"
+                    }}
+                  </button>
+                </div>
+                <div
+                  class="lock-status"
+                  :class="{ 'lock-status--locked': chatLocked }"
+                >
+                  <span class="lock-status-dot"></span>
+                  <span>{{
+                    chatLocked
+                      ? "Chat is locked — only admins can send messages"
+                      : "Chat is open — all users can send messages"
+                  }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="controls-section">
+              <div class="controls-section-title">Danger Zone</div>
+              <div class="danger-zone">
+                <div class="control-card">
+                  <div class="control-card-top">
+                    <div class="control-title">Purge Messages</div>
+                    <div class="control-desc">
+                      Permanently delete messages from the database. This cannot
+                      be undone.
+                    </div>
+                  </div>
+                  <div class="purge-row">
+                    <div class="order-toggle">
+                      <div
+                        class="order-pill"
+                        :class="{ right: purgeOrder === 'oldest' }"
+                      ></div>
+                      <button
+                        type="button"
+                        class="order-btn"
+                        :class="{ active: purgeOrder === 'newest' }"
+                        :disabled="purging"
+                        @click="purgeOrder = 'newest'"
+                      >
+                        Newest
+                      </button>
+                      <button
+                        type="button"
+                        class="order-btn"
+                        :class="{ active: purgeOrder === 'oldest' }"
+                        :disabled="purging"
+                        @click="purgeOrder = 'oldest'"
+                      >
+                        Oldest
+                      </button>
+                    </div>
+                    <div
+                      class="custom-select"
+                      :class="{ open: purgeDropdownOpen }"
+                      ref="purgeDropdownRef"
+                    >
+                      <button
+                        class="custom-select-btn"
+                        type="button"
+                        :disabled="purging"
+                        @click="purgeDropdownOpen = !purgeDropdownOpen"
+                      >
+                        <span>{{
+                          purgeOptions.find((o) => o.value === purgeAmount)
+                            ?.label
+                        }}</span>
+                        <ChevronDown
+                          :size="12"
+                          stroke-width="2.5"
+                          class="custom-select-chevron"
+                        />
+                      </button>
+                      <transition name="dropdown-pop">
+                        <div
+                          v-if="purgeDropdownOpen"
+                          class="custom-select-menu"
+                        >
+                          <button
+                            v-for="opt in purgeOptions"
+                            :key="opt.value"
+                            type="button"
+                            class="custom-select-option"
+                            :class="{ selected: purgeAmount === opt.value }"
+                            @click="
+                              purgeAmount = opt.value;
+                              purgeDropdownOpen = false;
+                            "
+                          >
+                            <span>{{ opt.label }}</span>
+                            <Check
+                              v-if="purgeAmount === opt.value"
+                              :size="12"
+                              stroke-width="3"
+                              class="option-check"
+                            />
+                          </button>
+                        </div>
+                      </transition>
+                    </div>
+                    <button
+                      class="purge-btn"
+                      @click="promptPurge"
+                      :disabled="purging"
+                    >
+                      <Trash2 :size="13" stroke-width="2.5" />
+                      {{ purging ? "Purging..." : "Purge" }}
+                    </button>
+                  </div>
+                  <div v-if="purgeError" class="purge-error-msg">
+                    <AlertTriangle :size="12" stroke-width="2.5" />
+                    <span>{{ purgeError }}</span>
                   </div>
                 </div>
               </div>
@@ -156,6 +307,9 @@
                           <span class="user-name">{{
                             u.displayName || "(no name)"
                           }}</span>
+                          <span v-if="isUserMuted(u.uid)" class="muted-badge"
+                            >muted</span
+                          >
                         </template>
                       </div>
                       <div class="user-meta">
@@ -176,6 +330,27 @@
                       title="Edit username"
                     >
                       <Pencil :size="13" stroke-width="2" />
+                    </button>
+                    <button
+                      v-if="u.uid !== currentUserUid"
+                      class="role-btn mute-btn"
+                      :class="{ 'mute-btn--muted': isUserMuted(u.uid) }"
+                      :disabled="mutingUid === u.uid"
+                      @click="toggleMute(u.uid)"
+                    >
+                      <Mic
+                        v-if="isUserMuted(u.uid)"
+                        :size="12"
+                        stroke-width="2.5"
+                      />
+                      <MicOff v-else :size="12" stroke-width="2.5" />
+                      {{
+                        mutingUid === u.uid
+                          ? "..."
+                          : isUserMuted(u.uid)
+                            ? "Unmute"
+                            : "Mute"
+                      }}
                     </button>
                     <button
                       v-if="!isUserAdminStatus(u.uid)"
@@ -238,8 +413,33 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from "vue";
-import { auth } from "../firebase";
-import { X, Copy, Trash2, Pencil, Crown } from "lucide-vue-next";
+import { auth, db } from "../firebase";
+import {
+  X,
+  Copy,
+  Trash2,
+  Pencil,
+  Crown,
+  AlertTriangle,
+  ChevronDown,
+  Check,
+  Lock,
+  Unlock,
+  MicOff,
+  Mic,
+} from "lucide-vue-next";
+import {
+  ref as dbRef,
+  query,
+  orderByKey,
+  limitToFirst,
+  limitToLast,
+  get,
+  set,
+  remove,
+  update,
+  onValue,
+} from "firebase/database";
 import {
   createInviteToken,
   getValidInvites,
@@ -279,6 +479,27 @@ const copyFeedback = ref(false);
 const editingUserId = ref(null);
 const editingUserName = ref("");
 
+const purgeAmount = ref("100");
+const purgeOrder = ref("newest");
+const purging = ref(false);
+const purgeError = ref("");
+const purgeDropdownOpen = ref(false);
+const purgeDropdownRef = ref(null);
+
+const chatLocked = ref(false);
+const lockLoading = ref(false);
+let settingsListener = null;
+
+const mutedUsers = ref(new Set());
+const mutingUid = ref(null);
+let muteListener = null;
+
+const purgeOptions = [
+  { value: "100", label: "100 messages" },
+  { value: "500", label: "500 messages" },
+  { value: "all", label: "All messages" },
+];
+
 const confirmAction = ref({
   show: false,
   title: "",
@@ -292,10 +513,20 @@ const confirmAction = ref({
 onMounted(() => {
   loadInvites();
   window.addEventListener("keydown", onKeyDown);
+  window.addEventListener("pointerdown", onOutsideClick);
+  settingsListener = onValue(dbRef(db, "settings/chatLocked"), (snap) => {
+    chatLocked.value = snap.val() === true;
+  });
+  muteListener = onValue(dbRef(db, "muted"), (snap) => {
+    mutedUsers.value = new Set(snap.exists() ? Object.keys(snap.val()) : []);
+  });
 });
 
 onUnmounted(() => {
   window.removeEventListener("keydown", onKeyDown);
+  window.removeEventListener("pointerdown", onOutsideClick);
+  if (settingsListener) settingsListener();
+  if (muteListener) muteListener();
 });
 
 function closeIfClickedOutside(e) {
@@ -307,7 +538,19 @@ function close() {
 }
 
 function onKeyDown(e) {
-  if (e.key === "Escape") close();
+  if (e.key === "Escape") {
+    if (purgeDropdownOpen.value) {
+      purgeDropdownOpen.value = false;
+      return;
+    }
+    close();
+  }
+}
+
+function onOutsideClick(e) {
+  if (purgeDropdownRef.value && !purgeDropdownRef.value.contains(e.target)) {
+    purgeDropdownOpen.value = false;
+  }
 }
 
 async function loadInvites() {
@@ -315,8 +558,8 @@ async function loadInvites() {
   errorInvite.value = "";
   try {
     invites.value = (await getValidInvites()) || [];
-  } catch (e) {
-    console.error("Error loading invites:", e);
+  } catch {
+    invites.value = [];
   } finally {
     loadingInvites.value = false;
   }
@@ -510,6 +753,91 @@ async function demoteUserConfirmed(uid) {
 
 function cancelConfirm() {
   confirmAction.value.show = false;
+}
+
+function isUserMuted(uid) {
+  return mutedUsers.value.has(uid);
+}
+
+async function toggleMute(uid) {
+  mutingUid.value = uid;
+  try {
+    if (isUserMuted(uid)) {
+      await remove(dbRef(db, `muted/${uid}`));
+    } else {
+      await set(dbRef(db, `muted/${uid}`), true);
+    }
+  } catch (e) {
+    console.error("Failed to toggle mute:", e);
+  } finally {
+    mutingUid.value = null;
+  }
+}
+
+async function toggleChatLock() {
+  lockLoading.value = true;
+  try {
+    await set(dbRef(db, "settings/chatLocked"), !chatLocked.value);
+  } catch (e) {
+    console.error("Failed to toggle chat lock:", e);
+  } finally {
+    lockLoading.value = false;
+  }
+}
+
+function promptPurge() {
+  purgeError.value = "";
+  const label =
+    purgeAmount.value === "all"
+      ? "ALL messages"
+      : `the ${purgeAmount.value} ${purgeOrder.value} messages`;
+  confirmAction.value = {
+    show: true,
+    title: "Purge Messages?",
+    message: `This will permanently delete ${label} from the database. This action cannot be undone.`,
+    action: "Purge",
+    confirm: executePurge,
+    loading: false,
+    infoOnly: false,
+  };
+}
+
+async function executePurge() {
+  confirmAction.value.loading = true;
+  purging.value = true;
+  purgeError.value = "";
+  try {
+    const messagesNode = dbRef(db, "messages");
+    if (purgeAmount.value === "all") {
+      await remove(messagesNode);
+    } else {
+      const n = parseInt(purgeAmount.value, 10);
+      const limiter =
+        purgeOrder.value === "newest" ? limitToLast(n) : limitToFirst(n);
+      const q = query(messagesNode, orderByKey(), limiter);
+      const snap = await get(q);
+      if (snap.exists()) {
+        const deletions = {};
+        snap.forEach((child) => {
+          deletions[child.key] = null;
+        });
+        await update(messagesNode, deletions);
+      }
+    }
+    confirmAction.value.show = false;
+  } catch (e) {
+    const msg = String(e?.message || "");
+    if (msg.toLowerCase().includes("permission")) {
+      purgeError.value =
+        "Permission denied — your Firebase rules need to allow admins to delete messages. Add a .write rule on /messages that checks root.child('admins').child(auth.uid).val() === true.";
+    } else {
+      purgeError.value = "Purge failed: " + (msg || "Unknown error");
+    }
+    confirmAction.value.show = false;
+  } finally {
+    purging.value = false;
+    confirmAction.value.loading = false;
+  }
 }
 
 function startEditUsername(u) {
@@ -1192,6 +1520,423 @@ async function saveUsername(uid) {
   font-weight: 600;
   z-index: 400;
   pointer-events: none;
+}
+
+.controls-section {
+  margin-bottom: 20px;
+}
+
+.controls-section-title {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1.1px;
+  margin-bottom: 10px;
+}
+
+.control-card-flat {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.lock-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 18px;
+}
+
+.lock-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  font-family: "Satoshi", sans-serif;
+  padding: 7px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.lock-toggle-btn:hover:not(:disabled) {
+  border-color: rgba(44, 42, 39, 0.22);
+  color: var(--text);
+}
+
+.lock-toggle-btn--locked {
+  background: rgba(192, 57, 43, 0.08);
+  border-color: rgba(192, 57, 43, 0.3);
+  color: var(--danger);
+}
+
+.lock-toggle-btn--locked:hover:not(:disabled) {
+  background: rgba(192, 57, 43, 0.13);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.lock-toggle-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.lock-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-2);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.lock-status--locked {
+  background: rgba(192, 57, 43, 0.04);
+  color: var(--danger);
+  border-top-color: rgba(192, 57, 43, 0.12);
+}
+
+.lock-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #22c55e;
+  flex-shrink: 0;
+}
+
+.lock-status--locked .lock-status-dot {
+  background: var(--danger);
+}
+
+.muted-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(192, 57, 43, 0.1);
+  border: 1px solid rgba(192, 57, 43, 0.22);
+  color: var(--danger);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.mute-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.mute-btn--muted {
+  border-color: rgba(192, 57, 43, 0.2);
+  color: var(--danger);
+}
+
+.mute-btn--muted:hover {
+  background: rgba(192, 57, 43, 0.06);
+  border-color: var(--danger);
+}
+
+.mute-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.danger-zone {
+  border: 1px solid rgba(192, 57, 43, 0.18);
+  border-radius: 12px;
+}
+
+.danger-zone-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 16px;
+  background: rgba(192, 57, 43, 0.06);
+  border-bottom: 1px solid rgba(192, 57, 43, 0.12);
+  border-radius: 11px 11px 0 0;
+}
+
+.danger-zone-icon {
+  color: var(--danger);
+  flex-shrink: 0;
+}
+
+.danger-zone-label {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--danger);
+}
+
+.control-card {
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.control-card-top {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.control-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.control-desc {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.purge-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.order-toggle {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: fit-content;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.order-pill {
+  position: absolute;
+  inset: 3px auto 3px 3px;
+  width: calc(50% - 3px);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #fffdf8 0%, #f8f5ed 100%);
+  box-shadow:
+    0 1px 4px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.78);
+  transform: translateX(0);
+  transition: transform 220ms cubic-bezier(0.2, 0.9, 0.25, 1);
+  pointer-events: none;
+}
+
+.order-pill.right {
+  transform: translateX(100%);
+}
+
+.order-btn {
+  position: relative;
+  z-index: 1;
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: "Satoshi", sans-serif;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: color 180ms ease;
+  white-space: nowrap;
+}
+
+.order-btn:hover:not(:disabled) {
+  color: var(--text);
+}
+
+.order-btn.active {
+  color: var(--text);
+}
+
+.order-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.custom-select {
+  position: relative;
+}
+
+.custom-select-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: "Satoshi", sans-serif;
+  padding: 8px 12px 8px 14px;
+  cursor: pointer;
+  outline: none;
+  white-space: nowrap;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s,
+    background 0.15s;
+  min-width: 148px;
+  justify-content: space-between;
+}
+
+.custom-select-btn:hover:not(:disabled) {
+  background: var(--surface-2);
+  border-color: rgba(44, 42, 39, 0.18);
+}
+
+.custom-select.open .custom-select-btn {
+  border-color: rgba(44, 42, 39, 0.28);
+  box-shadow: 0 0 0 3px rgba(44, 42, 39, 0.06);
+}
+
+.custom-select-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.custom-select-chevron {
+  color: var(--text-muted);
+  transition: transform 0.18s ease;
+  flex-shrink: 0;
+}
+
+.custom-select.open .custom-select-chevron {
+  transform: rotate(180deg);
+}
+
+.custom-select-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 4px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.12),
+    0 2px 8px rgba(0, 0, 0, 0.06);
+  z-index: 100;
+  overflow: hidden;
+}
+
+.custom-select-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: "Satoshi", sans-serif;
+  padding: 8px 10px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s;
+  gap: 12px;
+}
+
+.custom-select-option:hover {
+  background: var(--surface-2);
+}
+
+.custom-select-option.selected {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.option-check {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.dropdown-pop-enter-active {
+  transition:
+    opacity 0.12s ease,
+    transform 0.12s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.dropdown-pop-leave-active {
+  transition:
+    opacity 0.08s ease,
+    transform 0.08s ease;
+}
+.dropdown-pop-enter-from {
+  opacity: 0;
+  transform: translateY(-4px) scale(0.97);
+}
+.dropdown-pop-leave-to {
+  opacity: 0;
+  transform: translateY(-3px) scale(0.98);
+}
+
+.purge-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--danger);
+  border: none;
+  border-radius: var(--radius);
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: "Satoshi", sans-serif;
+  padding: 9px 16px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    opacity 0.2s,
+    transform 180ms ease;
+}
+
+.purge-btn:hover:not(:disabled) {
+  opacity: 0.85;
+  transform: translateY(-1px);
+}
+
+.purge-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.purge-error-msg {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  background: rgba(192, 57, 43, 0.06);
+  border: 1px solid rgba(192, 57, 43, 0.15);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  color: var(--danger);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.purge-error-msg svg {
+  flex-shrink: 0;
+  margin-top: 1px;
 }
 
 @media (prefers-reduced-motion: reduce) {

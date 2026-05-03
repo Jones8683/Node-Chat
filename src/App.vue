@@ -13,7 +13,7 @@
       @open-admin="showAdmin = true"
     />
     <SetDisplayName v-else-if="user && !user.displayName" @done="refreshUser" />
-    <AuthForm v-else />
+    <AuthForm v-else-if="authReady" />
 
     <SettingsModal
       :is-open="showSettings"
@@ -80,21 +80,27 @@ onMounted(() => {
       userDbUnsub = null;
     }
 
+    chatReady.value = false;
+
     if (u) {
+      let isFirst = true;
       const userRef = dbRef(db, `users/${u.uid}`);
       userDbUnsub = onValue(userRef, (snap) => {
         const data = snap.val() || {};
         user.value = {
           ...u,
           displayName: data.displayName || u.displayName || "",
+          preferences: data.preferences || {},
         };
+        if (isFirst) {
+          isFirst = false;
+          authReady.value = true;
+        }
       });
     } else {
       user.value = null;
+      authReady.value = true;
     }
-
-    authReady.value = true;
-    chatReady.value = false;
   });
 });
 </script>

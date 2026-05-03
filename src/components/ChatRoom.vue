@@ -1,77 +1,86 @@
 <template>
   <div class="chat">
-    <div class="header" @wheel="forwardWheelToMessages">
-      <div class="user-menu" ref="menuRef">
-        <button class="user-btn" @click="showDropdown = !showDropdown">
-          <div
-            class="avatar"
-            :style="{ background: getAvatarColor(user.displayName) }"
-          >
-            {{ user.displayName[0].toUpperCase() }}
-          </div>
-          <span class="username">{{ user.displayName }}</span>
-          <svg
-            class="chevron"
-            :class="{ open: showDropdown }"
-            width="12"
-            height="12"
-            viewBox="0 0 12 12"
-            fill="none"
-          >
-            <path
-              d="M2 4L6 8L10 4"
-              stroke="currentColor"
-              stroke-width="1.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-          </svg>
-        </button>
-        <transition name="dropdown-fade">
-          <div class="dropdown" v-if="showDropdown">
-            <div class="dropdown-profile">
-              <div
-                class="avatar large"
-                :style="{ background: getAvatarColor(user.displayName) }"
-              >
-                {{ user.displayName[0].toUpperCase() }}
-              </div>
-              <div class="dropdown-info">
-                <div class="dropdown-name">{{ user.displayName }}</div>
-                <div class="dropdown-email">{{ user.email }}</div>
-              </div>
-            </div>
-            <div class="divider"></div>
-            <button class="dropdown-item" @click="openSettings">
-              <User :size="14" stroke-width="2" />
-              Settings
-            </button>
-            <button
-              v-if="isAdmin"
-              class="dropdown-item admin-item"
-              @click="openAdmin"
-            >
-              <ShieldCheck :size="14" stroke-width="2" />
-              Admin
-            </button>
-            <div class="divider"></div>
-            <button class="dropdown-item danger" @click="logout">
-              <LogOut :size="14" stroke-width="2" />
-              Sign Out
-            </button>
-          </div>
-        </transition>
+    <div class="header" ref="headerRef">
+      <div class="header-brand">
+        <img :src="'/icon.png'" class="header-logo" alt="" aria-hidden="true" />
+        <span class="header-wordmark">Node Chat</span>
       </div>
-      <img :src="'/icon.png'" class="header-logo" alt="Node Chat" />
-      <button
-        class="online-btn"
-        @click="showOnlinePanel = !showOnlinePanel"
-        :class="{ active: showOnlinePanel }"
-        :title="showOnlinePanel ? 'Hide members' : 'Show members'"
-      >
-        <span class="online-btn-dot"></span>
-        <span class="online-btn-count">{{ onlineUsers.length }} online</span>
-      </button>
+      <div class="header-actions">
+        <button
+          class="online-btn"
+          @click="showOnlinePanel = !showOnlinePanel"
+          :class="{ active: showOnlinePanel }"
+          :title="showOnlinePanel ? 'Hide members' : 'Show members'"
+        >
+          <span class="online-btn-dot"></span>
+          <span class="online-btn-count">{{ onlineUsers.length }} online</span>
+        </button>
+        <div class="user-menu" ref="menuRef">
+          <button class="user-btn" @click="showDropdown = !showDropdown">
+            <div
+              class="avatar"
+              :style="{
+                background: getAvatarColor(user.displayName, user.uid),
+              }"
+            >
+              {{ user.displayName[0].toUpperCase() }}
+            </div>
+            <span class="username">{{ user.displayName }}</span>
+            <svg
+              class="chevron"
+              :class="{ open: showDropdown }"
+              width="12"
+              height="12"
+              viewBox="0 0 12 12"
+              fill="none"
+            >
+              <path
+                d="M2 4L6 8L10 4"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </button>
+          <transition name="dropdown-fade">
+            <div class="dropdown" v-if="showDropdown">
+              <div class="dropdown-profile">
+                <div
+                  class="avatar large"
+                  :style="{
+                    background: getAvatarColor(user.displayName, user.uid),
+                  }"
+                >
+                  {{ user.displayName[0].toUpperCase() }}
+                </div>
+                <div class="dropdown-info">
+                  <div class="dropdown-name">{{ user.displayName }}</div>
+                  <div class="dropdown-email">{{ user.email }}</div>
+                </div>
+              </div>
+              <div class="divider"></div>
+              <button class="dropdown-item" @click="openSettings">
+                <User :size="14" stroke-width="2" />
+                Settings
+              </button>
+              <button
+                v-if="isAdmin"
+                class="dropdown-item admin-item"
+                @click="openAdmin"
+              >
+                <ShieldCheck :size="14" stroke-width="2" />
+                Admin
+              </button>
+              <div class="divider"></div>
+              <button class="dropdown-item danger" @click="logout">
+                <LogOut :size="14" stroke-width="2" />
+                Sign Out
+              </button>
+            </div>
+          </transition>
+        </div>
+      </div>
     </div>
 
     <div class="chat-body">
@@ -96,59 +105,138 @@
               :class="{
                 'message--editing': editingId === item.id,
                 'message--start': item.isGroupStart,
+                'message--ping':
+                  item.replyTo?.uid === user.uid && item.uid !== user.uid,
+                'message--highlighted': highlightedMessageId === item.id,
               }"
             >
-              <div v-if="item.isGroupStart" class="msg-header">
-                <span class="msg-name">{{ item.displayName }}</span>
-                <span class="msg-time">{{
-                  formatTimestamp(item.timestamp)
-                }}</span>
+              <!-- Reply row: spans full width ABOVE avatar+name -->
+              <div
+                v-if="item.replyTo"
+                class="reply-row"
+                @click.stop="jumpToMessage(item.replyTo.id)"
+              >
+                <div class="reply-connector-cell">
+                  <div class="reply-connector"></div>
+                </div>
+                <div class="reply-content">
+                  <template v-if="item.replyTo.deleted">
+                    <em class="reply-text reply-text--deleted"
+                      >Original message was deleted</em
+                    >
+                  </template>
+                  <template v-else>
+                    <span
+                      class="reply-name"
+                      :style="{
+                        color: getAvatarColor(
+                          item.replyTo.displayName,
+                          item.replyTo.uid,
+                          item.replyTo.avatarColor,
+                        ),
+                      }"
+                      >{{ item.replyTo.displayName }}</span
+                    >
+                    <span class="reply-text"
+                      >{{ item.replyTo.text?.slice(0, 100)
+                      }}{{
+                        (item.replyTo.text?.length || 0) > 100 ? "…" : ""
+                      }}</span
+                    >
+                  </template>
+                </div>
               </div>
 
-              <template v-if="editingId === item.id">
-                <div class="edit-area">
-                  <textarea
-                    class="edit-input"
-                    v-model="editText"
-                    @keydown.enter.exact.prevent="saveEdit(item.id)"
-                    @keydown.esc.prevent="cancelEdit"
-                    @input="resizeEditInput($event.target)"
-                    maxlength="2000"
-                    rows="1"
-                  ></textarea>
+              <!-- Main row: avatar column + message content -->
+              <div class="msg-row">
+                <div class="msg-left">
+                  <div
+                    v-if="item.isGroupStart"
+                    class="msg-avatar"
+                    :style="{
+                      background: getAvatarColor(
+                        item.displayName,
+                        item.uid,
+                        item.avatarColor,
+                      ),
+                    }"
+                  >
+                    {{ item.displayName[0].toUpperCase() }}
+                  </div>
+                  <span v-else class="msg-side-time">{{
+                    formatTimestampShort(item.timestamp)
+                  }}</span>
                 </div>
-              </template>
 
-              <template v-else>
-                <div class="msg-body">
-                  <span class="text"
-                    ><span v-html="formatMessage(item.text)"></span
-                    ><span v-if="item.editedAt" class="edited-label">
-                      (edited)</span
-                    ></span
-                  >
+                <div class="msg-right">
+                  <div v-if="item.isGroupStart" class="msg-header">
+                    <span
+                      class="msg-name"
+                      :style="{
+                        color: getAvatarColor(
+                          item.displayName,
+                          item.uid,
+                          item.avatarColor,
+                        ),
+                      }"
+                      >{{ item.displayName }}</span
+                    >
+                    <span class="msg-time">{{
+                      formatTimestamp(item.timestamp)
+                    }}</span>
+                  </div>
+
+                  <template v-if="editingId === item.id">
+                    <div class="edit-area">
+                      <textarea
+                        class="edit-input"
+                        v-model="editText"
+                        @keydown.enter.exact.prevent="saveEdit(item.id)"
+                        @keydown.esc.prevent="cancelEdit"
+                        @input="resizeEditInput($event.target)"
+                        maxlength="2000"
+                        rows="1"
+                      ></textarea>
+                    </div>
+                  </template>
+
+                  <template v-else>
+                    <div class="msg-body">
+                      <span class="text"
+                        ><span v-html="formatMessage(item.text)"></span
+                        ><span v-if="item.editedAt" class="edited-label">
+                          (edited)</span
+                        ></span
+                      >
+                    </div>
+                    <div class="msg-actions">
+                      <button
+                        class="msg-action-btn"
+                        @click="startReply(item)"
+                        title="Reply"
+                      >
+                        <Reply :size="16" stroke-width="2" />
+                      </button>
+                      <button
+                        v-if="item.uid === user.uid"
+                        class="msg-action-btn"
+                        @click="startEdit(item)"
+                        title="Edit"
+                      >
+                        <Pencil :size="15" stroke-width="2" />
+                      </button>
+                      <button
+                        v-if="item.uid === user.uid || isAdmin"
+                        class="msg-action-btn danger"
+                        @click="promptDelete(item.id)"
+                        title="Delete"
+                      >
+                        <Trash2 :size="15" stroke-width="2" />
+                      </button>
+                    </div>
+                  </template>
                 </div>
-                <div
-                  class="msg-actions"
-                  v-if="item.uid === user.uid || isAdmin"
-                >
-                  <button
-                    v-if="item.uid === user.uid"
-                    class="msg-action-btn"
-                    @click="startEdit(item)"
-                    title="Edit"
-                  >
-                    <Pencil :size="15" stroke-width="2" />
-                  </button>
-                  <button
-                    class="msg-action-btn danger"
-                    @click="promptDelete(item.id)"
-                    title="Delete"
-                  >
-                    <Trash2 :size="15" stroke-width="2" />
-                  </button>
-                </div>
-              </template>
+              </div>
             </div>
           </template>
         </div>
@@ -166,53 +254,121 @@
           </button>
         </transition>
 
-        <div class="typing-area" @wheel="forwardWheelToMessages">
-          <div class="typing-indicator" v-if="typingUsers.length">
-            <div class="dots">
-              <span></span>
-              <span></span>
-              <span></span>
+        <div class="composer-wrap">
+          <transition name="emoji-fade">
+            <div
+              v-if="emojiVisible && emojiResults.length"
+              class="emoji-autocomplete"
+              ref="emojiPickerRef"
+            >
+              <div
+                v-for="(emoji, i) in emojiResults"
+                :key="emoji.id"
+                class="emoji-item"
+                :class="{ active: i === emojiActiveIndex }"
+                @mousedown.prevent="insertEmoji(emoji)"
+              >
+                <span class="emoji-native">{{ emoji.skins[0].native }}</span>
+                <span class="emoji-name">{{
+                  emoji.id.replace(/_/g, " ")
+                }}</span>
+                <span class="emoji-shortcode">:{{ emoji.id }}:</span>
+              </div>
             </div>
-            <span class="typing-names">
-              <template v-for="(name, i) in typingUsers" :key="name">
-                <strong>{{ name }}</strong>
-                <template v-if="i < typingUsers.length - 2">, </template>
-                <template v-else-if="i === typingUsers.length - 2">
-                  and
-                </template>
-              </template>
-              {{ typingUsers.length === 1 ? "is" : "are" }} typing...
-            </span>
-          </div>
-        </div>
+          </transition>
 
-        <div class="input-row" @wheel="forwardWheelToMessages">
-          <textarea
-            ref="composerRef"
-            v-model="newMessage"
-            id="message"
-            name="message"
-            autocomplete="off"
-            rows="1"
-            maxlength="2000"
-            enterkeyhint="send"
-            inputmode="text"
-            @keydown.enter.exact.prevent="sendMessage"
-            @keydown="handleComposerKeydown"
-            @input="handleComposerInput"
-            placeholder="Type a message..."
-          ></textarea>
-          <span class="char-warning" v-if="newMessage.length > 1800">{{
-            2000 - newMessage.length
-          }}</span>
-          <button
-            @mousedown.prevent
-            @click="sendMessage"
-            class="send-btn"
-            :disabled="!newMessage.trim()"
-          >
-            <Send :size="15" stroke-width="2" />
-          </button>
+          <div class="typing-area" ref="typingAreaRef">
+            <div class="typing-indicator" v-if="typingUsers.length">
+              <div class="dots">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+              <span class="typing-names">
+                <template v-for="(name, i) in typingUsers" :key="name">
+                  <strong>{{ name }}</strong>
+                  <template v-if="i < typingUsers.length - 2">, </template>
+                  <template v-else-if="i === typingUsers.length - 2">
+                    and
+                  </template>
+                </template>
+                {{ typingUsers.length === 1 ? "is" : "are" }} typing...
+              </span>
+            </div>
+          </div>
+
+          <div v-if="isMuted" class="chat-locked-banner chat-muted-banner">
+            <MicOff :size="13" stroke-width="2.5" />
+            <span>You've been muted by an admin</span>
+          </div>
+          <div v-else-if="chatLocked && !isAdmin" class="chat-locked-banner">
+            <Lock :size="13" stroke-width="2.5" />
+            <span>Chat is locked by an admin</span>
+          </div>
+
+          <div class="input-wrap">
+            <div v-if="replyingTo" class="reply-bar">
+              <span class="reply-bar-to"
+                >Replying to
+                <strong
+                  :style="{
+                    color: getAvatarColor(
+                      replyingTo.displayName,
+                      replyingTo.uid,
+                      replyingTo.avatarColor,
+                    ),
+                  }"
+                  >{{ replyingTo.displayName }}</strong
+                ></span
+              >
+              <button
+                class="reply-bar-close"
+                @click="cancelReply"
+                title="Cancel reply"
+              >
+                <X :size="13" stroke-width="2.5" />
+              </button>
+            </div>
+
+            <div class="input-row" ref="inputRowRef">
+              <textarea
+                ref="composerRef"
+                v-model="newMessage"
+                id="message"
+                name="message"
+                autocomplete="off"
+                rows="1"
+                maxlength="2000"
+                enterkeyhint="send"
+                inputmode="text"
+                :disabled="isMuted || (chatLocked && !isAdmin)"
+                :placeholder="
+                  isMuted
+                    ? 'You are muted'
+                    : chatLocked && !isAdmin
+                      ? 'Chat is locked'
+                      : 'Type a message...'
+                "
+                @keydown.enter.exact.prevent="sendMessage"
+                @keydown="handleComposerKeydown"
+                @input="handleComposerInput"
+                @blur="closeEmojiPicker"
+              ></textarea>
+              <span class="char-warning" v-if="newMessage.length > 1800">{{
+                2000 - newMessage.length
+              }}</span>
+              <button
+                @mousedown.prevent
+                @click="sendMessage"
+                class="send-btn"
+                :disabled="
+                  !newMessage.trim() || isMuted || (chatLocked && !isAdmin)
+                "
+              >
+                <Send :size="15" stroke-width="2" />
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -233,7 +389,13 @@
             >
               <div
                 class="online-avatar"
-                :style="{ background: getAvatarColor(u.displayName) }"
+                :style="{
+                  background: getAvatarColor(
+                    u.displayName,
+                    u.uid,
+                    u.avatarColor,
+                  ),
+                }"
               >
                 {{ u.displayName[0].toUpperCase() }}
                 <span class="online-avatar-dot"></span>
@@ -254,13 +416,26 @@
               >
                 <div
                   class="online-avatar offline-avatar"
-                  :style="{ background: getAvatarColor(u.displayName) }"
+                  :style="{
+                    background: getAvatarColor(
+                      u.displayName,
+                      u.uid,
+                      u.avatarColor,
+                    ),
+                  }"
                 >
                   {{ u.displayName[0].toUpperCase() }}
                 </div>
-                <span class="online-item-name offline-name">{{
-                  u.displayName
-                }}</span>
+                <div class="offline-info">
+                  <span class="online-item-name offline-name">{{
+                    u.displayName
+                  }}</span>
+                  <span
+                    v-if="formatLastSeen(u.lastSeen)"
+                    class="offline-last-seen"
+                    >{{ formatLastSeen(u.lastSeen) }}</span
+                  >
+                </div>
               </div>
             </template>
           </div>
@@ -299,12 +474,15 @@ import { signOut } from "firebase/auth";
 import {
   ShieldCheck,
   User,
-  Users,
   LogOut,
   Send,
   Pencil,
   Trash2,
   ChevronDown,
+  Lock,
+  MicOff,
+  Reply,
+  X,
 } from "lucide-vue-next";
 import {
   ref as dbRef,
@@ -321,6 +499,8 @@ import {
   get,
 } from "firebase/database";
 import { isUserAdmin } from "../authUtils";
+import emojiData from "@emoji-mart/data";
+import { SearchIndex, init as initEmojiMart } from "emoji-mart";
 
 const props = defineProps(["user"]);
 const emit = defineEmits(["ready", "open-settings", "open-admin"]);
@@ -343,19 +523,21 @@ const AVATAR_COLORS = [
   "#3b82f6",
 ];
 
-function getAvatarColor(name) {
+function getAvatarColor(name, uid = null, storedColor = null) {
+  if (storedColor) return storedColor;
+  if (uid && allUsers.value[uid]?.preferences?.avatarColor) {
+    return allUsers.value[uid].preferences.avatarColor;
+  }
+  if (uid) {
+    const presenceUser = onlineUsers.value.find((u) => u.uid === uid);
+    if (presenceUser?.avatarColor) return presenceUser.avatarColor;
+  }
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
     hash = (hash << 5) - hash + name.charCodeAt(i);
     hash |= 0;
   }
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
-}
-
-function getInitials(name) {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-  return name.slice(0, 2).toUpperCase();
 }
 
 function formatDateLabel(timestamp) {
@@ -401,7 +583,8 @@ const groupedMessages = computed(() => {
       !prev.timestamp ||
       !msg.timestamp ||
       msg.timestamp - prev.timestamp > GROUP_TIMEOUT ||
-      crossedDate;
+      crossedDate ||
+      !!msg.replyTo;
     result.push({ ...msg, type: "message", isGroupStart });
   });
   return result;
@@ -410,6 +593,9 @@ const newMessage = ref("");
 const menuRef = ref(null);
 const messageContainer = ref(null);
 const composerRef = ref(null);
+const headerRef = ref(null);
+const typingAreaRef = ref(null);
+const inputRowRef = ref(null);
 const showDropdown = ref(false);
 const typingUsers = ref([]);
 const hasMore = ref(false);
@@ -434,28 +620,52 @@ let messagesListener = null;
 let typingListener = null;
 let presenceListener = null;
 let usersListener = null;
+let connectedListener = null;
+let lockListener = null;
+let muteListener = null;
+
+const chatLocked = ref(false);
+const isMuted = ref(false);
+const replyingTo = ref(null);
+const highlightedMessageId = ref(null);
 let pendingScrollAnchor = null;
 let shouldScrollToBottom = false;
 let hasEmittedReady = false;
+
+const emojiResults = ref([]);
+const emojiActiveIndex = ref(0);
+const emojiVisible = ref(false);
+const emojiPickerRef = ref(null);
+let emojiQueryStart = -1;
 
 const offlineMembers = computed(() => {
   const onlineUids = new Set(onlineUsers.value.map((u) => u.uid));
   return Object.entries(allUsers.value)
     .filter(([uid, data]) => !onlineUids.has(uid) && data.displayName)
-    .map(([uid, data]) => ({ uid, displayName: data.displayName }))
-    .sort((a, b) => a.displayName.localeCompare(b.displayName));
+    .map(([uid, data]) => ({
+      uid,
+      displayName: data.displayName,
+      lastSeen: data.lastSeen || null,
+      avatarColor: data.preferences?.avatarColor || null,
+    }))
+    .sort((a, b) => (b.lastSeen || 0) - (a.lastSeen || 0));
 });
 
 function formatLastSeen(ts) {
-  if (!ts) return "a while ago";
+  if (!ts) return null;
   const diff = Date.now() - ts;
   const mins = Math.floor(diff / 60000);
-  const hours = Math.floor(diff / 3600000);
-  const days = Math.floor(diff / 86400000);
-  if (mins < 1) return "just now";
+  if (mins < 1) return "Just now";
   if (mins < 60) return `${mins}m ago`;
-  if (hours < 24) return `${hours}h ago`;
-  return `${days}d ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days === 1) return "Yesterday";
+  if (days < 7) return `${days}d ago`;
+  return new Date(ts).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
 }
 
 function isNearBottom(scrollEl) {
@@ -547,7 +757,8 @@ function formatMessage(text) {
     .replace(/`([^`]+)`/g, "<code>$1</code>")
     .replace(
       /(https?:\/\/[^\s<]+?)([.,!?;:)"']*(?:\s|$))/g,
-      '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>$2',
+      (_, url, trail) =>
+        `<a href="${url.replace(/"/g, "&quot;")}" target="_blank" rel="noopener noreferrer">${url}</a>${trail}`,
     )
     .replace(/\x00(\d+)\x00/g, (_, idx) => escapes[parseInt(idx)]);
 
@@ -612,7 +823,48 @@ function formatTimestamp(timestamp) {
   });
 }
 
+function formatTimestampShort(timestamp) {
+  if (!timestamp) return "";
+  return new Date(timestamp).toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
 function handleComposerKeydown(e) {
+  if (emojiVisible.value && emojiResults.value.length) {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      emojiActiveIndex.value =
+        (emojiActiveIndex.value + 1) % emojiResults.value.length;
+      nextTick(scrollEmojiItemIntoView);
+      return;
+    }
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      emojiActiveIndex.value =
+        (emojiActiveIndex.value - 1 + emojiResults.value.length) %
+        emojiResults.value.length;
+      nextTick(scrollEmojiItemIntoView);
+      return;
+    }
+    if (e.key === "Enter" || e.key === "Tab") {
+      e.preventDefault();
+      insertEmoji(emojiResults.value[emojiActiveIndex.value]);
+      return;
+    }
+    if (e.key === "Escape") {
+      e.preventDefault();
+      closeEmojiPicker();
+      return;
+    }
+  }
+  if (e.key === "Escape" && replyingTo.value) {
+    e.preventDefault();
+    cancelReply();
+    return;
+  }
   if (e.key === "ArrowUp" && !newMessage.value.trim()) {
     e.preventDefault();
     const lastOwn = [...messages.value]
@@ -677,10 +929,6 @@ function handleVisibilityChange() {
   }
 }
 
-onMounted(() => {
-  document.title = "Node Chat";
-});
-
 function handleClickOutside(e) {
   if (menuRef.value && !menuRef.value.contains(e.target)) {
     showDropdown.value = false;
@@ -699,6 +947,8 @@ function openAdmin() {
 
 async function handleTyping() {
   if (!myTypingRef) return;
+  if (chatLocked.value && !isAdmin.value) return;
+  if (isMuted.value) return;
   set(myTypingRef, { displayName: props.user.displayName });
   clearTimeout(typingTimeout);
   typingTimeout = setTimeout(() => remove(myTypingRef), 2000);
@@ -707,6 +957,59 @@ async function handleTyping() {
 function handleComposerInput() {
   resizeComposer();
   handleTyping();
+  checkEmojiTrigger();
+}
+
+async function checkEmojiTrigger() {
+  const textarea = composerRef.value;
+  if (!textarea) return;
+  const cursor = textarea.selectionStart;
+  const textBefore = newMessage.value.slice(0, cursor);
+  const match = textBefore.match(/(^|[\s\n]):([\w]{2,})$/);
+  if (match) {
+    const query = match[2];
+    emojiQueryStart = cursor - query.length - 1;
+    const results = await SearchIndex.search(query);
+    if (results && results.length) {
+      emojiResults.value = results.slice(0, 8);
+      emojiActiveIndex.value = 0;
+      emojiVisible.value = true;
+    } else {
+      closeEmojiPicker();
+    }
+  } else {
+    closeEmojiPicker();
+  }
+}
+
+function insertEmoji(emoji) {
+  const native = emoji.skins[0].native;
+  const textarea = composerRef.value;
+  if (!textarea) return;
+  const cursor = textarea.selectionStart;
+  const before = newMessage.value.slice(0, emojiQueryStart);
+  const after = newMessage.value.slice(cursor);
+  newMessage.value = before + native + " " + after;
+  closeEmojiPicker();
+  nextTick(() => {
+    const newPos = emojiQueryStart + native.length + 1;
+    textarea.setSelectionRange(newPos, newPos);
+    textarea.focus();
+    resizeComposer();
+  });
+}
+
+function closeEmojiPicker() {
+  emojiVisible.value = false;
+  emojiResults.value = [];
+  emojiQueryStart = -1;
+}
+
+function scrollEmojiItemIntoView() {
+  const container = emojiPickerRef.value;
+  if (!container) return;
+  const active = container.querySelector(".emoji-item.active");
+  if (active) active.scrollIntoView({ block: "nearest" });
 }
 
 function subscribeMessages() {
@@ -735,6 +1038,23 @@ function subscribeMessages() {
           if (document.hidden) {
             unreadCount++;
             document.title = `(${unreadCount}) Node Chat`;
+            if (
+              msg.uid !== props.user.uid &&
+              props.user.preferences?.notificationsEnabled &&
+              Notification.permission === "granted"
+            ) {
+              const body = msg.text?.slice(0, 100) || "";
+              const n = new Notification(msg.displayName || "Node Chat", {
+                body,
+                icon: "/icon.png",
+                tag: "node-chat-message",
+                renotify: true,
+              });
+              n.onclick = () => {
+                window.focus();
+                n.close();
+              };
+            }
           }
           if (!isNearBottom(messageContainer.value)) {
             scrollUnread.value++;
@@ -786,24 +1106,39 @@ async function loadMore() {
 }
 
 onMounted(async () => {
+  document.title = "Node Chat";
+  initEmojiMart({ data: emojiData });
   document.addEventListener("visibilitychange", handleVisibilityChange);
   document.addEventListener("click", handleClickOutside);
   messageContainer.value?.addEventListener("scroll", handleMessageScroll, {
     passive: true,
   });
+  headerRef.value?.addEventListener("wheel", forwardWheelToMessages, {
+    passive: false,
+  });
+  typingAreaRef.value?.addEventListener("wheel", forwardWheelToMessages, {
+    passive: false,
+  });
+  inputRowRef.value?.addEventListener("wheel", forwardWheelToMessages, {
+    passive: false,
+  });
 
   myTypingRef = dbRef(db, `typing/${props.user.uid}`);
-  onDisconnect(myTypingRef).remove();
-
   myPresenceRef = dbRef(db, `presence/${props.user.uid}`);
-  onDisconnect(myPresenceRef).remove();
-  set(myPresenceRef, {
-    displayName: props.user.displayName,
-    uid: props.user.uid,
+
+  connectedListener = onValue(dbRef(db, ".info/connected"), (snap) => {
+    if (snap.val() !== true) return;
+    onDisconnect(myTypingRef).remove();
+    onDisconnect(myPresenceRef).remove();
+    onDisconnect(dbRef(db, `users/${props.user.uid}/lastSeen`)).set(
+      serverTimestamp(),
+    );
+    set(myPresenceRef, {
+      displayName: props.user.displayName,
+      uid: props.user.uid,
+      avatarColor: props.user.preferences?.avatarColor || null,
+    });
   });
-  onDisconnect(dbRef(db, `users/${props.user.uid}/lastSeen`)).set(
-    serverTimestamp(),
-  );
 
   usersListener = onValue(dbRef(db, "users"), (snap) => {
     allUsers.value = snap.exists() ? snap.val() : {};
@@ -815,7 +1150,11 @@ onMounted(async () => {
       return;
     }
     onlineUsers.value = Object.entries(snap.val())
-      .map(([uid, data]) => ({ uid, displayName: data.displayName || "?" }))
+      .map(([uid, data]) => ({
+        uid,
+        displayName: data.displayName || "?",
+        avatarColor: data.avatarColor || null,
+      }))
       .sort((a, b) => {
         if (a.uid === props.user.uid) return -1;
         if (b.uid === props.user.uid) return 1;
@@ -824,6 +1163,13 @@ onMounted(async () => {
   });
 
   isAdmin.value = await isUserAdmin(props.user.uid);
+
+  lockListener = onValue(dbRef(db, "settings/chatLocked"), (snap) => {
+    chatLocked.value = snap.val() === true;
+  });
+  muteListener = onValue(dbRef(db, `muted/${props.user.uid}`), (snap) => {
+    isMuted.value = snap.val() === true;
+  });
 
   const countSnap = await get(dbRef(db, "messages"));
   totalCount = countSnap.exists() ? Object.keys(countSnap.val()).length : 0;
@@ -853,11 +1199,46 @@ onUnmounted(() => {
   if (typingListener) typingListener();
   if (presenceListener) presenceListener();
   if (usersListener) usersListener();
+  if (connectedListener) connectedListener();
   if (myTypingRef) remove(myTypingRef);
   if (myPresenceRef) remove(myPresenceRef);
+  if (lockListener) lockListener();
+  if (muteListener) muteListener();
+  headerRef.value?.removeEventListener("wheel", forwardWheelToMessages);
+  typingAreaRef.value?.removeEventListener("wheel", forwardWheelToMessages);
+  inputRowRef.value?.removeEventListener("wheel", forwardWheelToMessages);
 });
 
+function startReply(item) {
+  cancelEdit();
+  replyingTo.value = {
+    id: item.id,
+    text: item.text || "",
+    displayName: item.displayName,
+    uid: item.uid,
+    avatarColor: item.avatarColor || null,
+  };
+  nextTick(() => composerRef.value?.focus());
+}
+
+function cancelReply() {
+  replyingTo.value = null;
+}
+
+async function jumpToMessage(id) {
+  const container = messageContainer.value;
+  if (!container) return;
+  const el = container.querySelector(`[data-message-id="${id}"]`);
+  if (!el) return;
+  el.scrollIntoView({ behavior: "smooth", block: "center" });
+  highlightedMessageId.value = id;
+  setTimeout(() => {
+    highlightedMessageId.value = null;
+  }, 2000);
+}
+
 function startEdit(msg) {
+  cancelReply();
   editingId.value = msg.id;
   editText.value = msg.text;
   nextTick(() => {
@@ -897,11 +1278,34 @@ async function saveEdit(id) {
     text,
     editedAt: serverTimestamp(),
   });
+  const snap = await get(dbRef(db, "messages"));
+  if (snap.exists()) {
+    const msgs = snap.val();
+    const updates = {};
+    for (const [msgId, msg] of Object.entries(msgs)) {
+      if (msg.replyTo?.id === id) updates[`${msgId}/replyTo/text`] = text;
+    }
+    if (Object.keys(updates).length > 0)
+      await update(dbRef(db, "messages"), updates);
+  }
+}
+
+async function markReplyRefsDeleted(id) {
+  const snap = await get(dbRef(db, "messages"));
+  if (!snap.exists()) return;
+  const msgs = snap.val();
+  const updates = {};
+  for (const [msgId, msg] of Object.entries(msgs)) {
+    if (msg.replyTo?.id === id) updates[`${msgId}/replyTo/deleted`] = true;
+  }
+  if (Object.keys(updates).length > 0)
+    await update(dbRef(db, "messages"), updates);
 }
 
 async function promptDelete(id) {
   const msg = messages.value.find((m) => m.id === id);
   if (msg?.uid === props.user.uid) {
+    await markReplyRefsDeleted(id);
     await remove(dbRef(db, `messages/${id}`));
     return;
   }
@@ -919,10 +1323,14 @@ function cancelDelete() {
 async function confirmDelete() {
   const id = deleteDialog.value.id;
   deleteDialog.value = { show: false, id: null, name: "" };
+  await markReplyRefsDeleted(id);
   await remove(dbRef(db, `messages/${id}`));
 }
 
 async function sendMessage() {
+  if (emojiVisible.value) return;
+  if (chatLocked.value && !isAdmin.value) return;
+  if (isMuted.value) return;
   const text = sanitizeMessage(newMessage.value);
   if (!text.trim()) return;
   if (text.length > 2000) return;
@@ -932,11 +1340,15 @@ async function sendMessage() {
   if (myTypingRef) remove(myTypingRef);
   totalCount++;
   shouldScrollToBottom = true;
+  const replySnapshot = replyingTo.value ? { ...replyingTo.value } : null;
+  replyingTo.value = null;
   await push(dbRef(db, "messages"), {
     text,
     displayName: props.user.displayName,
     uid: props.user.uid,
+    avatarColor: props.user.preferences?.avatarColor || null,
     timestamp: serverTimestamp(),
+    ...(replySnapshot ? { replyTo: replySnapshot } : {}),
   });
 }
 
@@ -979,21 +1391,43 @@ async function logout() {
 }
 
 .header {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  display: flex;
   align-items: center;
-  padding: 0 16px;
+  justify-content: space-between;
+  padding: 0 14px;
   height: 48px;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
   background: var(--surface);
+  gap: 12px;
+}
+
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-shrink: 0;
 }
 
 .header-logo {
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   object-fit: contain;
-  border-radius: 7px;
+  flex-shrink: 0;
+}
+
+.header-wordmark {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.2px;
+  white-space: nowrap;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   flex-shrink: 0;
 }
 
@@ -1072,7 +1506,7 @@ async function logout() {
 .dropdown {
   position: absolute;
   top: calc(100% + 8px);
-  left: 0;
+  right: 0;
   min-width: 240px;
   width: auto;
   max-width: calc(100vw - 32px);
@@ -1173,7 +1607,7 @@ async function logout() {
   overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
-  padding: 16px 20px;
+  padding: 16px 18px;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -1182,8 +1616,8 @@ async function logout() {
 .load-more {
   align-self: stretch;
   width: 100%;
-  background: rgba(44, 42, 39, 0.07);
-  border: 1px solid #b2aba2;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 10px 16px;
   font-size: 15px;
@@ -1200,8 +1634,8 @@ async function logout() {
 }
 
 .load-more:hover {
-  background: rgba(44, 42, 39, 0.12);
-  border-color: #9d958c;
+  background: var(--border);
+  border-color: var(--text-muted);
   color: var(--text);
 }
 
@@ -1266,24 +1700,23 @@ async function logout() {
 
 .jump-unread {
   position: absolute;
-  top: -8px;
-  right: -8px;
-  background: var(--surface);
-  color: var(--text);
+  top: -7px;
+  right: -4px;
+  background: var(--accent);
+  color: #fff;
   font-size: 10px;
   font-weight: 700;
   font-family: "Satoshi", sans-serif;
-  border-radius: 999px;
-  min-width: 18px;
-  height: 18px;
+  border-radius: 99px;
+  min-width: 16px;
+  height: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 4px;
+  padding: 0 3px;
   line-height: 1;
   pointer-events: none;
-  border: 1.5px solid var(--border);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.14);
+  letter-spacing: 0.01em;
 }
 
 .jump-fade-enter-active {
@@ -1308,14 +1741,23 @@ async function logout() {
 .message {
   font-size: 15px;
   line-height: 1.55;
-  padding: 1px 16px;
-  margin: 0 -16px;
+  padding: 2px 16px;
   border-radius: 4px;
   position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.msg-row {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 12px;
 }
 
 .message--start {
-  margin-top: 10px;
+  margin-top: 16px;
 }
 
 .message:first-child,
@@ -1331,17 +1773,59 @@ async function logout() {
   background: rgba(90, 90, 240, 0.04);
 }
 
+.msg-left {
+  width: 38px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 2px;
+}
+
+.msg-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  letter-spacing: 0;
+  user-select: none;
+}
+
+.msg-side-time {
+  font-size: 10px;
+  color: var(--text-muted);
+  opacity: 0;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  margin-top: 6px;
+}
+
+.message:hover .msg-side-time {
+  opacity: 1;
+}
+
+.msg-right {
+  flex: 1;
+  min-width: 0;
+}
+
 .msg-header {
   display: flex;
   align-items: baseline;
   gap: 8px;
-  margin-bottom: 2px;
+  margin-bottom: 1px;
 }
 
 .msg-name {
   font-size: 15px;
   font-weight: 700;
-  color: var(--text);
   line-height: 1.4;
 }
 
@@ -1414,9 +1898,165 @@ async function logout() {
   color: var(--danger);
 }
 
-.msg-action-btn.danger-active {
-  background: rgba(192, 57, 43, 0.12);
-  color: var(--danger);
+/* ── Reply row (above avatar+name) ───────────────────── */
+.reply-row {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  cursor: pointer;
+  user-select: none;
+  margin-bottom: 1px;
+}
+
+.reply-connector-cell {
+  width: 38px;
+  flex-shrink: 0;
+  align-self: stretch;
+  display: flex;
+  align-items: flex-end;
+  padding-left: 19px;
+}
+
+.reply-connector {
+  width: 120px;
+  height: 55%;
+  border-top: 2px solid rgba(44, 42, 39, 0.22);
+  border-left: 2px solid rgba(44, 42, 39, 0.22);
+  border-top-left-radius: 5px;
+}
+
+.reply-row:hover .reply-connector {
+  border-color: rgba(44, 42, 39, 0.5);
+}
+
+.reply-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  overflow: hidden;
+  padding-bottom: 2px;
+}
+
+.reply-name {
+  font-size: 12.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+.reply-text {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.75;
+  transition:
+    color 0.1s,
+    opacity 0.1s;
+}
+
+.reply-row:hover .reply-name {
+  opacity: 1;
+}
+
+.reply-row:hover .reply-text {
+  color: var(--text);
+  opacity: 1;
+}
+
+.reply-text--deleted {
+  opacity: 0.6;
+  font-style: italic;
+  flex-shrink: 0;
+  overflow: visible;
+  text-overflow: clip;
+  padding-right: 2px;
+}
+
+/* ── Reply bar (composer) ─────────────────────────── */
+.reply-slide-enter-active,
+.reply-slide-leave-active {
+  transition:
+    transform 0.16s ease,
+    opacity 0.14s ease;
+  transform-origin: top;
+  overflow: hidden;
+}
+.reply-slide-enter-from,
+.reply-slide-leave-to {
+  transform: scaleY(0);
+  opacity: 0;
+}
+.reply-slide-enter-to,
+.reply-slide-leave-from {
+  transform: scaleY(1);
+  opacity: 1;
+}
+
+.reply-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.reply-bar-to {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.reply-bar-to strong {
+  font-weight: 700;
+}
+
+.reply-bar-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  padding: 2px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  transition: color 0.12s;
+}
+
+.reply-bar-close:hover {
+  color: var(--text);
+}
+
+/* ── Ping highlight (someone replied to you) ─────── */
+.message--ping {
+  background: rgba(250, 168, 0, 0.06);
+  border-left: 3px solid rgba(250, 168, 0, 0.85);
+  padding-left: 13px;
+}
+
+.message--ping:hover {
+  background: rgba(250, 168, 0, 0.09);
+}
+
+/* ── Jump-to highlight ───────────────────────────── */
+@keyframes msg-highlight-fade {
+  0%,
+  40% {
+    background: rgba(90, 90, 240, 0.18);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+.message--highlighted {
+  animation: msg-highlight-fade 2s ease forwards;
 }
 
 .delete-overlay {
@@ -1520,7 +2160,7 @@ async function logout() {
 }
 
 .edit-input:focus {
-  border-color: var(--accent);
+  border-color: var(--border);
 }
 
 .text {
@@ -1606,20 +2246,42 @@ async function logout() {
   color: var(--text-muted);
 }
 
-.input-row {
+.chat-locked-banner {
   display: flex;
   align-items: center;
+  gap: 8px;
+  margin: 0 16px 8px;
+  padding: 10px 14px;
+  background: rgba(192, 57, 43, 0.06);
+  border: 1px solid rgba(192, 57, 43, 0.18);
+  border-radius: var(--radius);
+  color: var(--danger);
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.chat-muted-banner {
+  background: rgba(234, 88, 12, 0.06);
+  border-color: rgba(234, 88, 12, 0.22);
+  color: #c2410c;
+}
+
+.input-wrap {
   margin: 0 16px 14px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 10px 12px;
-  gap: 8px;
+  overflow: hidden;
   flex-shrink: 0;
+  transition: border-color 0.15s;
 }
 
-.input-row:focus-within {
-  border-color: var(--accent);
+.input-row {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  gap: 8px;
 }
 
 textarea {
@@ -1702,7 +2364,7 @@ textarea::placeholder {
 
 .online-btn:hover,
 .online-btn.active {
-  border-color: rgba(44, 42, 39, 0.3);
+  border-color: var(--text-muted);
   color: var(--text);
   background: var(--bg);
 }
@@ -1711,9 +2373,9 @@ textarea::placeholder {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #22c55e;
+  background: #3ba55c;
   flex-shrink: 0;
-  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.25);
+  box-shadow: 0 0 0 2px rgba(59, 165, 92, 0.25);
 }
 
 .online-btn-count {
@@ -1743,7 +2405,7 @@ textarea::placeholder {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #22c55e;
+  background: #3ba55c;
   flex-shrink: 0;
   animation: presencePulse 2.4s ease-in-out infinite;
 }
@@ -1751,10 +2413,10 @@ textarea::placeholder {
 @keyframes presencePulse {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+    box-shadow: 0 0 0 0 rgba(59, 165, 92, 0.4);
   }
   50% {
-    box-shadow: 0 0 0 5px rgba(34, 197, 94, 0);
+    box-shadow: 0 0 0 5px rgba(59, 165, 92, 0);
   }
 }
 
@@ -1834,12 +2496,12 @@ textarea::placeholder {
 
 .online-avatar-dot {
   position: absolute;
-  bottom: 0;
-  right: 0;
-  width: 9px;
-  height: 9px;
+  bottom: -1px;
+  right: -1px;
+  width: 11px;
+  height: 11px;
   border-radius: 50%;
-  background: #22c55e;
+  background: #3ba55c;
   border: 2px solid var(--surface);
 }
 
@@ -1880,9 +2542,21 @@ textarea::placeholder {
   filter: grayscale(0.45);
 }
 
+.offline-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
 .offline-name {
-  flex: unset;
   font-size: 13px;
+}
+
+.offline-last-seen {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .online-you-tag {
@@ -1914,5 +2588,90 @@ textarea::placeholder {
 .panel-slide-leave-to {
   width: 0;
   opacity: 0;
+}
+
+.composer-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.emoji-autocomplete {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 16px;
+  right: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 4px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.13),
+    0 2px 8px rgba(0, 0, 0, 0.07);
+  z-index: 50;
+  max-height: 280px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(44, 42, 39, 0.2) transparent;
+}
+
+.emoji-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.emoji-item:hover,
+.emoji-item.active {
+  background: var(--surface-2);
+}
+
+.emoji-native {
+  font-size: 20px;
+  line-height: 1;
+  flex-shrink: 0;
+  width: 26px;
+  text-align: center;
+}
+
+.emoji-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  text-transform: capitalize;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.emoji-shortcode {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: ui-monospace, monospace;
+  flex-shrink: 0;
+}
+
+.emoji-fade-enter-active {
+  transition:
+    opacity 0.12s ease,
+    transform 0.12s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.emoji-fade-leave-active {
+  transition:
+    opacity 0.08s ease,
+    transform 0.08s ease;
+}
+.emoji-fade-enter-from {
+  opacity: 0;
+  transform: translateY(6px) scale(0.97);
+}
+.emoji-fade-leave-to {
+  opacity: 0;
+  transform: translateY(4px) scale(0.98);
 }
 </style>

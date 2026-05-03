@@ -1,19 +1,9 @@
 import { db, auth } from "./firebase";
-import {
-  ref as dbRef,
-  set,
-  get,
-  update,
-  remove,
-  query,
-  orderByChild,
-  equalTo,
-} from "firebase/database";
+import { ref as dbRef, set, get, update, remove } from "firebase/database";
 import {
   createUserWithEmailAndPassword,
   updateProfile,
   updatePassword,
-  updateEmail,
 } from "firebase/auth";
 
 export function generateInviteToken() {
@@ -171,6 +161,9 @@ export async function changeDisplayName(uid, newDisplayName) {
       if (msg.uid === uid) {
         updates[`${msgId}/displayName`] = newDisplayName;
       }
+      if (msg.replyTo?.uid === uid) {
+        updates[`${msgId}/replyTo/displayName`] = newDisplayName;
+      }
     }
     if (Object.keys(updates).length > 0) {
       await update(dbRef(db, "messages"), updates);
@@ -245,6 +238,9 @@ export async function adminRenameUser(uid, newDisplayName) {
     for (const [msgId, msg] of Object.entries(msgs)) {
       if (msg.uid === uid) {
         updates[`${msgId}/displayName`] = newDisplayName;
+      }
+      if (msg.replyTo?.uid === uid) {
+        updates[`${msgId}/replyTo/displayName`] = newDisplayName;
       }
     }
     if (Object.keys(updates).length > 0) {
