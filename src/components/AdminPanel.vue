@@ -442,7 +442,6 @@ import {
 } from "firebase/database";
 import {
   createInviteToken,
-  getValidInvites,
   getAllUsers,
   promoteToAdmin,
   demoteFromAdmin,
@@ -510,10 +509,22 @@ const confirmAction = ref({
   infoOnly: false,
 });
 
+let invitesListener = null;
+
 onMounted(() => {
-  loadInvites();
+  loadingInvites.value = true;
   window.addEventListener("keydown", onKeyDown);
   window.addEventListener("pointerdown", onOutsideClick);
+  invitesListener = onValue(dbRef(db, "invites"), (snap) => {
+    const now = Date.now();
+    invites.value = snap.exists()
+      ? Object.entries(snap.val())
+          .filter(([, data]) => !data.used && data.expiresAt > now)
+          .map(([token, data]) => ({ token, ...data }))
+      : [];
+    loadingInvites.value = false;
+    errorInvite.value = "";
+  });
   settingsListener = onValue(dbRef(db, "settings/chatLocked"), (snap) => {
     chatLocked.value = snap.val() === true;
   });
@@ -525,6 +536,7 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener("keydown", onKeyDown);
   window.removeEventListener("pointerdown", onOutsideClick);
+  if (invitesListener) invitesListener();
   if (settingsListener) settingsListener();
   if (muteListener) muteListener();
 });
@@ -553,29 +565,11 @@ function onOutsideClick(e) {
   }
 }
 
-async function loadInvites() {
-  loadingInvites.value = true;
-  errorInvite.value = "";
-  try {
-    invites.value = (await getValidInvites()) || [];
-  } catch {
-    invites.value = [];
-  } finally {
-    loadingInvites.value = false;
-  }
-}
-
 async function generateInvite() {
   generatingInvite.value = true;
   errorInvite.value = "";
   try {
     const token = await createInviteToken();
-    invites.value.unshift({
-      token,
-      createdAt: Date.now(),
-      expiresAt: Date.now() + 24 * 60 * 60 * 1000,
-      used: false,
-    });
   } catch (e) {
     errorInvite.value = "Failed to generate invite";
   } finally {
