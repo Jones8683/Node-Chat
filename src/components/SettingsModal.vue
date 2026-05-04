@@ -238,27 +238,50 @@
 
           <div v-if="activeTab === 'preferences'" class="section">
             <h3 class="section-title">NOTIFICATIONS</h3>
-            <div class="pref-row">
-              <div class="pref-info">
-                <div class="pref-label">Browser notifications</div>
-                <div class="pref-desc">
-                  Get notified for new messages when the tab isn't active
+            <div class="pref-card">
+              <div class="pref-row">
+                <div class="pref-info">
+                  <div class="pref-label">Browser notifications</div>
+                  <div class="pref-desc">
+                    Get notified for new messages when the tab isn't active
+                  </div>
+                </div>
+                <button
+                  class="toggle-btn"
+                  :class="{ active: notificationsEnabled, saving: savingNotif }"
+                  @click="toggleNotifications"
+                  :aria-pressed="notificationsEnabled"
+                >
+                  <span class="toggle-thumb"></span>
+                </button>
+              </div>
+              <p v-if="notifError" class="error notif-error">
+                {{ notifError }}
+              </p>
+              <p v-if="notifBlocked" class="notif-hint">
+                Notifications are blocked by your browser. Click the lock icon
+                in the address bar to allow them, then try again.
+              </p>
+              <div v-if="notificationsEnabled" class="pref-sub">
+                <div class="pref-sub-title">Notify me on</div>
+                <div class="pref-sub-options">
+                  <button
+                    class="pref-option"
+                    :class="{ active: notificationMode === 'ping' }"
+                    @click="setNotificationMode('ping')"
+                  >
+                    Mentions only
+                  </button>
+                  <button
+                    class="pref-option"
+                    :class="{ active: notificationMode === 'all' }"
+                    @click="setNotificationMode('all')"
+                  >
+                    All messages
+                  </button>
                 </div>
               </div>
-              <button
-                class="toggle-btn"
-                :class="{ active: notificationsEnabled, saving: savingNotif }"
-                @click="toggleNotifications"
-                :aria-pressed="notificationsEnabled"
-              >
-                <span class="toggle-thumb"></span>
-              </button>
             </div>
-            <p v-if="notifError" class="error notif-error">{{ notifError }}</p>
-            <p v-if="notifBlocked" class="notif-hint">
-              Notifications are blocked by your browser. Click the lock icon in
-              the address bar to allow them, then try again.
-            </p>
           </div>
         </div>
       </div>
@@ -299,10 +322,6 @@ const showNewPassword = ref(false);
 const showConfirmPassword = ref(false);
 
 const AVATAR_PALETTE = [
-  "#6366f1",
-  "#8b5cf6",
-  "#a855f7",
-  "#ec4899",
   "#f43f5e",
   "#ef4444",
   "#f97316",
@@ -313,6 +332,11 @@ const AVATAR_PALETTE = [
   "#14b8a6",
   "#06b6d4",
   "#3b82f6",
+  "#6366f1",
+  "#8b5cf6",
+  "#a855f7",
+  "#d946ef",
+  "#ec4899",
   "#64748b",
 ];
 
@@ -355,6 +379,9 @@ async function setAvatarColor(color) {
 
 const notificationsEnabled = computed(
   () => !!props.user?.preferences?.notificationsEnabled,
+);
+const notificationMode = computed(
+  () => props.user?.preferences?.notificationMode || "ping",
 );
 const savingNotif = ref(false);
 const notifError = ref("");
@@ -416,6 +443,16 @@ async function toggleNotifications() {
     notifError.value = "Failed to save preference. Try again.";
   } finally {
     savingNotif.value = false;
+  }
+}
+
+async function setNotificationMode(mode) {
+  try {
+    await update(dbRef(db, `users/${props.user.uid}/preferences`), {
+      notificationMode: mode,
+    });
+  } catch (e) {
+    notifError.value = "Failed to save notification preference.";
   }
 }
 
@@ -1045,6 +1082,78 @@ async function changePassword() {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 10px 12px;
+}
+
+.pref-card {
+  background: rgba(90, 90, 240, 0.04);
+  border: 1px solid rgba(90, 90, 240, 0.14);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 16px;
+  transition:
+    background 280ms ease,
+    border-color 280ms ease,
+    box-shadow 280ms ease;
+}
+
+.pref-card:hover {
+  background: rgba(90, 90, 240, 0.07);
+  border-color: rgba(90, 90, 240, 0.22);
+}
+
+.pref-card .pref-row {
+  padding: 0;
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.pref-sub {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(90, 90, 240, 0.18);
+  overflow: hidden;
+}
+
+.pref-sub-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 10px;
+}
+
+.pref-sub-options {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pref-option {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: "Satoshi", sans-serif;
+  transition: all 180ms ease;
+  outline: none;
+}
+
+.pref-option:hover {
+  border-color: rgba(90, 90, 240, 0.28);
+  color: var(--text);
+  transform: translateY(-1px);
+}
+
+.pref-option.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+  box-shadow: 0 4px 12px rgba(90, 90, 240, 0.22);
 }
 
 @media (prefers-reduced-motion: reduce) {

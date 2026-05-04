@@ -1113,12 +1113,21 @@ function subscribeMessages() {
           if (document.hidden) {
             unreadCount++;
             document.title = `(${unreadCount}) Node Chat`;
-            if (
+            const notifMode =
+              props.user.preferences?.notificationMode || "ping";
+            const isPing = !!(
+              msg.replyTo && msg.replyTo.uid === props.user.uid
+            );
+            const baseOk =
               msg.uid !== props.user.uid &&
               props.user.preferences?.notificationsEnabled &&
-              Notification.permission === "granted" &&
-              !hasNotifiedWhileHidden
-            ) {
+              Notification.permission === "granted";
+            let shouldNotify = false;
+            if (baseOk) {
+              shouldNotify =
+                notifMode === "all" || (notifMode === "ping" && isPing);
+            }
+            if (shouldNotify) {
               const body = msg.text?.slice(0, 100) || "";
               const n = new Notification(msg.displayName || "Node Chat", {
                 body,
