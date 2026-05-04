@@ -1992,11 +1992,15 @@ async function logout() {
   display: flex;
   align-items: flex-end;
   padding-left: 19px;
+  position: relative;
 }
 
 .reply-connector {
-  width: 120px;
-  height: 55%;
+  position: absolute;
+  left: 19px;
+  top: 40%;
+  bottom: -1px;
+  width: 28px;
   border-top: 2px solid rgba(44, 42, 39, 0.22);
   border-left: 2px solid rgba(44, 42, 39, 0.22);
   border-top-left-radius: 5px;
