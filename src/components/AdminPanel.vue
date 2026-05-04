@@ -1100,11 +1100,11 @@ async function saveUsername(uid) {
     rgba(255, 255, 255, 0.92) 0%,
     rgba(248, 247, 245, 0.96) 100%
   );
-  border: 1px solid rgba(44, 42, 39, 0.07);
-  border-radius: 14px;
-  padding: 14px;
+  border: 1px solid rgba(44, 42, 39, 0.08);
+  border-radius: 12px;
+  padding: 12px 14px;
   gap: 14px;
-  box-shadow: 0 10px 28px rgba(20, 20, 20, 0.05);
+  box-shadow: 0 4px 12px rgba(20, 20, 20, 0.03);
   transition:
     transform 180ms ease,
     box-shadow 180ms ease;
@@ -1112,7 +1112,7 @@ async function saveUsername(uid) {
 
 .invite-item:hover {
   transform: translateY(-1px);
-  box-shadow: 0 12px 32px rgba(20, 20, 20, 0.08);
+  box-shadow: 0 6px 16px rgba(20, 20, 20, 0.05);
 }
 
 .invite-info {
@@ -1167,7 +1167,7 @@ async function saveUsername(uid) {
   border: none;
   color: var(--bg);
   border-radius: 999px;
-  padding: 10px 14px;
+  padding: 9px 14px;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -1188,8 +1188,8 @@ async function saveUsername(uid) {
 
 .delete-btn-invite {
   background: none;
-  border: 1px solid rgba(44, 42, 39, 0.12);
-  color: var(--text);
+  border: 1px solid rgba(44, 42, 39, 0.1);
+  color: var(--text-muted);
   border-radius: 999px;
   padding: 8px;
   display: flex;
@@ -1199,8 +1199,8 @@ async function saveUsername(uid) {
 }
 
 .delete-btn-invite:hover {
-  background: var(--surface-2);
-  border-color: var(--danger);
+  background: rgba(192, 57, 43, 0.06);
+  border-color: rgba(192, 57, 43, 0.24);
   color: var(--danger);
   transform: translateY(-1px);
 }
@@ -1357,9 +1357,9 @@ async function saveUsername(uid) {
 }
 
 .edit-name-btn:hover {
-  background: var(--surface-2);
+  background: rgba(44, 42, 39, 0.08);
   color: var(--text);
-  border-color: rgba(44, 42, 39, 0.2);
+  border-color: rgba(44, 42, 39, 0.16);
   transform: translateY(-1px);
 }
 
@@ -1368,7 +1368,7 @@ async function saveUsername(uid) {
   border: 1px solid rgba(44, 42, 39, 0.1);
   color: var(--text);
   border-radius: 999px;
-  padding: 7px 14px;
+  padding: 7px 12px;
   font-size: 12px;
   font-weight: 600;
   font-family: "Satoshi", sans-serif;
@@ -1378,8 +1378,8 @@ async function saveUsername(uid) {
 }
 
 .role-btn:hover {
-  background: var(--surface-2);
-  border-color: var(--accent);
+  background: rgba(44, 42, 39, 0.08);
+  border-color: rgba(44, 42, 39, 0.16);
   transform: translateY(-1px);
 }
 
