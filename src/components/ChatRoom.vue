@@ -645,6 +645,7 @@ const SCROLL_BOTTOM_THRESHOLD = 24;
 let messageLimit = MESSAGE_BATCH_SIZE;
 let totalCount = 0;
 let unreadCount = 0;
+let hasNotifiedWhileHidden = false;
 let initialLoadDone = false;
 let hasPositionedInitialScroll = false;
 let knownIds = new Set();
@@ -987,6 +988,7 @@ function sanitizeMessage(text) {
 function handleVisibilityChange() {
   if (!document.hidden) {
     unreadCount = 0;
+    hasNotifiedWhileHidden = false;
     document.title = "Node Chat";
     goOnline(db);
     syncPresence();
@@ -1114,15 +1116,15 @@ function subscribeMessages() {
             if (
               msg.uid !== props.user.uid &&
               props.user.preferences?.notificationsEnabled &&
-              Notification.permission === "granted"
+              Notification.permission === "granted" &&
+              !hasNotifiedWhileHidden
             ) {
               const body = msg.text?.slice(0, 100) || "";
               const n = new Notification(msg.displayName || "Node Chat", {
                 body,
                 icon: "/icon.png",
-                tag: "node-chat-message",
-                renotify: true,
               });
+              hasNotifiedWhileHidden = true;
               n.onclick = () => {
                 window.focus();
                 n.close();
