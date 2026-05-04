@@ -650,6 +650,15 @@ let connectedListener = null;
 let lockListener = null;
 let muteListener = null;
 
+async function syncPresence() {
+  if (!myPresenceRef) return;
+  await set(myPresenceRef, {
+    displayName: props.user.displayName,
+    uid: props.user.uid,
+    avatarColor: props.user.preferences?.avatarColor || null,
+  });
+}
+
 const chatLocked = ref(false);
 const isMuted = ref(false);
 const replyingTo = ref(null);
@@ -676,6 +685,13 @@ const offlineMembers = computed(() => {
     }))
     .sort((a, b) => (b.lastSeen || 0) - (a.lastSeen || 0));
 });
+
+watch(
+  () => props.user.displayName,
+  () => {
+    syncPresence();
+  },
+);
 
 function formatLastSeen(ts) {
   if (!ts) return null;
@@ -961,7 +977,17 @@ function handleVisibilityChange() {
     unreadCount = 0;
     document.title = "Node Chat";
     goOnline(db);
+    syncPresence();
   }
+}
+
+function handleWindowFocus() {
+  goOnline(db);
+  syncPresence();
+}
+
+function handleOnline() {
+  syncPresence();
 }
 
 function handleClickOutside(e) {
@@ -1144,6 +1170,8 @@ onMounted(async () => {
   document.title = "Node Chat";
   initEmojiMart({ data: emojiData });
   document.addEventListener("visibilitychange", handleVisibilityChange);
+  window.addEventListener("focus", handleWindowFocus);
+  window.addEventListener("online", handleOnline);
   document.addEventListener("click", handleClickOutside);
   messageContainer.value?.addEventListener("scroll", handleMessageScroll, {
     passive: true,
@@ -1168,11 +1196,7 @@ onMounted(async () => {
     onDisconnect(dbRef(db, `users/${props.user.uid}/lastSeen`)).set(
       serverTimestamp(),
     );
-    set(myPresenceRef, {
-      displayName: props.user.displayName,
-      uid: props.user.uid,
-      avatarColor: props.user.preferences?.avatarColor || null,
-    });
+    syncPresence();
   });
 
   usersListener = onValue(dbRef(db, "users"), (snap) => {
@@ -1219,6 +1243,8 @@ onMounted(async () => {
 
 onUnmounted(() => {
   document.removeEventListener("visibilitychange", handleVisibilityChange);
+  window.removeEventListener("focus", handleWindowFocus);
+  window.removeEventListener("online", handleOnline);
   document.removeEventListener("click", handleClickOutside);
   messageContainer.value?.removeEventListener("scroll", handleMessageScroll);
   clearTimeout(typingTimeout);

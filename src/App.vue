@@ -54,10 +54,19 @@ let userDbUnsub = null;
 
 function refreshUser() {
   if (!auth.currentUser) return;
-  user.value = {
-    ...auth.currentUser,
-    displayName: user.value?.displayName ?? auth.currentUser.displayName ?? "",
-  };
+  const userRef = dbRef(db, `users/${auth.currentUser.uid}`);
+  onValue(
+    userRef,
+    (snap) => {
+      const data = snap.val() || {};
+      user.value = {
+        ...auth.currentUser,
+        displayName: data.displayName || auth.currentUser.displayName || "",
+        preferences: data.preferences || {},
+      };
+    },
+    { onlyOnce: true },
+  );
 }
 
 function handleChatReady() {
