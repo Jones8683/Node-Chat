@@ -523,6 +523,7 @@ import {
 import { isUserAdmin } from "../authUtils";
 import emojiData from "@emoji-mart/data";
 import { SearchIndex, init as initEmojiMart } from "emoji-mart";
+import { initBadge, updateBadge, clearBadge } from "../faviconBadge";
 
 const props = defineProps(["user"]);
 const emit = defineEmits(["ready", "open-settings", "open-admin"]);
@@ -1002,6 +1003,7 @@ function handleVisibilityChange() {
     unreadCount = 0;
     hasNotifiedWhileHidden = false;
     document.title = "Node Chat";
+    clearBadge();
     goOnline(db);
     syncPresence();
   }
@@ -1124,7 +1126,7 @@ function subscribeMessages() {
           knownIds.add(msg.id);
           if (document.hidden) {
             unreadCount++;
-            document.title = `(${unreadCount}) Node Chat`;
+            updateBadge(unreadCount);
             const notifMode =
               props.user.preferences?.notificationMode || "ping";
             const isPing = !!(
@@ -1202,6 +1204,7 @@ async function loadMore() {
 }
 
 onMounted(async () => {
+  initBadge();
   document.title = "Node Chat";
   initEmojiMart({ data: emojiData });
   document.addEventListener("visibilitychange", handleVisibilityChange);
