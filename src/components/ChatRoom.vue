@@ -541,7 +541,7 @@ function getAvatarColor(name, uid = null, storedColor = null) {
 }
 
 function getLatestUser(uid, fallback = {}) {
-  return { ...(allUsers.value[uid] || {}), ...fallback };
+  return { ...fallback, ...(allUsers.value[uid] || {}) };
 }
 
 const onlineUsers = computed(() => {

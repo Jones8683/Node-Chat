@@ -152,6 +152,9 @@ export async function changeDisplayName(uid, newDisplayName) {
   await set(dbRef(db, `usernames/${nameKey}`), uid);
   await updateProfile(user, { displayName: newDisplayName });
   await update(dbRef(db, `users/${uid}`), { displayName: newDisplayName });
+  try {
+    await set(dbRef(db, `presence/${uid}/displayName`), newDisplayName);
+  } catch (e) {}
 
   const messagesSnap = await get(dbRef(db, "messages"));
   if (messagesSnap.exists()) {
@@ -230,6 +233,10 @@ export async function adminRenameUser(uid, newDisplayName) {
   await set(dbRef(db, `usernames/${newNameKey}`), uid);
 
   await update(dbRef(db, `users/${uid}`), { displayName: newDisplayName });
+
+  try {
+    await set(dbRef(db, `presence/${uid}/displayName`), newDisplayName);
+  } catch (e) {}
 
   const messagesSnap = await get(dbRef(db, "messages"));
   if (messagesSnap.exists()) {
