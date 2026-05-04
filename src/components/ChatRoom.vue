@@ -125,6 +125,18 @@
                     >
                   </template>
                   <template v-else>
+                    <div
+                      class="reply-avatar-small"
+                      :style="{
+                        background: getAvatarColor(
+                          item.replyTo.displayName,
+                          item.replyTo.uid,
+                          item.replyTo.avatarColor,
+                        ),
+                      }"
+                    >
+                      {{ item.replyTo.displayName[0].toUpperCase() }}
+                    </div>
                     <span
                       class="reply-name"
                       :style="{
@@ -1983,6 +1995,19 @@ async function logout() {
   cursor: pointer;
   user-select: none;
   margin-bottom: 1px;
+}
+
+.reply-avatar-small {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8px;
+  font-weight: 700;
+  color: white;
+  flex-shrink: 0;
 }
 
 .reply-connector-cell {
