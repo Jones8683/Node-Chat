@@ -34,9 +34,8 @@ import { ref, onMounted } from "vue";
 onMounted(() => {
   document.title = "Set Up Profile • Node Chat";
 });
-import { auth, db } from "../firebase";
-import { updateProfile } from "firebase/auth";
-import { ref as dbRef, get, set } from "firebase/database";
+import { changeDisplayName } from "../authUtils";
+import { auth } from "../firebase";
 
 const emit = defineEmits(["done"]);
 const name = ref("");
@@ -63,22 +62,10 @@ async function submit() {
   error.value = "";
 
   try {
-    const nameKey = trimmed.toLowerCase().replace(/\s+/g, "_");
-    const nameRef = dbRef(db, `usernames/${nameKey}`);
-    const snap = await get(nameRef);
-
-    if (snap.exists() && snap.val() !== auth.currentUser.uid) {
-      error.value = "That name is already taken. Try another!";
-      loading.value = false;
-      return;
-    }
-
-    await set(nameRef, auth.currentUser.uid);
-    await updateProfile(auth.currentUser, { displayName: trimmed });
-    await set(dbRef(db, `users/${auth.currentUser.uid}/displayName`), trimmed);
+    await changeDisplayName(auth.currentUser.uid, trimmed);
     emit("done");
   } catch (e) {
-    error.value = "Something went wrong. Try again.";
+    error.value = e?.message || "Something went wrong. Try again.";
   } finally {
     loading.value = false;
   }

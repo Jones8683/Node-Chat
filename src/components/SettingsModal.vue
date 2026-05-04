@@ -272,7 +272,11 @@ import { auth, db } from "../firebase";
 import { reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth";
 import { ref as dbRef, update } from "firebase/database";
 import { X, Eye, EyeOff } from "lucide-vue-next";
-import { changeDisplayName, changeUserPassword } from "../authUtils";
+import {
+  changeAvatarColor,
+  changeDisplayName,
+  changeUserPassword,
+} from "../authUtils";
 
 const props = defineProps({ isOpen: Boolean, user: Object });
 const emit = defineEmits(["close", "refreshUser"]);
@@ -343,9 +347,7 @@ async function setAvatarColor(color) {
   if (savingColor.value) return;
   savingColor.value = true;
   try {
-    await update(dbRef(db, `users/${props.user.uid}/preferences`), {
-      avatarColor: color ?? null,
-    });
+    await changeAvatarColor(props.user.uid, color);
   } finally {
     savingColor.value = false;
   }

@@ -159,6 +159,20 @@ export async function changeDisplayName(uid, newDisplayName) {
   await batchUpdateMessageDisplayNames(uid, newDisplayName);
 }
 
+export async function changeAvatarColor(uid, avatarColor) {
+  await update(dbRef(db, `users/${uid}/preferences`), {
+    avatarColor: avatarColor ?? null,
+  });
+
+  try {
+    await update(dbRef(db, `presence/${uid}`), {
+      avatarColor: avatarColor ?? null,
+    });
+  } catch (e) {}
+
+  await batchUpdateMessageAvatarColor(uid, avatarColor ?? null);
+}
+
 export async function changeUserPassword(newPassword) {
   const user = auth.currentUser;
   if (!user) {
@@ -230,15 +244,45 @@ async function batchUpdateMessageDisplayNames(uid, newDisplayName) {
   const messagesSnap = await get(dbRef(db, "messages"));
   if (!messagesSnap.exists()) return;
 
+  const authoredUpdates = {};
+  const replyUpdates = {};
+  const msgs = messagesSnap.val();
+
+  for (const [msgId, msg] of Object.entries(msgs)) {
+    if (msg.uid === uid) {
+      authoredUpdates[`messages/${msgId}/displayName`] = newDisplayName;
+    }
+    if (msg.replyTo?.uid === uid) {
+      replyUpdates[`messages/${msgId}/replyTo/displayName`] = newDisplayName;
+    }
+  }
+
+  if (Object.keys(authoredUpdates).length > 0) {
+    await update(dbRef(db), authoredUpdates);
+  }
+
+  if (Object.keys(replyUpdates).length > 0) {
+    try {
+      await update(dbRef(db), replyUpdates);
+    } catch (e) {
+      console.error("Failed to update reply display names:", e);
+    }
+  }
+}
+
+async function batchUpdateMessageAvatarColor(uid, avatarColor) {
+  const messagesSnap = await get(dbRef(db, "messages"));
+  if (!messagesSnap.exists()) return;
+
   const updates = {};
   const msgs = messagesSnap.val();
 
   for (const [msgId, msg] of Object.entries(msgs)) {
     if (msg.uid === uid) {
-      updates[`messages/${msgId}/displayName`] = newDisplayName;
+      updates[`messages/${msgId}/avatarColor`] = avatarColor;
     }
     if (msg.replyTo?.uid === uid) {
-      updates[`messages/${msgId}/replyTo/displayName`] = newDisplayName;
+      updates[`messages/${msgId}/replyTo/avatarColor`] = avatarColor;
     }
   }
 
