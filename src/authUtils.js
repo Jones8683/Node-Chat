@@ -156,22 +156,7 @@ export async function changeDisplayName(uid, newDisplayName) {
     await set(dbRef(db, `presence/${uid}/displayName`), newDisplayName);
   } catch (e) {}
 
-  const messagesSnap = await get(dbRef(db, "messages"));
-  if (messagesSnap.exists()) {
-    const msgs = messagesSnap.val();
-    for (const [msgId, msg] of Object.entries(msgs)) {
-      const payload = {};
-      if (msg.uid === uid) {
-        payload.displayName = newDisplayName;
-      }
-      if (msg.replyTo?.uid === uid) {
-        payload["replyTo/displayName"] = newDisplayName;
-      }
-      if (Object.keys(payload).length > 0) {
-        await update(dbRef(db, `messages/${msgId}`), payload);
-      }
-    }
-  }
+  await batchUpdateMessageDisplayNames(uid, newDisplayName);
 }
 
 export async function changeUserPassword(newPassword) {
@@ -238,21 +223,27 @@ export async function adminRenameUser(uid, newDisplayName) {
     await set(dbRef(db, `presence/${uid}/displayName`), newDisplayName);
   } catch (e) {}
 
+  await batchUpdateMessageDisplayNames(uid, newDisplayName);
+}
+
+async function batchUpdateMessageDisplayNames(uid, newDisplayName) {
   const messagesSnap = await get(dbRef(db, "messages"));
-  if (messagesSnap.exists()) {
-    const msgs = messagesSnap.val();
-    for (const [msgId, msg] of Object.entries(msgs)) {
-      const payload = {};
-      if (msg.uid === uid) {
-        payload.displayName = newDisplayName;
-      }
-      if (msg.replyTo?.uid === uid) {
-        payload["replyTo/displayName"] = newDisplayName;
-      }
-      if (Object.keys(payload).length > 0) {
-        await update(dbRef(db, `messages/${msgId}`), payload);
-      }
+  if (!messagesSnap.exists()) return;
+
+  const updates = {};
+  const msgs = messagesSnap.val();
+
+  for (const [msgId, msg] of Object.entries(msgs)) {
+    if (msg.uid === uid) {
+      updates[`messages/${msgId}/displayName`] = newDisplayName;
     }
+    if (msg.replyTo?.uid === uid) {
+      updates[`messages/${msgId}/replyTo/displayName`] = newDisplayName;
+    }
+  }
+
+  if (Object.keys(updates).length > 0) {
+    await update(dbRef(db), updates);
   }
 }
 
