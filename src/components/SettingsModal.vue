@@ -819,6 +819,19 @@ async function changePassword() {
   padding-right: 48px;
 }
 
+.password-wrap input::-ms-reveal,
+.password-wrap input::-ms-clear {
+  display: none;
+}
+
+.password-wrap input::-webkit-credentials-auto-fill-button,
+.password-wrap input::-webkit-textfield-decoration-container,
+.password-wrap input::-webkit-clear-button {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
 .toggle-pw {
   position: absolute;
   right: 10px;

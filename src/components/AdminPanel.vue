@@ -445,8 +445,6 @@ import {
   getAllUsers,
   promoteToAdmin,
   demoteFromAdmin,
-  isUserAdmin,
-  getOwnerUid,
   deleteInviteToken,
   adminRenameUser,
 } from "../authUtils";
@@ -614,26 +612,11 @@ async function deleteInvite(token) {
 async function loadUsers() {
   loadingUsers.value = true;
   usersError.value = "";
-  adminUsers.value = new Set();
-  ownerUsers.value = new Set();
   try {
     const allUsers = await getAllUsers();
     users.value = allUsers.filter((u) => u.displayName && u.displayName.trim());
     totalUsersCount.value = users.value.length;
-    adminCount.value = 0;
-
-    const ownerUid = await getOwnerUid();
-    if (ownerUid) ownerUsers.value.add(ownerUid);
-
-    await Promise.all(
-      users.value.map(async (u) => {
-        const admin = await isUserAdmin(u.uid);
-        if (admin) {
-          adminUsers.value.add(u.uid);
-          adminCount.value++;
-        }
-      }),
-    );
+    adminCount.value = adminUsers.value.size;
     sortUsers();
   } catch (e) {
     console.error("Failed to load users:", e);
@@ -722,7 +705,6 @@ async function promoteUserConfirmed(uid) {
   try {
     await promoteToAdmin(uid);
     adminUsers.value.add(uid);
-    adminCount.value++;
     sortUsers();
     confirmAction.value.show = false;
   } catch (e) {
@@ -765,7 +747,6 @@ async function demoteUserConfirmed(uid) {
   try {
     await demoteFromAdmin(uid);
     adminUsers.value.delete(uid);
-    adminCount.value--;
     sortUsers();
     confirmAction.value.show = false;
   } catch (e) {
