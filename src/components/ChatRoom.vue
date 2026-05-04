@@ -2040,7 +2040,7 @@ async function logout() {
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 3.5px;
   overflow: hidden;
   padding-bottom: 2px;
 }
