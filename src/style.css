@@ -51,7 +51,7 @@ input:-webkit-autofill:focus {
   -webkit-text-fill-color: var(--text) !important;
 }
 
-/* ─── WebKit custom scrollbars (Chrome / Edge / Safari) ─── */
+
 
 .messages::-webkit-scrollbar-button,
 .online-panel-list::-webkit-scrollbar-button,
@@ -61,7 +61,7 @@ textarea::-webkit-scrollbar-button {
   width: 0 !important;
 }
 
-/* Messages */
+
 .messages::-webkit-scrollbar {
   width: 5px;
 }
@@ -76,7 +76,7 @@ textarea::-webkit-scrollbar-button {
   background: rgba(44, 42, 39, 0.25);
 }
 
-/* Online panel */
+
 .online-panel-list::-webkit-scrollbar {
   width: 4px;
 }
@@ -91,7 +91,7 @@ textarea::-webkit-scrollbar-button {
   background: rgba(44, 42, 39, 0.22);
 }
 
-/* Textarea */
+
 textarea::-webkit-scrollbar {
   width: 4px;
 }
@@ -106,7 +106,7 @@ textarea::-webkit-scrollbar-thumb:hover {
   background: rgba(44, 42, 39, 0.25);
 }
 
-/* ─── Firefox-only scrollbars ─── */
+
 @supports (-moz-appearance: none) {
   .messages,
   .online-panel-list,

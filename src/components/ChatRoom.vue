@@ -110,7 +110,7 @@
                 'message--highlighted': highlightedMessageId === item.id,
               }"
             >
-              <!-- Reply row: spans full width ABOVE avatar+name -->
+              
               <div
                 v-if="item.replyTo"
                 class="reply-row"
@@ -147,7 +147,7 @@
                 </div>
               </div>
 
-              <!-- Main row: avatar column + message content -->
+              
               <div class="msg-row">
                 <div class="msg-left">
                   <div
@@ -511,6 +511,8 @@ const scrollUnread = ref(0);
 const SHOW_JUMP_THRESHOLD = 110;
 const GROUP_TIMEOUT = 5 * 60 * 1000;
 const presenceUsers = ref({});
+const ownerUid = ref(null);
+const adminUsers = ref(new Set());
 const showOnlinePanel = ref(false);
 const AVATAR_COLORS = [
   "#6366f1",
@@ -555,9 +557,12 @@ const onlineUsers = computed(() => {
       };
     })
     .sort((a, b) => {
-      if (a.uid === props.user.uid) return -1;
-      if (b.uid === props.user.uid) return 1;
-      return a.displayName.localeCompare(b.displayName);
+      if (ownerUid.value && a.uid === ownerUid.value) return -1;
+      if (ownerUid.value && b.uid === ownerUid.value) return 1;
+      const aAdmin = adminUsers.value.has(a.uid);
+      const bAdmin = adminUsers.value.has(b.uid);
+      if (aAdmin !== bAdmin) return aAdmin ? -1 : 1;
+      return (a.displayName || "").localeCompare(b.displayName || "");
     });
 });
 
@@ -640,6 +645,8 @@ let myPresenceRef = null;
 let messagesListener = null;
 let typingListener = null;
 let presenceListener = null;
+let ownerListener = null;
+let adminsListener = null;
 let usersListener = null;
 let connectedListener = null;
 let lockListener = null;
@@ -1178,6 +1185,14 @@ onMounted(async () => {
     presenceUsers.value = snap.exists() ? snap.val() : {};
   });
 
+  ownerListener = onValue(dbRef(db, "owner"), (snap) => {
+    ownerUid.value = snap.exists() ? snap.val() : null;
+  });
+
+  adminsListener = onValue(dbRef(db, "admins"), (snap) => {
+    adminUsers.value = new Set(snap.exists() ? Object.keys(snap.val()) : []);
+  });
+
   isAdmin.value = await isUserAdmin(props.user.uid);
 
   lockListener = onValue(dbRef(db, "settings/chatLocked"), (snap) => {
@@ -1212,6 +1227,8 @@ onUnmounted(() => {
   if (messagesListener) messagesListener();
   if (typingListener) typingListener();
   if (presenceListener) presenceListener();
+  if (ownerListener) ownerListener();
+  if (adminsListener) adminsListener();
   if (usersListener) usersListener();
   if (connectedListener) connectedListener();
   if (myTypingRef) remove(myTypingRef);
@@ -1912,7 +1929,7 @@ async function logout() {
   color: var(--danger);
 }
 
-/* ── Reply row (above avatar+name) ───────────────────── */
+ 
 .reply-row {
   display: flex;
   align-items: stretch;
@@ -1991,7 +2008,7 @@ async function logout() {
   padding-right: 2px;
 }
 
-/* ── Reply bar (composer) ─────────────────────────── */
+ 
 .reply-slide-enter-active,
 .reply-slide-leave-active {
   transition:
@@ -2047,7 +2064,7 @@ async function logout() {
   color: var(--text);
 }
 
-/* ── Ping highlight (someone replied to you) ─────── */
+ 
 .message--ping {
   background: rgba(250, 168, 0, 0.06);
   border-left: 3px solid rgba(250, 168, 0, 0.85);
@@ -2058,7 +2075,7 @@ async function logout() {
   background: rgba(250, 168, 0, 0.09);
 }
 
-/* ── Jump-to highlight ───────────────────────────── */
+ 
 @keyframes msg-highlight-fade {
   0%,
   40% {

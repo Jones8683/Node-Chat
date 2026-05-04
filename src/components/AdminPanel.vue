@@ -510,6 +510,8 @@ const confirmAction = ref({
 });
 
 let invitesListener = null;
+let adminsListener = null;
+let ownerListener = null;
 
 onMounted(() => {
   loadingInvites.value = true;
@@ -531,6 +533,18 @@ onMounted(() => {
   muteListener = onValue(dbRef(db, "muted"), (snap) => {
     mutedUsers.value = new Set(snap.exists() ? Object.keys(snap.val()) : []);
   });
+
+  adminsListener = onValue(dbRef(db, "admins"), (snap) => {
+    adminUsers.value = new Set(snap.exists() ? Object.keys(snap.val()) : []);
+    adminCount.value = adminUsers.value.size;
+    if (users.value.length) sortUsers();
+  });
+
+  ownerListener = onValue(dbRef(db, "owner"), (snap) => {
+    ownerUsers.value = new Set();
+    if (snap.exists()) ownerUsers.value.add(snap.val());
+    if (users.value.length) sortUsers();
+  });
 });
 
 onUnmounted(() => {
@@ -539,6 +553,8 @@ onUnmounted(() => {
   if (invitesListener) invitesListener();
   if (settingsListener) settingsListener();
   if (muteListener) muteListener();
+  if (adminsListener) adminsListener();
+  if (ownerListener) ownerListener();
 });
 
 function closeIfClickedOutside(e) {
@@ -618,6 +634,7 @@ async function loadUsers() {
         }
       }),
     );
+    sortUsers();
   } catch (e) {
     console.error("Failed to load users:", e);
     usersError.value =
@@ -650,6 +667,17 @@ function isUserAdminStatus(uid) {
 
 function isUserOwnerStatus(uid) {
   return ownerUsers.value.has(uid);
+}
+
+function sortUsers() {
+  users.value.sort((a, b) => {
+    if (ownerUsers.value.has(a.uid)) return -1;
+    if (ownerUsers.value.has(b.uid)) return 1;
+    const aAdmin = adminUsers.value.has(a.uid);
+    const bAdmin = adminUsers.value.has(b.uid);
+    if (aAdmin !== bAdmin) return aAdmin ? -1 : 1;
+    return (a.displayName || "").localeCompare(b.displayName || "");
+  });
 }
 
 function formatDate(timestamp) {
@@ -695,6 +723,7 @@ async function promoteUserConfirmed(uid) {
     await promoteToAdmin(uid);
     adminUsers.value.add(uid);
     adminCount.value++;
+    sortUsers();
     confirmAction.value.show = false;
   } catch (e) {
     alert("Failed to promote user: " + (e.message || "Unknown error"));
@@ -737,6 +766,7 @@ async function demoteUserConfirmed(uid) {
     await demoteFromAdmin(uid);
     adminUsers.value.delete(uid);
     adminCount.value--;
+    sortUsers();
     confirmAction.value.show = false;
   } catch (e) {
     alert("Failed to demote user: " + (e.message || "Unknown error"));
