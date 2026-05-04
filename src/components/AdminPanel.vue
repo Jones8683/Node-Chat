@@ -332,7 +332,10 @@
                       <Pencil :size="13" stroke-width="2" />
                     </button>
                     <button
-                      v-if="(isUserMuted(u.uid) && canUnmute(u.uid)) || (!isUserMuted(u.uid) && canMute(u.uid))"
+                      v-if="
+                        (isUserMuted(u.uid) && canUnmute(u.uid)) ||
+                        (!isUserMuted(u.uid) && canMute(u.uid))
+                      "
                       class="role-btn mute-btn"
                       :class="{ 'mute-btn--muted': isUserMuted(u.uid) }"
                       :disabled="mutingUid === u.uid"
