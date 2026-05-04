@@ -10,7 +10,7 @@
           class="online-btn"
           @click="showOnlinePanel = !showOnlinePanel"
           :class="{ active: showOnlinePanel }"
-          :title="showOnlinePanel ? 'Hide members' : 'Show members'"
+          :title="'Members'"
         >
           <span class="online-btn-dot"></span>
           <span class="online-btn-count">{{ onlineUsers.length }} online</span>
@@ -2396,28 +2396,31 @@ textarea::placeholder {
   display: flex;
   align-items: center;
   gap: 6px;
-  background: none;
-  border: 1px solid var(--border);
+  background: var(--surface);
+  border: 1px solid rgba(44, 42, 39, 0.1);
   border-radius: 999px;
-  padding: 5px 11px 5px 9px;
+  padding: 6px 12px 6px 10px;
   cursor: pointer;
-  color: var(--text-muted);
+  color: var(--text);
   font-size: 12px;
   font-weight: 600;
   font-family: "Satoshi", sans-serif;
   transition:
     border-color 0.15s,
-    color 0.15s,
-    background 0.15s;
+    background 0.15s,
+    transform 0.15s;
   flex-shrink: 0;
   justify-self: end;
 }
 
 .online-btn:hover,
 .online-btn.active {
-  border-color: var(--text-muted);
-  color: var(--text);
-  background: var(--bg);
+  border-color: rgba(44, 42, 39, 0.14);
+  background: var(--surface-2);
+}
+
+.online-btn:active {
+  transform: translateY(1px);
 }
 
 .online-btn-dot {
@@ -2437,7 +2440,7 @@ textarea::placeholder {
   width: 216px;
   flex-shrink: 0;
   background: var(--surface);
-  border-left: 1px solid var(--border);
+  border-left: 1px solid rgba(44, 42, 39, 0.08);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -2447,8 +2450,7 @@ textarea::placeholder {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 16px 18px 14px;
-  border-bottom: 1px solid var(--border);
+  padding: 16px 18px 12px;
   flex-shrink: 0;
 }
 
@@ -2484,8 +2486,8 @@ textarea::placeholder {
   font-size: 11px;
   font-weight: 700;
   color: var(--text-muted);
-  background: var(--bg);
-  border: 1px solid var(--border);
+  background: rgba(44, 42, 39, 0.05);
+  border: 1px solid rgba(44, 42, 39, 0.08);
   border-radius: 999px;
   padding: 1px 7px;
   min-width: 22px;
@@ -2495,7 +2497,7 @@ textarea::placeholder {
 .online-panel-list {
   flex: 1;
   overflow-y: auto;
-  padding: 10px 10px;
+  padding: 6px 10px 10px;
   display: flex;
   flex-direction: column;
   gap: 2px;
