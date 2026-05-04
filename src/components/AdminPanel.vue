@@ -417,6 +417,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from "vue";
 import { auth, db } from "../firebase";
+import copy from "clipboard-copy";
 import {
   X,
   Copy,
@@ -595,7 +596,7 @@ async function generateInvite() {
 }
 
 function copyToClipboard(token) {
-  navigator.clipboard.writeText(token).then(() => {
+  copy(token).then(() => {
     copyFeedback.value = true;
     setTimeout(() => {
       copyFeedback.value = false;

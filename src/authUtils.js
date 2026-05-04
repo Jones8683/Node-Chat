@@ -5,14 +5,10 @@ import {
   updateProfile,
   updatePassword,
 } from "firebase/auth";
+import cryptoRandomString from "crypto-random-string";
 
 export function generateInviteToken() {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  let token = "";
-  for (let i = 0; i < 7; i++) {
-    token += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return token;
+  return cryptoRandomString({ length: 7, type: "alphanumeric" }).toUpperCase();
 }
 
 export async function createInviteToken() {
