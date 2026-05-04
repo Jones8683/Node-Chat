@@ -399,9 +399,12 @@
                 <span class="online-avatar-dot"></span>
               </div>
               <span class="online-item-name">{{ u.displayName }}</span>
-              <span v-if="u.uid === props.user.uid" class="online-you-tag"
-                >You</span
-              >
+              <Crown
+                v-if="adminUsers.has(u.uid)"
+                :size="12"
+                stroke-width="2.5"
+                class="online-crown"
+              />
             </div>
             <template v-if="offlineMembers.length">
               <div class="panel-section-label">
@@ -425,9 +428,17 @@
                   {{ u.displayName[0].toUpperCase() }}
                 </div>
                 <div class="offline-info">
-                  <span class="online-item-name offline-name">{{
-                    u.displayName
-                  }}</span>
+                  <div class="offline-name-row">
+                    <span class="online-item-name offline-name">{{
+                      u.displayName
+                    }}</span>
+                    <Crown
+                      v-if="adminUsers.has(u.uid)"
+                      :size="12"
+                      stroke-width="2.5"
+                      class="online-crown"
+                    />
+                  </div>
                   <span
                     v-if="formatLastSeen(u.lastSeen)"
                     class="offline-last-seen"
@@ -474,6 +485,7 @@ import {
   User,
   LogOut,
   Send,
+  Crown,
   Pencil,
   Trash2,
   ChevronDown,
@@ -2602,6 +2614,18 @@ textarea::placeholder {
   min-width: 0;
 }
 
+.offline-name-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.online-crown {
+  color: #c9a84c;
+  flex-shrink: 0;
+}
+
 .offline-name {
   font-size: 13px;
 }
@@ -2610,19 +2634,6 @@ textarea::placeholder {
   font-size: 11px;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
-}
-
-.online-you-tag {
-  font-size: 10px;
-  font-weight: 600;
-  line-height: 1;
-  color: var(--text-muted);
-  background: var(--border);
-  border-radius: 999px;
-  padding: 3px 7px 2px;
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
 }
 
 .panel-slide-enter-active {

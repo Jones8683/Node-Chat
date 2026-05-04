@@ -298,15 +298,15 @@
                           </div>
                         </template>
                         <template v-else>
+                          <span class="user-name">{{
+                            u.displayName || "(no name)"
+                          }}</span>
                           <Crown
                             v-if="isUserAdminStatus(u.uid)"
                             :size="12"
                             stroke-width="2.5"
                             class="crown-icon"
                           />
-                          <span class="user-name">{{
-                            u.displayName || "(no name)"
-                          }}</span>
                           <span v-if="isUserMuted(u.uid)" class="muted-badge"
                             >muted</span
                           >
