@@ -110,7 +110,6 @@
                 'message--highlighted': highlightedMessageId === item.id,
               }"
             >
-              
               <div
                 v-if="item.replyTo"
                 class="reply-row"
@@ -147,7 +146,6 @@
                 </div>
               </div>
 
-              
               <div class="msg-row">
                 <div class="msg-left">
                   <div
@@ -1929,7 +1927,6 @@ async function logout() {
   color: var(--danger);
 }
 
- 
 .reply-row {
   display: flex;
   align-items: stretch;
@@ -2008,7 +2005,6 @@ async function logout() {
   padding-right: 2px;
 }
 
- 
 .reply-slide-enter-active,
 .reply-slide-leave-active {
   transition:
@@ -2064,7 +2060,6 @@ async function logout() {
   color: var(--text);
 }
 
- 
 .message--ping {
   background: rgba(250, 168, 0, 0.06);
   border-left: 3px solid rgba(250, 168, 0, 0.85);
@@ -2075,7 +2070,6 @@ async function logout() {
   background: rgba(250, 168, 0, 0.09);
 }
 
- 
 @keyframes msg-highlight-fade {
   0%,
   40% {
