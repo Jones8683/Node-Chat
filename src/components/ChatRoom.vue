@@ -2739,7 +2739,9 @@ textarea::placeholder {
   position: absolute;
   bottom: calc(100% + 4px);
   left: 16px;
-  right: 16px;
+  right: auto;
+  width: 360px;
+  max-width: calc(100% - 32px);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -2748,10 +2750,15 @@ textarea::placeholder {
     0 8px 32px rgba(0, 0, 0, 0.13),
     0 2px 8px rgba(0, 0, 0, 0.07);
   z-index: 50;
-  max-height: 280px;
+  max-height: 324px;
   overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(44, 42, 39, 0.2) transparent;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.emoji-autocomplete::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 .emoji-item {
