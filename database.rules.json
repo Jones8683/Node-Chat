@@ -1,0 +1,80 @@
+{
+  "rules": {
+    "users": {
+      ".read": "auth != null",
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null && ($uid === auth.uid || root.child('admins').child(auth.uid).val() === true)"
+      }
+    },
+    "usernames": {
+      ".read": true,
+      "$key": {
+        ".write": "auth != null && (!data.exists() || data.val() === auth.uid || root.child('admins').child(auth.uid).val() === true)"
+      }
+    },
+    "messages": {
+      ".read": "auth != null",
+      ".write": "auth != null && newData.exists()",
+      ".indexOn": ["timestamp"],
+      "$id": {
+        ".write": "auth != null && (\n          (!data.exists() && newData.exists() && newData.child('uid').val() === auth.uid) ||\n          (data.exists() && newData.exists() && (\n            data.child('uid').val() === auth.uid && newData.child('uid').val() === data.child('uid').val()\n            || root.child('admins').child(auth.uid).val() === true\n          )) ||\n          (data.exists() && !newData.exists() && (data.child('uid').val() === auth.uid || root.child('admins').child(auth.uid).val() === true))\n        )",
+        "displayName": {
+          ".write": "auth != null && (data.parent().child('uid').val() === auth.uid || root.child('admins').child(auth.uid).val() === true)"
+        },
+        "avatarColor": {
+          ".write": "auth != null && (data.parent().child('uid').val() === auth.uid || root.child('admins').child(auth.uid).val() === true)"
+        },
+        "replyTo": {
+          "displayName": {
+            ".write": "auth != null && (data.parent().child('uid').val() === auth.uid || root.child('admins').child(auth.uid).val() === true)"
+          },
+          "avatarColor": {
+            ".write": "auth != null && (data.parent().child('uid').val() === auth.uid || root.child('admins').child(auth.uid).val() === true)"
+          }
+        }
+      }
+    },
+    "typing": {
+      ".read": "auth != null",
+      "$uid": {
+        ".write": "$uid === auth.uid"
+      }
+    },
+    "admins": {
+      ".read": "auth != null",
+      "$uid": {
+        ".write": "auth != null && root.child('admins').child(auth.uid).val() === true"
+      }
+    },
+    "invites": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      "$token": {
+        ".read": true,
+        ".write": "root.child('admins').child(auth.uid).val() === true || (auth != null && data.exists() && data.child('used').val() === false && newData.exists() && newData.child('used').val() === true && newData.child('usedByUid').val() === auth.uid) || (auth != null && data.exists() && !newData.exists() && data.child('usedByUid').val() === auth.uid)"
+      }
+    },
+    "owner": {
+      ".read": "auth != null",
+      ".write": "auth != null && (data.exists() ? data.val() === auth.uid : root.child('admins').child(auth.uid).val() === true)"
+    },
+    "presence": {
+      ".read": "auth != null",
+      "$uid": {
+        ".write": "$uid === auth.uid"
+      }
+    },
+    "settings": {
+      ".read": "auth != null",
+      "chatLocked": {
+        ".write": "auth != null && root.child('admins').child(auth.uid).val() === true"
+      }
+    },
+    "muted": {
+      ".read": "auth != null",
+      "$uid": {
+        ".write": "auth != null && root.child('admins').child(auth.uid).val() === true"
+      }
+    }
+  }
+}

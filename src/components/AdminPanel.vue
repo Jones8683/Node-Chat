@@ -496,7 +496,9 @@ const mutingUid = ref(null);
 let muteListener = null;
 
 const purgeOptions = [
+  { value: "50", label: "50 messages" },
   { value: "100", label: "100 messages" },
+  { value: "200", label: "200 messages" },
   { value: "500", label: "500 messages" },
   { value: "all", label: "All messages" },
 ];
@@ -833,20 +835,27 @@ async function executePurge() {
   purgeError.value = "";
   try {
     const messagesNode = dbRef(db, "messages");
-    if (purgeAmount.value === "all") {
-      await remove(messagesNode);
-    } else {
-      const n = parseInt(purgeAmount.value, 10);
-      const limiter =
-        purgeOrder.value === "newest" ? limitToLast(n) : limitToFirst(n);
-      const q = query(messagesNode, orderByKey(), limiter);
-      const snap = await get(q);
-      if (snap.exists()) {
-        const removals = [];
-        snap.forEach((child) => {
-          removals.push(remove(dbRef(db, `messages/${child.key}`)));
-        });
-        await Promise.all(removals);
+    const purgeQuery =
+      purgeAmount.value === "all"
+        ? query(messagesNode, orderByKey())
+        : query(
+            messagesNode,
+            orderByKey(),
+            purgeOrder.value === "newest"
+              ? limitToLast(parseInt(purgeAmount.value, 10))
+              : limitToFirst(parseInt(purgeAmount.value, 10)),
+          );
+    const snap = await get(purgeQuery);
+    if (snap.exists()) {
+      const keys = [];
+      snap.forEach((child) => {
+        if (child.key) keys.push(child.key);
+      });
+      for (let i = 0; i < keys.length; i += 500) {
+        const chunk = keys.slice(i, i + 500);
+        await Promise.all(
+          chunk.map((key) => remove(dbRef(db, `messages/${key}`))),
+        );
       }
     }
     confirmAction.value.show = false;
