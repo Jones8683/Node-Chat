@@ -2,7 +2,7 @@
   <div class="chat">
     <div class="header" ref="headerRef">
       <div class="header-brand">
-        <img :src="'/icon.png'" class="header-logo" alt="" aria-hidden="true" />
+        <img src="/icon.png" class="header-logo" alt="" aria-hidden="true" />
         <span class="header-wordmark">Node Chat</span>
       </div>
       <div class="header-actions">
@@ -10,7 +10,7 @@
           class="online-btn"
           @click="showOnlinePanel = !showOnlinePanel"
           :class="{ active: showOnlinePanel }"
-          :title="'Members'"
+          title="Members"
         >
           <span class="online-btn-dot"></span>
           <span class="online-btn-count">{{ onlineUsers.length }} online</span>
@@ -23,9 +23,8 @@
                 background: getAvatarColor(user.displayName, user.uid),
               }"
             >
-              {{ user.displayName[0].toUpperCase() }}
+              {{ user.displayName?.[0]?.toUpperCase() ?? "?" }}
             </div>
-            <span class="username">{{ user.displayName }}</span>
             <svg
               class="chevron"
               :class="{ open: showDropdown }"
@@ -52,7 +51,7 @@
                     background: getAvatarColor(user.displayName, user.uid),
                   }"
                 >
-                  {{ user.displayName[0].toUpperCase() }}
+                  {{ user.displayName?.[0]?.toUpperCase() ?? "?" }}
                 </div>
                 <div class="dropdown-info">
                   <div class="dropdown-name">{{ user.displayName }}</div>
@@ -135,7 +134,7 @@
                         ),
                       }"
                     >
-                      {{ item.replyTo.displayName[0].toUpperCase() }}
+                      {{ item.replyTo.displayName?.[0]?.toUpperCase() ?? "?" }}
                     </div>
                     <span
                       class="reply-name"
@@ -171,7 +170,7 @@
                       ),
                     }"
                   >
-                    {{ item.displayName[0].toUpperCase() }}
+                    {{ item.displayName?.[0]?.toUpperCase() ?? "?" }}
                   </div>
                   <span v-else class="msg-side-time">{{
                     formatTimestampShort(item.timestamp)
@@ -200,6 +199,7 @@
                     <div class="edit-area">
                       <textarea
                         class="edit-input"
+                        ref="editInputRef"
                         v-model="editText"
                         @keydown.enter.exact.prevent="saveEdit(item.id)"
                         @keydown.esc.prevent="cancelEdit"
@@ -407,8 +407,7 @@
                   ),
                 }"
               >
-                {{ u.displayName[0].toUpperCase() }}
-                <span class="online-avatar-dot"></span>
+                {{ u.displayName?.[0]?.toUpperCase() ?? "?" }}
               </div>
               <span class="online-item-name">{{ u.displayName }}</span>
               <Crown
@@ -437,7 +436,7 @@
                     ),
                   }"
                 >
-                  {{ u.displayName[0].toUpperCase() }}
+                  {{ u.displayName?.[0]?.toUpperCase() ?? "?" }}
                 </div>
                 <div class="offline-info">
                   <div class="offline-name-row">
@@ -520,7 +519,6 @@ import {
   goOnline,
   get,
 } from "firebase/database";
-import { isUserAdmin } from "../authUtils";
 import emojiData from "@emoji-mart/data";
 import { SearchIndex, init as initEmojiMart } from "emoji-mart";
 import { initBadge, updateBadge, clearBadge } from "../faviconBadge";
@@ -648,17 +646,20 @@ const inputRowRef = ref(null);
 const showDropdown = ref(false);
 const typingUsersRaw = ref({});
 const hasMore = ref(false);
-const isAdmin = ref(false);
+const isAdmin = computed(
+  () =>
+    adminUsers.value.has(props.user.uid) || ownerUid.value === props.user.uid,
+);
 const isLoadingMore = ref(false);
 const editingId = ref(null);
 const editText = ref("");
+const editInputRef = ref(null);
 const deleteDialog = ref({ show: false, id: null, name: "" });
 const MESSAGE_BATCH_SIZE = 100;
 const SCROLL_BOTTOM_THRESHOLD = 24;
 let messageLimit = MESSAGE_BATCH_SIZE;
 let totalCount = 0;
 let unreadCount = 0;
-let hasNotifiedWhileHidden = false;
 let initialLoadDone = false;
 let hasPositionedInitialScroll = false;
 let knownIds = new Set();
@@ -821,7 +822,7 @@ function formatMessage(text) {
     return `\x00${idx}\x00`;
   });
 
-  let result = withPlaceholders
+  return withPlaceholders
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
@@ -834,12 +835,12 @@ function formatMessage(text) {
     .replace(/`([^`]+)`/g, "<code>$1</code>")
     .replace(
       /(https?:\/\/[^\s<]+?)([.,!?;:)"']*(?:\s|$))/g,
-      (_, url, trail) =>
-        `<a href="${url.replace(/"/g, "&quot;")}" target="_blank" rel="noopener noreferrer">${url}</a>${trail}`,
+      (_, url, trail) => {
+        const safeUrl = url.replace(/"/g, "&quot;");
+        return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${url}</a>${trail}`;
+      },
     )
     .replace(/\x00(\d+)\x00/g, (_, idx) => escapes[parseInt(idx)]);
-
-  return result;
 }
 
 function captureScrollAnchor(scrollEl) {
@@ -1001,7 +1002,6 @@ function sanitizeMessage(text) {
 function handleVisibilityChange() {
   if (!document.hidden) {
     unreadCount = 0;
-    hasNotifiedWhileHidden = false;
     document.title = "Node Chat";
     clearBadge();
     goOnline(db);
@@ -1147,7 +1147,6 @@ function subscribeMessages() {
                 body,
                 icon: "/icon.png",
               });
-              hasNotifiedWhileHidden = true;
               n.onclick = () => {
                 window.focus();
                 n.close();
@@ -1253,8 +1252,6 @@ onMounted(async () => {
     adminUsers.value = new Set(snap.exists() ? Object.keys(snap.val()) : []);
   });
 
-  isAdmin.value = await isUserAdmin(props.user.uid);
-
   lockListener = onValue(dbRef(db, "settings/chatLocked"), (snap) => {
     chatLocked.value = snap.val() === true;
   });
@@ -1335,7 +1332,7 @@ function startEdit(msg) {
   editingId.value = msg.id;
   editText.value = msg.text;
   nextTick(() => {
-    const el = document.querySelector(".edit-input");
+    const el = editInputRef.value;
     if (!el) return;
     el.focus();
     el.setSelectionRange(el.value.length, el.value.length);
@@ -1367,19 +1364,23 @@ async function saveEdit(id) {
   }
   editingId.value = null;
   editText.value = "";
-  await update(dbRef(db, `messages/${id}`), {
-    text,
-    editedAt: serverTimestamp(),
-  });
-  const snap = await get(dbRef(db, "messages"));
-  if (snap.exists()) {
-    const msgs = snap.val();
-    const updates = {};
-    for (const [msgId, msg] of Object.entries(msgs)) {
-      if (msg.replyTo?.id === id) updates[`${msgId}/replyTo/text`] = text;
+  try {
+    await update(dbRef(db, `messages/${id}`), {
+      text,
+      editedAt: serverTimestamp(),
+    });
+    const snap = await get(dbRef(db, "messages"));
+    if (snap.exists()) {
+      const msgs = snap.val();
+      const updates = {};
+      for (const [msgId, msg] of Object.entries(msgs)) {
+        if (msg.replyTo?.id === id) updates[`${msgId}/replyTo/text`] = text;
+      }
+      if (Object.keys(updates).length > 0)
+        await update(dbRef(db, "messages"), updates);
     }
-    if (Object.keys(updates).length > 0)
-      await update(dbRef(db, "messages"), updates);
+  } catch (err) {
+    console.error("Failed to save edit:", err);
   }
 }
 
@@ -1435,24 +1436,35 @@ async function sendMessage() {
   shouldScrollToBottom = true;
   const replySnapshot = replyingTo.value ? { ...replyingTo.value } : null;
   replyingTo.value = null;
-  await push(dbRef(db, "messages"), {
-    text,
-    displayName: props.user.displayName,
-    uid: props.user.uid,
-    avatarColor: props.user.preferences?.avatarColor || null,
-    timestamp: serverTimestamp(),
-    ...(replySnapshot ? { replyTo: replySnapshot } : {}),
-  });
+  try {
+    await push(dbRef(db, "messages"), {
+      text,
+      displayName: props.user.displayName,
+      uid: props.user.uid,
+      avatarColor: props.user.preferences?.avatarColor || null,
+      timestamp: serverTimestamp(),
+      ...(replySnapshot ? { replyTo: replySnapshot } : {}),
+    });
+  } catch (err) {
+    console.error("Failed to send message:", err);
+  }
 }
 
 async function logout() {
   showDropdown.value = false;
-  if (myTypingRef) await remove(myTypingRef);
-  if (myPresenceRef) {
-    await set(dbRef(db, `users/${props.user.uid}/lastSeen`), serverTimestamp());
-    await remove(myPresenceRef);
+  try {
+    if (myTypingRef) await remove(myTypingRef);
+    if (myPresenceRef) {
+      await set(
+        dbRef(db, `users/${props.user.uid}/lastSeen`),
+        serverTimestamp(),
+      );
+      await remove(myPresenceRef);
+    }
+    await signOut(auth);
+  } catch (err) {
+    console.error("Failed to sign out:", err);
   }
-  await signOut(auth);
 }
 </script>
 
