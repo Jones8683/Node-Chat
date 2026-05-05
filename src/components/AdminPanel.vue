@@ -1764,10 +1764,10 @@ async function saveUsername(uid) {
   inset: 3px auto 3px 3px;
   width: calc(50% - 3px);
   border-radius: 999px;
-  background: linear-gradient(180deg, #fffdf8 0%, #f8f5ed 100%);
+  background: #f7f2e6;
   box-shadow:
     0 1px 4px rgba(0, 0, 0, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.78);
+    inset 0 1px 0 #f7f2e6;
   transform: translateX(0);
   transition: transform 220ms cubic-bezier(0.2, 0.9, 0.25, 1);
   pointer-events: none;
