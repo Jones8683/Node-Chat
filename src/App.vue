@@ -31,15 +31,26 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch } from "vue";
+import { defineAsyncComponent, ref, onMounted, computed, watch } from "vue";
 import { auth, db } from "./firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { ref as dbRef, onValue } from "firebase/database";
-import AuthForm from "./components/AuthForm.vue";
-import ChatRoom from "./components/ChatRoom.vue";
-import SetDisplayName from "./components/SetDisplayName.vue";
-import SettingsModal from "./components/SettingsModal.vue";
-import AdminPanel from "./components/AdminPanel.vue";
+
+const AuthForm = defineAsyncComponent(
+  () => import("./components/AuthForm.vue"),
+);
+const ChatRoom = defineAsyncComponent(
+  () => import("./components/ChatRoom.vue"),
+);
+const SetDisplayName = defineAsyncComponent(
+  () => import("./components/SetDisplayName.vue"),
+);
+const SettingsModal = defineAsyncComponent(
+  () => import("./components/SettingsModal.vue"),
+);
+const AdminPanel = defineAsyncComponent(
+  () => import("./components/AdminPanel.vue"),
+);
 
 const user = ref(null);
 const authReady = ref(false);

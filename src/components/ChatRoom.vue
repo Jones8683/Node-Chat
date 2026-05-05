@@ -519,8 +519,6 @@ import {
   goOnline,
   get,
 } from "firebase/database";
-import emojiData from "@emoji-mart/data";
-import { SearchIndex, init as initEmojiMart } from "emoji-mart";
 import { initBadge, updateBadge, clearBadge } from "../faviconBadge";
 
 const props = defineProps(["user"]);
@@ -699,6 +697,25 @@ const emojiActiveIndex = ref(0);
 const emojiVisible = ref(false);
 const emojiPickerRef = ref(null);
 let emojiQueryStart = -1;
+let emojiSearchIndex = null;
+let emojiReady = false;
+
+async function ensureEmojiReady() {
+  if (emojiReady && emojiSearchIndex) return true;
+  try {
+    const [{ default: emojiData }, emojiMart] = await Promise.all([
+      import("@emoji-mart/data"),
+      import("emoji-mart"),
+    ]);
+    emojiMart.init({ data: emojiData });
+    emojiSearchIndex = emojiMart.SearchIndex;
+    emojiReady = true;
+    return true;
+  } catch (err) {
+    console.error("Failed to load emoji search:", err);
+    return false;
+  }
+}
 
 const offlineMembers = computed(() => {
   const onlineUids = new Set(onlineUsers.value.map((u) => u.uid));
@@ -1056,9 +1073,14 @@ async function checkEmojiTrigger() {
   const textBefore = newMessage.value.slice(0, cursor);
   const match = textBefore.match(/(^|[\s\n]):([\w]{2,})$/);
   if (match) {
+    const ready = await ensureEmojiReady();
+    if (!ready || !emojiSearchIndex) {
+      closeEmojiPicker();
+      return;
+    }
     const query = match[2];
     emojiQueryStart = cursor - query.length - 1;
-    const results = await SearchIndex.search(query);
+    const results = await emojiSearchIndex.search(query);
     if (results && results.length) {
       emojiResults.value = results.slice(0, 8);
       emojiActiveIndex.value = 0;
@@ -1205,7 +1227,6 @@ async function loadMore() {
 onMounted(async () => {
   initBadge();
   document.title = "Node Chat";
-  initEmojiMart({ data: emojiData });
   document.addEventListener("visibilitychange", handleVisibilityChange);
   window.addEventListener("focus", handleWindowFocus);
   window.addEventListener("online", handleOnline);
