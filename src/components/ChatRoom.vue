@@ -516,7 +516,8 @@ const messages = ref([]);
 const isAtBottom = ref(true);
 const showJumpButton = ref(false);
 const scrollUnread = ref(0);
-const SHOW_JUMP_THRESHOLD = 110;
+const isScrollingSmooth = ref(false);
+const SHOW_JUMP_THRESHOLD = 300;
 const GROUP_TIMEOUT = 5 * 60 * 1000;
 const presenceUsers = ref({});
 const ownerUid = ref(null);
@@ -790,19 +791,30 @@ function handleMessageScroll() {
   const near = distFromBottom <= SCROLL_BOTTOM_THRESHOLD;
   shouldScrollToBottom = near;
   isAtBottom.value = near;
-  showJumpButton.value = distFromBottom > SHOW_JUMP_THRESHOLD;
+
+  if (isScrollingSmooth.value || near) {
+    showJumpButton.value = false;
+  } else {
+    showJumpButton.value = distFromBottom > SHOW_JUMP_THRESHOLD;
+  }
+
   if (near) {
     scrollUnread.value = 0;
-    showJumpButton.value = false;
   }
 }
 
 function scrollToBottom() {
   const container = messageContainer.value;
   if (!container) return;
+
+  isScrollingSmooth.value = true;
+  showJumpButton.value = false;
   container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
   scrollUnread.value = 0;
-  showJumpButton.value = false;
+
+  setTimeout(() => {
+    isScrollingSmooth.value = false;
+  }, 1200);
 }
 
 function forwardWheelToMessages(event) {
@@ -1819,21 +1831,17 @@ async function logout() {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow:
-    0 4px 20px rgba(0, 0, 0, 0.22),
-    0 1px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   color: var(--surface);
   transition:
-    transform 0.15s,
-    box-shadow 0.15s;
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
   z-index: 20;
 }
 
 .jump-to-bottom:hover {
   transform: translateY(-2px);
-  box-shadow:
-    0 8px 28px rgba(0, 0, 0, 0.26),
-    0 2px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
 }
 
 .jump-unread {
@@ -1857,15 +1865,11 @@ async function logout() {
   letter-spacing: 0.01em;
 }
 
-.jump-fade-enter-active {
-  transition:
-    opacity 0.18s ease,
-    transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
-}
+.jump-fade-enter-active,
 .jump-fade-leave-active {
   transition:
-    opacity 0.14s ease,
-    transform 0.14s ease;
+    opacity 0.2s ease,
+    transform 0.2s ease;
 }
 .jump-fade-enter-from {
   opacity: 0;
@@ -1873,7 +1877,7 @@ async function logout() {
 }
 .jump-fade-leave-to {
   opacity: 0;
-  transform: translateY(6px);
+  transform: translateY(4px);
 }
 
 .message {
