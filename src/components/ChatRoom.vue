@@ -19,11 +19,9 @@
           <button class="user-btn" @click="showDropdown = !showDropdown">
             <div
               class="avatar"
-              :style="{
-                background: getAvatarColor(user.displayName, user.uid),
-              }"
+              :style="getAvatarStyle(user.displayName, user.uid)"
             >
-              {{ user.displayName?.[0]?.toUpperCase() ?? "?" }}
+              {{ getAvatarInitial(user.displayName, user.uid) }}
             </div>
             <svg
               class="chevron"
@@ -47,11 +45,9 @@
               <div class="dropdown-profile">
                 <div
                   class="avatar large"
-                  :style="{
-                    background: getAvatarColor(user.displayName, user.uid),
-                  }"
+                  :style="getAvatarStyle(user.displayName, user.uid)"
                 >
-                  {{ user.displayName?.[0]?.toUpperCase() ?? "?" }}
+                  {{ getAvatarInitial(user.displayName, user.uid) }}
                 </div>
                 <div class="dropdown-info">
                   <div class="dropdown-name">{{ user.displayName }}</div>
@@ -126,15 +122,20 @@
                   <template v-else>
                     <div
                       class="reply-avatar-small"
-                      :style="{
-                        background: getAvatarColor(
+                      :style="
+                        getAvatarStyle(
                           item.replyTo.displayName,
                           item.replyTo.uid,
                           item.replyTo.avatarColor,
-                        ),
-                      }"
+                        )
+                      "
                     >
-                      {{ item.replyTo.displayName?.[0]?.toUpperCase() ?? "?" }}
+                      {{
+                        getAvatarInitial(
+                          item.replyTo.displayName,
+                          item.replyTo.uid,
+                        )
+                      }}
                     </div>
                     <span
                       class="reply-name"
@@ -162,15 +163,15 @@
                   <div
                     v-if="item.isGroupStart"
                     class="msg-avatar"
-                    :style="{
-                      background: getAvatarColor(
+                    :style="
+                      getAvatarStyle(
                         item.displayName,
                         item.uid,
                         item.avatarColor,
-                      ),
-                    }"
+                      )
+                    "
                   >
-                    {{ item.displayName?.[0]?.toUpperCase() ?? "?" }}
+                    {{ getAvatarInitial(item.displayName, item.uid) }}
                   </div>
                   <span v-else class="msg-side-time">{{
                     formatTimestampShort(item.timestamp)
@@ -399,15 +400,9 @@
             >
               <div
                 class="online-avatar"
-                :style="{
-                  background: getAvatarColor(
-                    u.displayName,
-                    u.uid,
-                    u.avatarColor,
-                  ),
-                }"
+                :style="getAvatarStyle(u.displayName, u.uid, u.avatarColor)"
               >
-                {{ u.displayName?.[0]?.toUpperCase() ?? "?" }}
+                {{ getAvatarInitial(u.displayName, u.uid) }}
               </div>
               <span class="online-item-name">{{ u.displayName }}</span>
               <Crown
@@ -428,15 +423,9 @@
               >
                 <div
                   class="online-avatar offline-avatar"
-                  :style="{
-                    background: getAvatarColor(
-                      u.displayName,
-                      u.uid,
-                      u.avatarColor,
-                    ),
-                  }"
+                  :style="getAvatarStyle(u.displayName, u.uid, u.avatarColor)"
                 >
-                  {{ u.displayName?.[0]?.toUpperCase() ?? "?" }}
+                  {{ getAvatarInitial(u.displayName, u.uid) }}
                 </div>
                 <div class="offline-info">
                   <div class="offline-name-row">
@@ -543,8 +532,15 @@ const AVATAR_COLORS = [
   "#14b8a6",
   "#3b82f6",
 ];
+const OWNER_AVATAR_URL = "/owner.png";
+
+function getAvatarInitial(name, uid = null) {
+  if (OWNER_AVATAR_URL && ownerUid.value && uid === ownerUid.value) return "";
+  return (name && name[0]?.toUpperCase()) || "?";
+}
 
 function getAvatarColor(name, uid = null, storedColor = null) {
+  const safeName = name || "?";
   if (storedColor) return storedColor;
   if (uid && allUsers.value[uid]?.preferences?.avatarColor) {
     return allUsers.value[uid].preferences.avatarColor;
@@ -554,11 +550,27 @@ function getAvatarColor(name, uid = null, storedColor = null) {
     if (presenceUser?.avatarColor) return presenceUser.avatarColor;
   }
   let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = (hash << 5) - hash + name.charCodeAt(i);
+  for (let i = 0; i < safeName.length; i++) {
+    hash = (hash << 5) - hash + safeName.charCodeAt(i);
     hash |= 0;
   }
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
+function getAvatarStyle(name, uid = null, storedColor = null) {
+  const color = getAvatarColor(name, uid, storedColor);
+
+  if (OWNER_AVATAR_URL && ownerUid.value && uid === ownerUid.value) {
+    return {
+      backgroundColor: color,
+      backgroundImage: `url("${OWNER_AVATAR_URL}")`,
+      backgroundSize: "cover",
+      backgroundPosition: "center",
+      backgroundRepeat: "no-repeat",
+    };
+  }
+
+  return { background: color };
 }
 
 function getLatestUser(uid, fallback = {}) {
