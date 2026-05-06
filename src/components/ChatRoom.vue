@@ -56,7 +56,7 @@
               </div>
               <div class="divider"></div>
               <button class="dropdown-item" @click="openSettings">
-                <User :size="14" stroke-width="2" />
+                <Settings2 :size="14" stroke-width="2" />
                 Settings
               </button>
               <button
@@ -482,7 +482,7 @@ import { auth, db } from "../firebase";
 import { signOut } from "firebase/auth";
 import {
   ShieldCheck,
-  User,
+  Settings2,
   LogOut,
   Send,
   Crown,
