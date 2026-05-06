@@ -122,21 +122,31 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from "vue";
+import { ref, computed, watch, onMounted } from "vue";
+import { useRouter } from "vue-router";
 import { auth } from "../firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { signupWithToken } from "../authUtils";
 import { Eye, EyeOff } from "lucide-vue-next";
 
-const isLogin = ref(true);
+const props = defineProps({
+  mode: {
+    type: String,
+    default: "login",
+  },
+});
+
+const router = useRouter();
+const isLogin = computed(() => props.mode === "login");
 
 onMounted(() => {
-  document.title = "Log In • Node Chat";
+  document.title = isLogin.value ? "Log In • Node Chat" : "Sign Up • Node Chat";
 });
 
 watch(isLogin, (val) => {
   document.title = val ? "Log In • Node Chat" : "Sign Up • Node Chat";
 });
+
 const email = ref("");
 const password = ref("");
 const error = ref("");
@@ -145,8 +155,8 @@ const showPassword = ref(false);
 const signupToken = ref("");
 
 function switchMode(login) {
-  isLogin.value = login;
   error.value = "";
+  router.push(login ? "/login" : "/signup");
 }
 
 function friendlyError(code) {

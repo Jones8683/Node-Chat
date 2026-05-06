@@ -1,128 +1,16 @@
 <template>
   <div id="app">
-    <div v-if="showLoadingPage" class="loading-page">
+    <div v-if="!authReady" class="loading-page">
       <div class="loading-spinner" aria-hidden="true">
         <span></span>
       </div>
     </div>
-    <ChatRoom
-      v-if="user && user.displayName"
-      :user="user"
-      @ready="handleChatReady"
-      @open-settings="showSettings = true"
-      @open-admin="showAdmin = true"
-    />
-    <SetDisplayName v-else-if="user && !user.displayName" @done="refreshUser" />
-    <AuthForm v-else-if="authReady" />
-
-    <SettingsModal
-      :is-open="showSettings"
-      :user="user"
-      @close="showSettings = false"
-      @refreshUser="refreshUser"
-    />
-
-    <AdminPanel
-      :is-open="showAdmin"
-      :current-user-uid="user?.uid"
-      @close="showAdmin = false"
-    />
+    <RouterView v-else />
   </div>
 </template>
 
 <script setup>
-import { defineAsyncComponent, ref, onMounted, computed, watch } from "vue";
-import { auth, db } from "./firebase";
-import { onAuthStateChanged } from "firebase/auth";
-import { ref as dbRef, onValue } from "firebase/database";
-
-const AuthForm = defineAsyncComponent(
-  () => import("./components/AuthForm.vue"),
-);
-const ChatRoom = defineAsyncComponent(
-  () => import("./components/ChatRoom.vue"),
-);
-const SetDisplayName = defineAsyncComponent(
-  () => import("./components/SetDisplayName.vue"),
-);
-const SettingsModal = defineAsyncComponent(
-  () => import("./components/SettingsModal.vue"),
-);
-const AdminPanel = defineAsyncComponent(
-  () => import("./components/AdminPanel.vue"),
-);
-
-const user = ref(null);
-const authReady = ref(false);
-const chatReady = ref(false);
-const showSettings = ref(false);
-const showAdmin = ref(false);
-const showLoadingPage = computed(
-  () => !authReady.value || (user.value?.displayName && !chatReady.value),
-);
-
-let userDbUnsub = null;
-
-function refreshUser() {
-  if (!auth.currentUser) return;
-  const userRef = dbRef(db, `users/${auth.currentUser.uid}`);
-  onValue(
-    userRef,
-    (snap) => {
-      const data = snap.val() || {};
-      user.value = {
-        ...auth.currentUser,
-        displayName: data.displayName || auth.currentUser.displayName || "",
-        preferences: data.preferences || {},
-      };
-    },
-    { onlyOnce: true },
-  );
-}
-
-function handleChatReady() {
-  chatReady.value = true;
-}
-
-const anyModalOpen = computed(() => showSettings.value || showAdmin.value);
-watch(anyModalOpen, (isOpen) => {
-  if (isOpen) {
-    document.documentElement.style.overflow = "hidden";
-  } else {
-    document.documentElement.style.overflow = "";
-  }
-});
-
-onMounted(() => {
-  onAuthStateChanged(auth, (u) => {
-    if (userDbUnsub) {
-      userDbUnsub();
-      userDbUnsub = null;
-    }
-
-    chatReady.value = false;
-
-    if (u) {
-      let isFirst = true;
-      const userRef = dbRef(db, `users/${u.uid}`);
-      userDbUnsub = onValue(userRef, (snap) => {
-        const data = snap.val() || {};
-        user.value = {
-          ...u,
-          displayName: data.displayName || u.displayName || "",
-          preferences: data.preferences || {},
-        };
-        if (isFirst) {
-          isFirst = false;
-          authReady.value = true;
-        }
-      });
-    } else {
-      user.value = null;
-      authReady.value = true;
-    }
-  });
-});
+import { authReady } from "./store/auth";
 </script>
 
 <style scoped>
