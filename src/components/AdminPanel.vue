@@ -527,6 +527,7 @@ onMounted(() => {
       ? Object.entries(snap.val())
           .filter(([, data]) => !data.used && data.expiresAt > now)
           .map(([token, data]) => ({ token, ...data }))
+          .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
       : [];
     loadingInvites.value = false;
     errorInvite.value = "";
