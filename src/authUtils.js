@@ -121,18 +121,20 @@ export async function signupWithToken(
       createdAt: Date.now(),
     });
     await consumeInviteToken(token, userCred.user.uid);
-    try {
-      if (auth && auth.currentUser) {
-        const { uid, displayName: dn } = auth.currentUser;
-        const signupName = displayName.trim() || dn || null;
-        await recordAuditEvent({
-          action: "signup",
-          actorUid: uid,
-          actorName: signupName,
-          details: `invite:${token}`,
-        });
-      }
-    } catch (e) {}
+    if (displayName.trim()) {
+      try {
+        if (auth && auth.currentUser) {
+          const { uid, displayName: dn } = auth.currentUser;
+          const signupName = displayName.trim() || dn || null;
+          await recordAuditEvent({
+            action: "signup",
+            actorUid: uid,
+            actorName: signupName,
+            details: `invite:${token}`,
+          });
+        }
+      } catch (e) {}
+    }
     return userCred.user;
   } catch (error) {
     await userCred.user.delete();
@@ -191,6 +193,7 @@ export async function changeDisplayName(uid, newDisplayName) {
   const userSnap = await get(dbRef(db, `users/${uid}`));
   const dbDisplayName = userSnap.exists() ? userSnap.val().displayName : null;
   const oldDisplayName = dbDisplayName || user.displayName;
+  const hadDisplayName = !!(dbDisplayName && dbDisplayName.trim());
   const oldNameKey =
     oldDisplayName && oldDisplayName.trim()
       ? oldDisplayName.toLowerCase().replace(/\s+/g, "_")
@@ -212,7 +215,7 @@ export async function changeDisplayName(uid, newDisplayName) {
   await batchUpdateMessageDisplayNames(uid, newDisplayName);
   try {
     await recordAuditEvent({
-      action: "display_name_changed",
+      action: hadDisplayName ? "display_name_changed" : "signup",
       targetUid: uid,
       targetName: newDisplayName,
     });
