@@ -560,9 +560,15 @@ const confirmAction = ref({
 let invitesListener = null;
 let adminsListener = null;
 let ownerListener = null;
+let _prevAdminSet = null;
+let _reloadPending = false;
 
 onMounted(() => {
   loadingInvites.value = true;
+  // clear any previous admin-change handled flag so new sessions react
+  try {
+    sessionStorage.removeItem("adminChangeHandled");
+  } catch (e) {}
   window.addEventListener("keydown", onKeyDown);
   window.addEventListener("pointerdown", onOutsideClick);
   invitesListener = onValue(dbRef(db, "invites"), (snap) => {
@@ -584,9 +590,49 @@ onMounted(() => {
   });
 
   adminsListener = onValue(dbRef(db, "admins"), (snap) => {
-    adminUsers.value = new Set(snap.exists() ? Object.keys(snap.val()) : []);
-    adminCount.value = adminUsers.value.size;
+    const newSet = new Set(snap.exists() ? Object.keys(snap.val()) : []);
+    adminUsers.value = newSet;
+    adminCount.value = newSet.size;
     if (users.value.length) sortUsers();
+
+    const currentUid = auth.currentUser && auth.currentUser.uid;
+    if (currentUid) {
+      if (_prevAdminSet === null) {
+        _prevAdminSet = new Set(newSet);
+      } else if (!_reloadPending) {
+        const wasAdmin = _prevAdminSet.has(currentUid);
+        const isAdminNow = newSet.has(currentUid);
+        if (wasAdmin !== isAdminNow) {
+          const handled = sessionStorage.getItem("adminChangeHandled");
+          if (!handled) {
+            sessionStorage.setItem("adminChangeHandled", "1");
+            _reloadPending = true;
+            if (!isAdminNow) {
+              close();
+              confirmAction.value = {
+                show: true,
+                title: "Admin Privileges Removed",
+                message:
+                  "You have been demoted. The app will reload to apply changes.",
+                action: "",
+                confirm: null,
+                loading: false,
+                infoOnly: true,
+              };
+            }
+            // for promotions: do not show a modal, just reload silently
+            setTimeout(() => {
+              try {
+                location.reload();
+              } catch (e) {}
+            }, 800);
+          }
+        }
+        _prevAdminSet = new Set(newSet);
+      }
+    } else {
+      _prevAdminSet = new Set(newSet);
+    }
   });
 
   ownerListener = onValue(dbRef(db, "owner"), (snap) => {
@@ -915,7 +961,8 @@ async function promoteUserConfirmed(uid) {
     const newSnap = await get(dbRef(db, `admins/${uid}`));
     const isNowAdmin = newSnap.exists() && newSnap.val() === true;
 
-    if (isNowAdmin) adminUsers.value.add(uid);
+    if (isNowAdmin)
+      adminUsers.value = new Set([...(adminUsers.value || []), uid]);
     sortUsers();
 
     if (!wasAdmin && isNowAdmin) {
@@ -976,7 +1023,10 @@ async function demoteUserConfirmed(uid) {
     const newSnap = await get(dbRef(db, `admins/${uid}`));
     const isNowAdmin = newSnap.exists() && newSnap.val() === true;
 
-    if (!isNowAdmin) adminUsers.value.delete(uid);
+    if (!isNowAdmin)
+      adminUsers.value = new Set(
+        [...(adminUsers.value || [])].filter((x) => x !== uid),
+      );
     sortUsers();
 
     if (wasAdmin && !isNowAdmin) {
