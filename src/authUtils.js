@@ -122,13 +122,13 @@ export async function signupWithToken(
     });
     await consumeInviteToken(token, userCred.user.uid);
     try {
-      // record audit event for signup
       if (auth && auth.currentUser) {
         const { uid, displayName: dn } = auth.currentUser;
+        const signupName = displayName.trim() || dn || null;
         await recordAuditEvent({
           action: "signup",
           actorUid: uid,
-          actorName: dn || null,
+          actorName: signupName,
           details: `invite:${token}`,
         });
       }
