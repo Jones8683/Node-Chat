@@ -226,7 +226,7 @@
                         @click="startReply(item)"
                         title="Reply"
                       >
-                        <Reply :size="16" stroke-width="2" />
+                        <CornerUpLeft :size="17" stroke-width="2" />
                       </button>
                       <button
                         v-if="item.uid === user.uid"
@@ -234,7 +234,7 @@
                         @click="startEdit(item)"
                         title="Edit"
                       >
-                        <Pencil :size="15" stroke-width="2" />
+                        <Pencil :size="16" stroke-width="2" />
                       </button>
                       <button
                         v-if="item.uid === user.uid || isAdmin"
@@ -242,7 +242,7 @@
                         @click="promptDelete(item.id)"
                         title="Delete"
                       >
-                        <Trash2 :size="15" stroke-width="2" />
+                        <Trash2 :size="16" stroke-width="2" />
                       </button>
                     </div>
                   </template>
@@ -491,7 +491,7 @@ import {
   ChevronDown,
   Lock,
   MicOff,
-  Reply,
+  CornerUpLeft,
   X,
 } from "lucide-vue-next";
 import {
