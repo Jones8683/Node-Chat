@@ -205,7 +205,7 @@
                         @keydown.enter.exact.prevent="saveEdit(item.id)"
                         @keydown.esc.prevent="cancelEdit"
                         @input="resizeEditInput($event.target)"
-                        maxlength="2000"
+                        :maxlength="MESSAGE_CHAR_LIMIT"
                         rows="1"
                       ></textarea>
                     </div>
@@ -349,7 +349,7 @@
                 name="message"
                 autocomplete="off"
                 rows="1"
-                maxlength="2000"
+                :maxlength="MESSAGE_CHAR_LIMIT"
                 enterkeyhint="send"
                 inputmode="text"
                 :disabled="isMuted || (chatLocked && !isAdmin)"
@@ -365,8 +365,8 @@
                 @input="handleComposerInput"
                 @blur="closeEmojiPicker"
               ></textarea>
-              <span class="char-warning" v-if="newMessage.length > 1800">{{
-                2000 - newMessage.length
+              <span class="char-warning" v-if="newMessage.length > 4500">{{
+                MESSAGE_CHAR_LIMIT - newMessage.length
               }}</span>
               <button
                 @mousedown.prevent
@@ -686,6 +686,7 @@ const editText = ref("");
 const editInputRef = ref(null);
 const deleteDialog = ref({ show: false, id: null, name: "" });
 const MESSAGE_BATCH_SIZE = 100;
+const MESSAGE_CHAR_LIMIT = 5000;
 const SCROLL_BOTTOM_THRESHOLD = 24;
 const PRESENCE_TAB_STORAGE_KEY = "node-chat-presence-tab-id";
 let messageLimit = MESSAGE_BATCH_SIZE;
@@ -1523,7 +1524,7 @@ async function sendMessage() {
   if (isMuted.value) return;
   const text = sanitizeMessage(newMessage.value);
   if (!text.trim()) return;
-  if (text.length > 2000) return;
+  if (text.length > MESSAGE_CHAR_LIMIT) return;
   syncPresence();
   newMessage.value = "";
   nextTick(resizeComposer);
