@@ -1158,14 +1158,26 @@ function insertEmoji(emoji) {
   const textarea = composerRef.value;
   if (!textarea) return;
   const cursor = textarea.selectionStart;
-  const before = newMessage.value.slice(0, emojiQueryStart);
+  const textBefore = newMessage.value.slice(0, cursor);
+  const m = textBefore.match(/(^|[\s\n]):([\w]{0,})$/);
+  let start = emojiQueryStart;
+  if (m) {
+    start = cursor - m[2].length - 1;
+  } else {
+    const idx = textBefore.lastIndexOf(":");
+    if (idx !== -1) start = idx;
+  }
+
+  const before = newMessage.value.slice(0, start);
   const after = newMessage.value.slice(cursor);
-  newMessage.value = before + native + " " + after;
+  newMessage.value = before + native + after;
   closeEmojiPicker();
   nextTick(() => {
-    const newPos = emojiQueryStart + native.length + 1;
-    textarea.setSelectionRange(newPos, newPos);
-    textarea.focus();
+    const newPos = (start || 0) + native.length;
+    try {
+      textarea.setSelectionRange(newPos, newPos);
+      textarea.focus();
+    } catch (e) {}
     resizeComposer();
   });
 }
