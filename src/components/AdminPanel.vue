@@ -388,7 +388,7 @@
           </div>
           <div v-if="activeTab === 'audit'">
             <div class="section">
-              <h3 class="section-title">Audit Log</h3>
+              <h3 class="section-title">Logs</h3>
               <div v-if="loadingAudit" class="loading">Loading audit...</div>
               <div v-else-if="auditError" class="error users-error">
                 {{ auditError }}
