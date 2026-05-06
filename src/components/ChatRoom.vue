@@ -697,6 +697,7 @@ let knownIds = new Set();
 const allUsers = ref({});
 let typingTimeout = null;
 let myTypingRef = null;
+let myLastSeenRef = null;
 let myPresenceRootRef = null;
 let myPresenceTabRef = null;
 const presenceTabId = getPresenceTabId();
@@ -1304,6 +1305,7 @@ onMounted(async () => {
   });
 
   myTypingRef = dbRef(db, `typing/${props.user.uid}`);
+  myLastSeenRef = dbRef(db, `users/${props.user.uid}/lastSeen`);
   myPresenceRootRef = dbRef(db, `presence/${props.user.uid}`);
   myPresenceTabRef = dbRef(
     db,
@@ -1313,6 +1315,7 @@ onMounted(async () => {
   connectedListener = onValue(dbRef(db, ".info/connected"), (snap) => {
     if (snap.val() !== true) return;
     onDisconnect(myTypingRef).remove();
+    onDisconnect(myLastSeenRef).set(serverTimestamp());
     onDisconnect(myPresenceTabRef).remove();
     syncPresence();
   });
@@ -1536,11 +1539,10 @@ async function logout() {
   showDropdown.value = false;
   try {
     if (myTypingRef) await remove(myTypingRef);
+    if (myLastSeenRef) {
+      await set(myLastSeenRef, serverTimestamp());
+    }
     if (myPresenceTabRef) {
-      await set(
-        dbRef(db, `users/${props.user.uid}/lastSeen`),
-        serverTimestamp(),
-      );
       await remove(myPresenceTabRef);
     }
     await signOut(auth);
