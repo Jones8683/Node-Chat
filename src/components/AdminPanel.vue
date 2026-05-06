@@ -576,7 +576,6 @@ onMounted(() => {
     loadingInvites.value = false;
     errorInvite.value = "";
   });
-  // no audit listener by default; will load on demand
   settingsListener = onValue(dbRef(db, "settings/chatLocked"), (snap) => {
     chatLocked.value = snap.val() === true;
   });
@@ -847,7 +846,7 @@ function formatAuditAction(action) {
     lock_chat: "Chat locked",
     unlock_chat: "Chat unlocked",
     purge_messages: "Messages purged",
-    promote: "Admin promoted",
+    promote: "User promoted",
     demote: "Admin demoted",
     mute: "User muted",
     unmute: "User unmuted",
@@ -908,17 +907,28 @@ function promptPromoteUser(uid, displayName) {
 async function promoteUserConfirmed(uid) {
   confirmAction.value.loading = true;
   try {
+    const prevSnap = await get(dbRef(db, `admins/${uid}`));
+    const wasAdmin = prevSnap.exists() && prevSnap.val() === true;
+
     await promoteToAdmin(uid);
-    adminUsers.value.add(uid);
+
+    const newSnap = await get(dbRef(db, `admins/${uid}`));
+    const isNowAdmin = newSnap.exists() && newSnap.val() === true;
+
+    if (isNowAdmin) adminUsers.value.add(uid);
     sortUsers();
-    try {
-      const u = users.value.find((x) => x.uid === uid);
-      await recordAuditEvent({
-        action: "promote",
-        targetUid: uid,
-        targetName: u?.displayName || null,
-      });
-    } catch (e) {}
+
+    if (!wasAdmin && isNowAdmin) {
+      try {
+        const u = users.value.find((x) => x.uid === uid);
+        await recordAuditEvent({
+          action: "promote",
+          targetUid: uid,
+          targetName: u?.displayName || null,
+        });
+      } catch (e) {}
+    }
+
     confirmAction.value.show = false;
   } catch (e) {
     alert("Failed to promote user: " + (e.message || "Unknown error"));
@@ -958,17 +968,28 @@ function promptDemoteUser(uid, displayName) {
 async function demoteUserConfirmed(uid) {
   confirmAction.value.loading = true;
   try {
+    const prevSnap = await get(dbRef(db, `admins/${uid}`));
+    const wasAdmin = prevSnap.exists() && prevSnap.val() === true;
+
     await demoteFromAdmin(uid);
-    adminUsers.value.delete(uid);
+
+    const newSnap = await get(dbRef(db, `admins/${uid}`));
+    const isNowAdmin = newSnap.exists() && newSnap.val() === true;
+
+    if (!isNowAdmin) adminUsers.value.delete(uid);
     sortUsers();
-    try {
-      const u = users.value.find((x) => x.uid === uid);
-      await recordAuditEvent({
-        action: "demote",
-        targetUid: uid,
-        targetName: u?.displayName || null,
-      });
-    } catch (e) {}
+
+    if (wasAdmin && !isNowAdmin) {
+      try {
+        const u = users.value.find((x) => x.uid === uid);
+        await recordAuditEvent({
+          action: "demote",
+          targetUid: uid,
+          targetName: u?.displayName || null,
+        });
+      } catch (e) {}
+    }
+
     confirmAction.value.show = false;
   } catch (e) {
     alert("Failed to demote user: " + (e.message || "Unknown error"));
