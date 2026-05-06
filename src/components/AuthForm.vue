@@ -190,9 +190,6 @@ async function submitLogin() {
   loading.value = true;
   try {
     await signInWithEmailAndPassword(auth, email.value, password.value);
-    try {
-      await recordAuditEvent({ action: "login" });
-    } catch (e) {}
   } catch (e) {
     error.value = friendlyError(e.code);
   } finally {

@@ -773,10 +773,16 @@ function formatDate(timestamp) {
   });
 }
 
+function resolveDisplayName(uid, fallback = "") {
+  if (!uid) return fallback || "Unknown";
+  const user = users.value.find((entry) => entry.uid === uid);
+  return user?.displayName || fallback || uid;
+}
+
 function formatAuditText(ev) {
-  const actor = ev.actorName || ev.actorUid || "Unknown";
-  const target =
-    ev.targetName || ev.targetUid ? ` ${ev.targetName || ev.targetUid}` : "";
+  const actor = resolveDisplayName(ev.actorUid, ev.actorName);
+  const targetName = resolveDisplayName(ev.targetUid, ev.targetName);
+  const target = ev.targetUid || ev.targetName ? ` ${targetName}` : "";
   const details = ev.details ? ` - ${ev.details}` : "";
   // Simple human-friendly messages for common actions
   switch (ev.action) {
