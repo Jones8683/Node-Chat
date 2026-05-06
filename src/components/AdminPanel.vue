@@ -676,7 +676,7 @@ async function generateInvite() {
     try {
       await recordAuditEvent({
         action: "invite_create",
-        details: `code ${token}`,
+        details: token,
       });
     } catch (e) {}
   } catch (e) {
@@ -801,7 +801,9 @@ function formatAuditText(ev) {
     case "purge_messages":
       return `${actor} purged messages${details}`;
     case "invite_create":
-      return `${actor} created an invite${details}`;
+      return ev.details
+        ? `${actor} created an invite code - ${ev.details}`
+        : `${actor} created an invite`;
     case "invite_delete":
       return `${actor} deleted an invite${details}`;
     case "name_renamed":
@@ -811,7 +813,9 @@ function formatAuditText(ev) {
     case "display_name_changed":
       return `${actor} changed their display name${details}`;
     case "signup":
-      return `${actor} signed up${details}`;
+      return ev.details
+        ? `${actor} signed up ${ev.details}`
+        : `${actor} signed up`;
     case "login":
       return `${actor} logged in${details}`;
     case "logout":

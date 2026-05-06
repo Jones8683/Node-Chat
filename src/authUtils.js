@@ -130,7 +130,7 @@ export async function signupWithToken(
             action: "signup",
             actorUid: uid,
             actorName: signupName,
-            details: `invite:${token}`,
+            details: `with invite code ${token}`,
           });
         }
       } catch (e) {}
