@@ -306,29 +306,29 @@ async function batchUpdateMessageDisplayNames(uid, newDisplayName) {
   const messagesSnap = await get(dbRef(db, "messages"));
   if (!messagesSnap.exists()) return;
 
-  const authoredUpdates = {};
-  const replyUpdates = {};
+  const authoredPaths = [];
+  const replyPaths = [];
   const msgs = messagesSnap.val();
 
   for (const [msgId, msg] of Object.entries(msgs)) {
     if (msg.uid === uid) {
-      authoredUpdates[`messages/${msgId}/displayName`] = newDisplayName;
+      authoredPaths.push(`messages/${msgId}/displayName`);
     }
     if (msg.replyTo?.uid === uid) {
-      replyUpdates[`messages/${msgId}/replyTo/displayName`] = newDisplayName;
+      replyPaths.push(`messages/${msgId}/replyTo/displayName`);
     }
   }
 
-  if (Object.keys(authoredUpdates).length > 0) {
-    await update(dbRef(db), authoredUpdates);
+  if (authoredPaths.length > 0) {
+    await Promise.all(
+      authoredPaths.map((path) => set(dbRef(db, path), newDisplayName)),
+    );
   }
 
-  if (Object.keys(replyUpdates).length > 0) {
-    try {
-      await update(dbRef(db), replyUpdates);
-    } catch (e) {
-      console.error("Failed to update reply display names:", e);
-    }
+  if (replyPaths.length > 0) {
+    await Promise.all(
+      replyPaths.map((path) => set(dbRef(db, path), newDisplayName)),
+    );
   }
 }
 
