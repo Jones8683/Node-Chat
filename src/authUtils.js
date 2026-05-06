@@ -149,7 +149,9 @@ export async function changeDisplayName(uid, newDisplayName) {
   await updateProfile(user, { displayName: newDisplayName });
   await update(dbRef(db, `users/${uid}`), { displayName: newDisplayName });
   try {
-    await set(dbRef(db, `presence/${uid}/displayName`), newDisplayName);
+    await update(dbRef(db, `presence/${uid}/profile`), {
+      displayName: newDisplayName,
+    });
   } catch (e) {}
 
   await batchUpdateMessageDisplayNames(uid, newDisplayName);
@@ -161,7 +163,7 @@ export async function changeAvatarColor(uid, avatarColor) {
   });
 
   try {
-    await update(dbRef(db, `presence/${uid}`), {
+    await update(dbRef(db, `presence/${uid}/profile`), {
       avatarColor: avatarColor ?? null,
     });
   } catch (e) {}
@@ -230,7 +232,9 @@ export async function adminRenameUser(uid, newDisplayName) {
   await update(dbRef(db, `users/${uid}`), { displayName: newDisplayName });
 
   try {
-    await set(dbRef(db, `presence/${uid}/displayName`), newDisplayName);
+    await update(dbRef(db, `presence/${uid}/profile`), {
+      displayName: newDisplayName,
+    });
   } catch (e) {}
 
   await batchUpdateMessageDisplayNames(uid, newDisplayName);
