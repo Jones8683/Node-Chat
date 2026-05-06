@@ -151,8 +151,6 @@ export async function recordAuditEvent({
   try {
     const user = auth.currentUser;
     const uid = actorUid || (user && user.uid) || null;
-    const name = actorName || (user && user.displayName) || null;
-
     let name = actorName || null;
     if (!name) {
       try {
