@@ -205,7 +205,7 @@
                         @keydown.enter.exact.prevent="saveEdit(item.id)"
                         @keydown.esc.prevent="cancelEdit"
                         @input="resizeEditInput($event.target)"
-                        :maxlength="MESSAGE_CHAR_LIMIT"
+                        maxlength="2000"
                         rows="1"
                       ></textarea>
                     </div>
@@ -349,7 +349,7 @@
                 name="message"
                 autocomplete="off"
                 rows="1"
-                :maxlength="MESSAGE_CHAR_LIMIT"
+                maxlength="2000"
                 enterkeyhint="send"
                 inputmode="text"
                 :disabled="isMuted || (chatLocked && !isAdmin)"
@@ -365,8 +365,8 @@
                 @input="handleComposerInput"
                 @blur="closeEmojiPicker"
               ></textarea>
-              <span class="char-warning" v-if="newMessage.length > 4500">{{
-                MESSAGE_CHAR_LIMIT - newMessage.length
+              <span class="char-warning" v-if="newMessage.length > 1800">{{
+                2000 - newMessage.length
               }}</span>
               <button
                 @mousedown.prevent
@@ -509,7 +509,6 @@ import {
   get,
 } from "firebase/database";
 import { initBadge, updateBadge, clearBadge } from "../faviconBadge";
-import { recordAuditEvent } from "../authUtils";
 
 const props = defineProps(["user"]);
 const emit = defineEmits(["ready", "open-settings", "open-admin"]);
@@ -687,7 +686,6 @@ const editText = ref("");
 const editInputRef = ref(null);
 const deleteDialog = ref({ show: false, id: null, name: "" });
 const MESSAGE_BATCH_SIZE = 100;
-const MESSAGE_CHAR_LIMIT = 5000;
 const SCROLL_BOTTOM_THRESHOLD = 24;
 const PRESENCE_TAB_STORAGE_KEY = "node-chat-presence-tab-id";
 let messageLimit = MESSAGE_BATCH_SIZE;
@@ -1160,26 +1158,14 @@ function insertEmoji(emoji) {
   const textarea = composerRef.value;
   if (!textarea) return;
   const cursor = textarea.selectionStart;
-  const textBefore = newMessage.value.slice(0, cursor);
-  const m = textBefore.match(/(^|[\s\n]):([\w]{0,})$/);
-  let start = emojiQueryStart;
-  if (m) {
-    start = cursor - m[2].length - 1;
-  } else {
-    const idx = textBefore.lastIndexOf(":");
-    if (idx !== -1) start = idx;
-  }
-
-  const before = newMessage.value.slice(0, start);
+  const before = newMessage.value.slice(0, emojiQueryStart);
   const after = newMessage.value.slice(cursor);
-  newMessage.value = before + native + after;
+  newMessage.value = before + native + " " + after;
   closeEmojiPicker();
   nextTick(() => {
-    const newPos = (start || 0) + native.length;
-    try {
-      textarea.setSelectionRange(newPos, newPos);
-      textarea.focus();
-    } catch (e) {}
+    const newPos = emojiQueryStart + native.length + 1;
+    textarea.setSelectionRange(newPos, newPos);
+    textarea.focus();
     resizeComposer();
   });
 }
@@ -1525,7 +1511,7 @@ async function sendMessage() {
   if (isMuted.value) return;
   const text = sanitizeMessage(newMessage.value);
   if (!text.trim()) return;
-  if (text.length > MESSAGE_CHAR_LIMIT) return;
+  if (text.length > 2000) return;
   syncPresence();
   newMessage.value = "";
   nextTick(resizeComposer);
@@ -1552,8 +1538,6 @@ async function sendMessage() {
 async function logout() {
   showDropdown.value = false;
   try {
-    const uid = auth.currentUser?.uid;
-    const dn = auth.currentUser?.displayName || null;
     if (myTypingRef) await remove(myTypingRef);
     if (myLastSeenRef) {
       await set(myLastSeenRef, serverTimestamp());
@@ -1562,14 +1546,6 @@ async function logout() {
       await remove(myPresenceTabRef);
     }
     await signOut(auth);
-    try {
-      if (uid)
-        await recordAuditEvent({
-          action: "logout",
-          actorUid: uid,
-          actorName: dn,
-        });
-    } catch (e) {}
   } catch (err) {
     console.error("Failed to sign out:", err);
   }
