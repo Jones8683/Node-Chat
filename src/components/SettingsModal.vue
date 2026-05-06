@@ -337,9 +337,9 @@ const AVATAR_PALETTE = [
   "#8b5cf6",
   "#a855f7",
   "#d946ef",
+  "#ec4899",
   "#ff66b2",
 
-  "#ec4899",
   "#64748b",
 ];
 
