@@ -125,7 +125,7 @@
 import { ref, watch, onMounted } from "vue";
 import { auth } from "../firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { signupWithToken, recordAuditEvent } from "../authUtils";
+import { signupWithToken } from "../authUtils";
 import { Eye, EyeOff } from "lucide-vue-next";
 
 const isLogin = ref(true);
