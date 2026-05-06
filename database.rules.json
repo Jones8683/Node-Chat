@@ -75,6 +75,15 @@
       "$uid": {
         ".write": "auth != null && root.child('admins').child(auth.uid).val() === true"
       }
+    },
+    "auditLogs": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      "$actorUid": {
+        "$pushId": {
+          ".write": "auth != null && auth.uid === $actorUid && !data.exists() && newData.exists()",
+          ".validate": "newData.hasChildren(['action', 'ts', 'actorUid']) && newData.child('actorUid').val() === $actorUid && newData.child('ts').isNumber()"
+        }
+      }
     }
   }
 }

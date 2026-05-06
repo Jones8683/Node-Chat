@@ -1,5 +1,12 @@
 import { db, auth } from "./firebase";
-import { ref as dbRef, set, get, update, remove } from "firebase/database";
+import {
+  ref as dbRef,
+  set,
+  get,
+  update,
+  remove,
+  push,
+} from "firebase/database";
 import {
   createUserWithEmailAndPassword,
   updateProfile,
@@ -114,10 +121,52 @@ export async function signupWithToken(
       createdAt: Date.now(),
     });
     await consumeInviteToken(token, userCred.user.uid);
+    try {
+      // record audit event for signup
+      if (auth && auth.currentUser) {
+        const { uid, displayName: dn } = auth.currentUser;
+        await recordAuditEvent({
+          action: "signup",
+          actorUid: uid,
+          actorName: dn || null,
+          details: `invite:${token}`,
+        });
+      }
+    } catch (e) {}
     return userCred.user;
   } catch (error) {
     await userCred.user.delete();
     throw error;
+  }
+}
+
+export async function recordAuditEvent({
+  action,
+  actorUid = null,
+  actorName = null,
+  targetUid = null,
+  targetName = null,
+  details = null,
+} = {}) {
+  try {
+    const user = auth.currentUser;
+    const uid = actorUid || (user && user.uid) || null;
+    const name = actorName || (user && user.displayName) || null;
+    if (!uid) return;
+
+    const event = {
+      action: action || "unknown",
+      actorUid: uid,
+      actorName: name || null,
+      targetUid: targetUid || null,
+      targetName: targetName || null,
+      details: details || null,
+      ts: Date.now(),
+    };
+
+    await push(dbRef(db, `auditLogs/${uid}`), event);
+  } catch (e) {
+    console.error("Failed to write audit event:", e);
   }
 }
 
@@ -155,6 +204,13 @@ export async function changeDisplayName(uid, newDisplayName) {
   } catch (e) {}
 
   await batchUpdateMessageDisplayNames(uid, newDisplayName);
+  try {
+    await recordAuditEvent({
+      action: "display_name_changed",
+      targetUid: uid,
+      targetName: newDisplayName,
+    });
+  } catch (e) {}
 }
 
 export async function changeAvatarColor(uid, avatarColor) {

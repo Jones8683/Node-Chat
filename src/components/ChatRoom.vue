@@ -509,6 +509,7 @@ import {
   get,
 } from "firebase/database";
 import { initBadge, updateBadge, clearBadge } from "../faviconBadge";
+import { recordAuditEvent } from "../authUtils";
 
 const props = defineProps(["user"]);
 const emit = defineEmits(["ready", "open-settings", "open-admin"]);
@@ -1551,6 +1552,8 @@ async function sendMessage() {
 async function logout() {
   showDropdown.value = false;
   try {
+    const uid = auth.currentUser?.uid;
+    const dn = auth.currentUser?.displayName || null;
     if (myTypingRef) await remove(myTypingRef);
     if (myLastSeenRef) {
       await set(myLastSeenRef, serverTimestamp());
@@ -1559,6 +1562,14 @@ async function logout() {
       await remove(myPresenceTabRef);
     }
     await signOut(auth);
+    try {
+      if (uid)
+        await recordAuditEvent({
+          action: "logout",
+          actorUid: uid,
+          actorName: dn,
+        });
+    } catch (e) {}
   } catch (err) {
     console.error("Failed to sign out:", err);
   }

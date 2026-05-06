@@ -39,6 +39,18 @@
           >
             Controls
           </button>
+          <button
+            class="tab-btn"
+            :class="{ active: activeTab === 'audit' }"
+            @click="
+              {
+                activeTab = 'audit';
+                loadAuditLogs();
+              }
+            "
+          >
+            Audit Log
+          </button>
         </div>
 
         <div class="modal-content">
@@ -374,6 +386,33 @@
               </div>
             </div>
           </div>
+          <div v-if="activeTab === 'audit'">
+            <div class="section">
+              <h3 class="section-title">Audit Log</h3>
+              <div v-if="loadingAudit" class="loading">Loading audit...</div>
+              <div v-else-if="auditError" class="error users-error">
+                {{ auditError }}
+              </div>
+              <div v-else-if="auditEntries.length === 0" class="empty-state">
+                No audit events yet.
+              </div>
+              <div v-else class="audit-list">
+                <div
+                  class="audit-row"
+                  v-for="ev in auditEntries"
+                  :key="ev.id + ev.actorUid"
+                >
+                  <div class="audit-left">
+                    <span class="invite-state audit-action">{{
+                      formatAuditAction(ev.action)
+                    }}</span>
+                    <div class="audit-main">{{ formatAuditText(ev) }}</div>
+                  </div>
+                  <div class="audit-ts">{{ formatDateTime(ev.ts) }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div
@@ -451,6 +490,7 @@ import {
   demoteFromAdmin,
   deleteInviteToken,
   adminRenameUser,
+  recordAuditEvent,
 } from "../authUtils";
 
 const props = defineProps({
@@ -461,6 +501,10 @@ const props = defineProps({
 const emit = defineEmits(["close"]);
 
 const activeTab = ref("invites");
+const auditEntries = ref([]);
+const loadingAudit = ref(false);
+const auditError = ref("");
+let auditListener = null;
 const invites = ref([]);
 const loadingInvites = ref(false);
 const generatingInvite = ref(false);
@@ -532,6 +576,7 @@ onMounted(() => {
     loadingInvites.value = false;
     errorInvite.value = "";
   });
+  // no audit listener by default; will load on demand
   settingsListener = onValue(dbRef(db, "settings/chatLocked"), (snap) => {
     chatLocked.value = snap.val() === true;
   });
@@ -586,11 +631,54 @@ function onOutsideClick(e) {
   }
 }
 
+async function loadAuditLogs() {
+  loadingAudit.value = true;
+  auditEntries.value = [];
+  auditError.value = "";
+  try {
+    const snap = await get(dbRef(db, "auditLogs"));
+    if (!snap.exists()) {
+      loadingAudit.value = false;
+      return;
+    }
+    const all = snap.val();
+    const flat = [];
+    for (const [actorUid, items] of Object.entries(all)) {
+      for (const [id, ev] of Object.entries(items || {})) {
+        flat.push({ id, actorUid, ...ev });
+      }
+    }
+    flat.sort((a, b) => {
+      const diff = (b.ts || 0) - (a.ts || 0);
+      if (diff !== 0) return diff;
+      return String(b.id || "").localeCompare(String(a.id || ""));
+    });
+    auditEntries.value = flat.slice(0, 500);
+  } catch (e) {
+    console.error("Failed to load audit logs:", e);
+    auditError.value =
+      e?.code === "PERMISSION_DENIED" ||
+      String(e?.message || "")
+        .toLowerCase()
+        .includes("permission")
+        ? "Database rules are blocking audit logs. Make sure your uid is listed in /admins and the rules are published."
+        : "Failed to load audit logs.";
+  } finally {
+    loadingAudit.value = false;
+  }
+}
+
 async function generateInvite() {
   generatingInvite.value = true;
   errorInvite.value = "";
   try {
     const token = await createInviteToken();
+    try {
+      await recordAuditEvent({
+        action: "invite_create",
+        details: `code ${token}`,
+      });
+    } catch (e) {}
   } catch (e) {
     errorInvite.value = "Failed to generate invite";
   } finally {
@@ -611,6 +699,12 @@ async function deleteInvite(token) {
   try {
     await deleteInviteToken(token);
     invites.value = invites.value.filter((inv) => inv.token !== token);
+    try {
+      await recordAuditEvent({
+        action: "invite_delete",
+        details: `code ${token}`,
+      });
+    } catch (e) {}
   } catch (e) {
     console.error("Failed to delete invite:", e);
   }
@@ -679,6 +773,88 @@ function formatDate(timestamp) {
   });
 }
 
+function formatAuditText(ev) {
+  const actor = ev.actorName || ev.actorUid || "Unknown";
+  const target =
+    ev.targetName || ev.targetUid ? ` ${ev.targetName || ev.targetUid}` : "";
+  const details = ev.details ? ` - ${ev.details}` : "";
+  // Simple human-friendly messages for common actions
+  switch (ev.action) {
+    case "mute":
+      return `${actor} muted${target}${details}`;
+    case "unmute":
+      return `${actor} unmuted${target}${details}`;
+    case "promote":
+      return `${actor} promoted${target} to admin${details}`;
+    case "demote":
+      return `${actor} demoted${target} from admin${details}`;
+    case "lock_chat":
+      return `${actor} locked the chat${details}`;
+    case "unlock_chat":
+      return `${actor} unlocked the chat${details}`;
+    case "purge_messages":
+      return `${actor} purged messages${details}`;
+    case "invite_create":
+      return `${actor} created an invite${details}`;
+    case "invite_delete":
+      return `${actor} deleted an invite${details}`;
+    case "name_renamed":
+      return details
+        ? `${actor} renamed ${details} to ${target}`
+        : `${actor} renamed ${target}`;
+    case "display_name_changed":
+      return `${actor} changed their display name${details}`;
+    case "signup":
+      return `${actor} signed up${details}`;
+    case "login":
+      return `${actor} logged in${details}`;
+    case "logout":
+      return `${actor} logged out${details}`;
+    default:
+      return `${actor} performed ${ev.action || "an action"}${target}${details}`;
+  }
+}
+
+function formatAuditAction(action) {
+  if (!action) return "Action";
+  const labels = {
+    invite_create: "Invite created",
+    invite_delete: "Invite deleted",
+    name_renamed: "User renamed",
+    display_name_changed: "Display name changed",
+    lock_chat: "Chat locked",
+    unlock_chat: "Chat unlocked",
+    purge_messages: "Messages purged",
+    promote: "Admin promoted",
+    demote: "Admin demoted",
+    mute: "User muted",
+    unmute: "User unmuted",
+    signup: "Account created",
+    login: "Login",
+    logout: "Logout",
+  };
+  if (labels[action]) return labels[action];
+  const s = String(action).replace(/[_-]+/g, " ").toLowerCase();
+  return s.replace(/\b\w/g, (ch) => ch.toUpperCase());
+}
+
+function formatDateTime(ts) {
+  if (!ts) return "";
+  try {
+    const d = new Date(ts);
+    return d.toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+  } catch (e) {
+    return formatDate(ts);
+  }
+}
+
 function showOwnerBlock(displayName, action) {
   confirmAction.value = {
     show: true,
@@ -713,6 +889,14 @@ async function promoteUserConfirmed(uid) {
     await promoteToAdmin(uid);
     adminUsers.value.add(uid);
     sortUsers();
+    try {
+      const u = users.value.find((x) => x.uid === uid);
+      await recordAuditEvent({
+        action: "promote",
+        targetUid: uid,
+        targetName: u?.displayName || null,
+      });
+    } catch (e) {}
     confirmAction.value.show = false;
   } catch (e) {
     alert("Failed to promote user: " + (e.message || "Unknown error"));
@@ -755,6 +939,14 @@ async function demoteUserConfirmed(uid) {
     await demoteFromAdmin(uid);
     adminUsers.value.delete(uid);
     sortUsers();
+    try {
+      const u = users.value.find((x) => x.uid === uid);
+      await recordAuditEvent({
+        action: "demote",
+        targetUid: uid,
+        targetName: u?.displayName || null,
+      });
+    } catch (e) {}
     confirmAction.value.show = false;
   } catch (e) {
     alert("Failed to demote user: " + (e.message || "Unknown error"));
@@ -792,8 +984,24 @@ async function toggleMute(uid) {
   try {
     if (isUserMuted(uid)) {
       await remove(dbRef(db, `muted/${uid}`));
+      try {
+        const u = users.value.find((x) => x.uid === uid);
+        await recordAuditEvent({
+          action: "unmute",
+          targetUid: uid,
+          targetName: u?.displayName || null,
+        });
+      } catch (e) {}
     } else {
       await set(dbRef(db, `muted/${uid}`), true);
+      try {
+        const u = users.value.find((x) => x.uid === uid);
+        await recordAuditEvent({
+          action: "mute",
+          targetUid: uid,
+          targetName: u?.displayName || null,
+        });
+      } catch (e) {}
     }
   } catch (e) {
     console.error("Failed to toggle mute:", e);
@@ -805,7 +1013,11 @@ async function toggleMute(uid) {
 async function toggleChatLock() {
   lockLoading.value = true;
   try {
-    await set(dbRef(db, "settings/chatLocked"), !chatLocked.value);
+    const next = !chatLocked.value;
+    await set(dbRef(db, "settings/chatLocked"), next);
+    try {
+      await recordAuditEvent({ action: next ? "lock_chat" : "unlock_chat" });
+    } catch (e) {}
   } catch (e) {
     console.error("Failed to toggle chat lock:", e);
   } finally {
@@ -859,6 +1071,15 @@ async function executePurge() {
         );
       }
     }
+    try {
+      await recordAuditEvent({
+        action: "purge_messages",
+        details:
+          purgeAmount.value === "all"
+            ? "all messages"
+            : `${purgeAmount.value} messages - ${purgeOrder.value}`,
+      });
+    } catch (e) {}
     confirmAction.value.show = false;
   } catch (e) {
     const msg = String(e?.message || "");
@@ -893,9 +1114,18 @@ async function saveUsername(uid) {
   const name = editingUserName.value.trim();
   if (!name) return;
   try {
-    await adminRenameUser(uid, name);
     const u = users.value.find((x) => x.uid === uid);
+    const old = u?.displayName || null;
+    await adminRenameUser(uid, name);
     if (u) u.displayName = name;
+    try {
+      await recordAuditEvent({
+        action: "name_renamed",
+        targetUid: uid,
+        targetName: name,
+        details: old,
+      });
+    } catch (e) {}
     cancelEditUsername();
   } catch (e) {
     alert("Failed to update username: " + (e.message || "Unknown error"));
@@ -1559,6 +1789,47 @@ async function saveUsername(uid) {
 
 .controls-section {
   margin-bottom: 20px;
+}
+
+.audit-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.audit-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(44, 42, 39, 0.06);
+  justify-content: space-between;
+}
+.audit-desc {
+  display: flex;
+  flex-direction: column;
+}
+.audit-main {
+  font-size: 13px;
+  color: var(--text);
+}
+.audit-ts {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  margin-left: 12px;
+}
+.audit-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.audit-action {
+  text-transform: none;
+  letter-spacing: 0.2px;
+  font-size: 11px;
 }
 
 .controls-section-title {

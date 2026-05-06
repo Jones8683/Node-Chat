@@ -125,7 +125,7 @@
 import { ref, watch, onMounted } from "vue";
 import { auth } from "../firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { signupWithToken } from "../authUtils";
+import { signupWithToken, recordAuditEvent } from "../authUtils";
 import { Eye, EyeOff } from "lucide-vue-next";
 
 const isLogin = ref(true);
@@ -190,6 +190,9 @@ async function submitLogin() {
   loading.value = true;
   try {
     await signInWithEmailAndPassword(auth, email.value, password.value);
+    try {
+      await recordAuditEvent({ action: "login" });
+    } catch (e) {}
   } catch (e) {
     error.value = friendlyError(e.code);
   } finally {
