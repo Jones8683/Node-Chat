@@ -406,7 +406,7 @@
                     <span class="invite-state audit-action">{{
                       formatAuditAction(ev.action)
                     }}</span>
-                    <div class="audit-main">{{ formatAuditText(ev) }}</div>
+                    <div class="audit-main" v-html="formatAuditText(ev)"></div>
                   </div>
                   <div class="audit-ts">{{ formatDateTime(ev.ts) }}</div>
                 </div>
@@ -779,12 +779,24 @@ function resolveDisplayName(uid, fallback = "") {
   return user?.displayName || fallback || uid;
 }
 
+function escapeHtml(str) {
+  if (str === null || str === undefined) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 function formatAuditText(ev) {
-  const actor = resolveDisplayName(ev.actorUid, ev.actorName);
-  const targetName = resolveDisplayName(ev.targetUid, ev.targetName);
-  const target = ev.targetUid || ev.targetName ? ` ${targetName}` : "";
-  const details = ev.details ? ` - ${ev.details}` : "";
-  // Simple human-friendly messages for common actions
+  const actorRaw = resolveDisplayName(ev.actorUid, ev.actorName);
+  const actor = `<strong>${escapeHtml(actorRaw)}</strong>`;
+  const targetNameRaw = resolveDisplayName(ev.targetUid, ev.targetName);
+  const target =
+    ev.targetUid || ev.targetName ? ` ${escapeHtml(targetNameRaw)}` : "";
+  const details = ev.details ? ` - ${escapeHtml(ev.details)}` : "";
+
   switch (ev.action) {
     case "mute":
       return `${actor} muted${target}${details}`;
@@ -802,26 +814,26 @@ function formatAuditText(ev) {
       return `${actor} purged messages${details}`;
     case "invite_create":
       return ev.details
-        ? `${actor} created an invite code - ${ev.details}`
+        ? `${actor} created an invite code - ${escapeHtml(ev.details)}`
         : `${actor} created an invite`;
     case "invite_delete":
       return `${actor} deleted an invite${details}`;
     case "name_renamed":
-      return details
-        ? `${actor} renamed ${details} to ${target}`
+      return ev.details
+        ? `${actor} renamed ${escapeHtml(ev.details)} to ${target}`
         : `${actor} renamed ${target}`;
     case "display_name_changed":
       return `${actor} changed their display name${details}`;
     case "signup":
       return ev.details
-        ? `${actor} signed up ${ev.details}`
+        ? `${actor} signed up ${escapeHtml(ev.details)}`
         : `${actor} signed up`;
     case "login":
       return `${actor} logged in${details}`;
     case "logout":
       return `${actor} logged out${details}`;
     default:
-      return `${actor} performed ${ev.action || "an action"}${target}${details}`;
+      return `${actor} performed ${escapeHtml(ev.action || "an action")}${target}${details}`;
   }
 }
 
