@@ -152,21 +152,18 @@ export async function recordAuditEvent({
     const user = auth.currentUser;
     const uid = actorUid || (user && user.uid) || null;
     let name = actorName || null;
-    if (!name) {
+    if (!name && uid) {
       try {
         const userSnap = await get(dbRef(db, `users/${uid}`));
-        const dbDisplayName = userSnap.exists()
-          ? userSnap.val().displayName
-          : null;
-        name = dbDisplayName || (user && user.displayName) || null;
+        name = userSnap.exists() ? userSnap.val().displayName || null : null;
       } catch {
-        name = (user && user.displayName) || null;
+        name = null;
       }
     }
     const event = {
       action: action || "unknown",
       actorUid: uid,
-      actorName: name || null,
+      actorName: name || uid,
       targetUid: targetUid || null,
       targetName: targetName || null,
       details: details || null,
