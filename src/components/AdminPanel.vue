@@ -345,8 +345,9 @@
                     </button>
                     <button
                       v-if="
-                        (isUserMuted(u.uid) && canUnmute(u.uid)) ||
-                        (!isUserMuted(u.uid) && canMute(u.uid))
+                        canShowMuteButton(u.uid) &&
+                        ((isUserMuted(u.uid) && canUnmute(u.uid)) ||
+                          (!isUserMuted(u.uid) && canMute(u.uid)))
                       "
                       class="role-btn mute-btn"
                       :class="{ 'mute-btn--muted': isUserMuted(u.uid) }"
@@ -1057,19 +1058,20 @@ function isUserMuted(uid) {
 }
 
 function canMute(uid) {
+  return canShowMuteButton(uid);
+}
+
+function canUnmute(uid) {
+  return canShowMuteButton(uid);
+}
+
+function canShowMuteButton(uid) {
   if (uid === props.currentUserUid) return false;
   const currentIsOwner = isUserOwnerStatus(props.currentUserUid);
   const targetIsOwner = isUserOwnerStatus(uid);
   const targetIsAdmin = isUserAdminStatus(uid);
-  if (targetIsOwner) return currentIsOwner;
-  if (targetIsAdmin) return currentIsOwner;
+  if (targetIsOwner || targetIsAdmin) return currentIsOwner;
   return isUserAdminStatus(props.currentUserUid) || currentIsOwner;
-}
-
-function canUnmute(uid) {
-  if (uid === props.currentUserUid) return true;
-  const currentIsOwner = isUserOwnerStatus(props.currentUserUid);
-  return currentIsOwner || isUserAdminStatus(props.currentUserUid);
 }
 
 async function toggleMute(uid) {
