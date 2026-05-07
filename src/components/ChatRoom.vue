@@ -100,6 +100,7 @@
               :class="{
                 'message--editing': editingId === item.id,
                 'message--start': item.isGroupStart,
+                'message--entering': animatingIds.has(item.id),
                 'message--ping':
                   item.replyTo?.uid === user.uid && item.uid !== user.uid,
                 'message--highlighted': highlightedMessageId === item.id,
@@ -531,6 +532,7 @@ const emit = defineEmits(["ready", "open-settings", "open-admin"]);
 const messages = ref([]);
 const isAtBottom = ref(true);
 const showJumpButton = ref(false);
+const animatingIds = ref(new Set());
 const scrollUnread = ref(0);
 const isScrollingSmooth = ref(false);
 const SHOW_JUMP_THRESHOLD = 300;
@@ -1225,9 +1227,13 @@ function subscribeMessages() {
       sorted.forEach((msg) => knownIds.add(msg.id));
       initialLoadDone = true;
     } else {
+      const newAnimIds = new Set();
       sorted.forEach((msg) => {
         if (!knownIds.has(msg.id)) {
           knownIds.add(msg.id);
+          if (!document.hidden && wasNearBottom) {
+            newAnimIds.add(msg.id);
+          }
           if (document.hidden) {
             unreadCount++;
             updateBadge(unreadCount);
@@ -1262,6 +1268,12 @@ function subscribeMessages() {
           }
         }
       });
+      if (newAnimIds.size > 0) {
+        animatingIds.value = newAnimIds;
+        setTimeout(() => {
+          animatingIds.value = new Set();
+        }, 500);
+      }
     }
 
     messages.value = sorted;
@@ -2013,6 +2025,21 @@ async function logout() {
 .message:first-child,
 .message--start:first-child {
   margin-top: 0;
+}
+
+.message--entering {
+  animation: msgSlideIn 0.38s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes msgSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .message:hover {
