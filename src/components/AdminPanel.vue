@@ -35,7 +35,10 @@
           <button
             class="tab-btn"
             :class="{ active: activeTab === 'controls' }"
-            @click="activeTab = 'controls'"
+            @click="
+              activeTab = 'controls';
+              loadMessagesCount();
+            "
           >
             Controls
           </button>
@@ -161,7 +164,21 @@
               <div class="danger-zone">
                 <div class="control-card">
                   <div class="control-card-top">
-                    <div class="control-title">Purge Messages</div>
+                    <div class="control-title-row">
+                      <div class="control-title">Purge Messages</div>
+                      <div class="purge-count-badge">
+                        <span class="purge-count-label">Current</span>
+                        <strong class="purge-count-value">
+                          {{
+                            loadingMessagesCount
+                              ? "..."
+                              : totalMessagesCount === null
+                                ? "-"
+                                : totalMessagesCount
+                          }}
+                        </strong>
+                      </div>
+                    </div>
                     <div class="control-desc">
                       Permanently delete messages from the database. This cannot
                       be undone.
@@ -446,7 +463,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from "vue";
+import { ref, onMounted, onUnmounted, watch } from "vue";
 import { auth, db } from "../firebase";
 import copy from "clipboard-copy";
 import {
@@ -510,6 +527,8 @@ const usersError = ref("");
 
 const totalUsersCount = ref(0);
 const adminCount = ref(0);
+const totalMessagesCount = ref(null);
+const loadingMessagesCount = ref(false);
 
 const copyFeedback = ref(false);
 
@@ -615,6 +634,15 @@ onUnmounted(() => {
   if (adminsListener) adminsListener();
   if (ownerListener) ownerListener();
 });
+
+watch(
+  () => props.isOpen,
+  (isOpen) => {
+    if (isOpen) {
+      loadMessagesCount();
+    }
+  },
+);
 
 function closeIfClickedOutside(e) {
   if (e.target === e.currentTarget) close();
@@ -751,6 +779,21 @@ async function loadUsers() {
     }
   } finally {
     loadingUsers.value = false;
+  }
+}
+
+async function loadMessagesCount() {
+  loadingMessagesCount.value = true;
+  try {
+    const snap = await get(dbRef(db, "messages"));
+    totalMessagesCount.value = snap.exists()
+      ? Object.keys(snap.val() || {}).length
+      : 0;
+  } catch (e) {
+    console.error("Failed to load message count:", e);
+    totalMessagesCount.value = null;
+  } finally {
+    loadingMessagesCount.value = false;
   }
 }
 
@@ -1083,16 +1126,30 @@ async function toggleChatLock() {
   }
 }
 
-function promptPurge() {
+async function promptPurge() {
   purgeError.value = "";
-  const label =
+
+  if (totalMessagesCount.value === null) {
+    purgeError.value =
+      "Could not read the current message count. Close and reopen Admin, then try again.";
+    return;
+  }
+
+  const total = totalMessagesCount.value;
+  const requested =
     purgeAmount.value === "all"
-      ? "ALL messages"
-      : `the ${purgeAmount.value} ${purgeOrder.value} messages`;
+      ? total
+      : Math.min(total, parseInt(purgeAmount.value, 10) || 0);
+
+  if (requested <= 0) {
+    purgeError.value = "There are no messages to purge.";
+    return;
+  }
+
   confirmAction.value = {
     show: true,
     title: "Purge Messages?",
-    message: `This will permanently delete ${label} from the database. This action cannot be undone.`,
+    message: `This will permanently delete ${requested} messages from the database. This action cannot be undone.`,
     action: "Purge",
     confirm: executePurge,
     loading: false,
@@ -1138,6 +1195,7 @@ async function executePurge() {
             : `${purgeAmount.value} messages - ${purgeOrder.value}`,
       });
     } catch (e) {}
+    await loadMessagesCount();
     confirmAction.value.show = false;
   } catch (e) {
     const msg = String(e?.message || "");
@@ -2073,10 +2131,58 @@ async function saveUsername(uid) {
   color: var(--text);
 }
 
+.control-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
 .control-desc {
   font-size: 13px;
   color: var(--text-muted);
   line-height: 1.5;
+}
+
+.purge-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid rgba(44, 42, 39, 0.12);
+  border-radius: 999px;
+  background: rgba(44, 42, 39, 0.04);
+  min-height: 28px;
+  padding: 0 10px;
+  flex-shrink: 0;
+}
+
+.purge-count-label {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  line-height: 1;
+}
+
+.purge-count-value {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 640px) {
+  .control-title-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 
 .purge-row {
