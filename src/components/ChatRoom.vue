@@ -2759,6 +2759,7 @@ textarea::placeholder {
 
 .offline-name {
   font-size: 13px;
+  flex: none;
 }
 
 .offline-last-seen {
