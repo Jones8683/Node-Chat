@@ -1163,28 +1163,38 @@ function startEditUsername(u) {
   editingUserName.value = u.displayName || "";
 }
 
-function cancelEditUsername() {
+function clearEditUsername() {
   editingUserId.value = null;
   editingUserName.value = "";
 }
 
+function cancelEditUsername() {
+  clearEditUsername();
+}
+
 async function saveUsername(uid) {
-  const name = editingUserName.value.trim();
-  if (!name) return;
+  const newName = editingUserName.value.trim();
+  if (!newName) return;
+  const u = users.value.find((x) => x.uid === uid);
+  const oldName = u?.displayName || null;
+
+  if (newName === oldName) {
+    clearEditUsername();
+    return;
+  }
+
   try {
-    const u = users.value.find((x) => x.uid === uid);
-    const old = u?.displayName || null;
-    await adminRenameUser(uid, name);
-    if (u) u.displayName = name;
+    await adminRenameUser(uid, newName);
+    if (u) u.displayName = newName;
     try {
       await recordAuditEvent({
         action: "name_renamed",
         targetUid: uid,
-        targetName: name,
-        details: old,
+        targetName: newName,
+        details: oldName,
       });
     } catch (e) {}
-    cancelEditUsername();
+    clearEditUsername();
   } catch (e) {
     alert("Failed to update username: " + (e.message || "Unknown error"));
   }
