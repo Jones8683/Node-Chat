@@ -69,6 +69,7 @@
                   generatingInvite ? "Generating..." : "Generate Invite Code"
                 }}
               </button>
+
               <p v-if="errorInvite" class="error">{{ errorInvite }}</p>
             </div>
 
@@ -92,7 +93,7 @@
                       <span class="invite-state">Active</span>
                     </div>
                     <div class="invite-expires">
-                      Expires: {{ formatDate(invite.expiresAt) }}
+                      Expires: {{ formatRemaining(invite.expiresAt) }}
                     </div>
                   </div>
                   <div class="invite-actions">
@@ -571,6 +572,8 @@ const confirmAction = ref({
 let invitesListener = null;
 let adminsListener = null;
 let ownerListener = null;
+const now = ref(Date.now());
+let inviteInterval = null;
 let _prevAdminSet = null;
 
 onMounted(() => {
@@ -594,6 +597,11 @@ onMounted(() => {
   muteListener = onValue(dbRef(db, "muted"), (snap) => {
     mutedUsers.value = new Set(snap.exists() ? Object.keys(snap.val()) : []);
   });
+
+  // ticking clock used to render live countdowns for invite expirations
+  inviteInterval = setInterval(() => {
+    now.value = Date.now();
+  }, 1000);
 
   adminsListener = onValue(dbRef(db, "admins"), (snap) => {
     const newSet = new Set(snap.exists() ? Object.keys(snap.val()) : []);
@@ -633,6 +641,7 @@ onUnmounted(() => {
   if (muteListener) muteListener();
   if (adminsListener) adminsListener();
   if (ownerListener) ownerListener();
+  if (inviteInterval) clearInterval(inviteInterval);
 });
 
 watch(
@@ -823,6 +832,36 @@ function formatDate(timestamp) {
     day: "numeric",
     year: "numeric",
   });
+}
+
+function formatRemaining(timestamp) {
+  if (!timestamp) return "";
+  try {
+    const diff = timestamp - (now.value || Date.now());
+    if (diff <= 0) return "Expired";
+    const sec = Math.floor(diff / 1000);
+    const days = Math.floor(sec / 86400);
+    const hours = Math.floor((sec % 86400) / 3600);
+    const minutes = Math.floor((sec % 3600) / 60);
+    const seconds = sec % 60;
+
+    // Always show seconds, use colon-separated format.
+    function pad(n) {
+      return String(n).padStart(2, "0");
+    }
+
+    if (days > 0) {
+      const totalHours = days * 24 + hours;
+      return `${totalHours}:${pad(minutes)}:${pad(seconds)}`;
+    }
+    if (hours > 0) {
+      return `${hours}:${pad(minutes)}:${pad(seconds)}`;
+    }
+    // minutes or less
+    return `${minutes}:${pad(seconds)}`;
+  } catch (e) {
+    return formatDate(timestamp);
+  }
 }
 
 function resolveDisplayName(uid, fallback = "") {
@@ -1433,6 +1472,8 @@ async function saveUsername(uid) {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* invite-settings-row and small-toggle removed — seconds always shown */
 
 .error {
   color: var(--danger);
