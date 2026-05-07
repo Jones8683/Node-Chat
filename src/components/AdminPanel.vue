@@ -425,25 +425,16 @@
             <h3>{{ confirmAction.title }}</h3>
             <p>{{ confirmAction.message }}</p>
             <div class="confirmation-actions">
-              <template v-if="confirmAction.infoOnly">
-                <button class="cancel-btn" @click="cancelConfirm">OK</button>
-              </template>
-              <template v-else>
-                <button class="cancel-btn" @click="cancelConfirm">
-                  Cancel
-                </button>
-                <button
-                  class="danger-btn"
-                  @click="confirmAction.confirm"
-                  :disabled="confirmAction.loading"
-                >
-                  {{
-                    confirmAction.loading
-                      ? "Processing..."
-                      : confirmAction.action
-                  }}
-                </button>
-              </template>
+              <button class="cancel-btn" @click="cancelConfirm">Cancel</button>
+              <button
+                class="danger-btn"
+                @click="confirmAction.confirm"
+                :disabled="confirmAction.loading"
+              >
+                {{
+                  confirmAction.loading ? "Processing..." : confirmAction.action
+                }}
+              </button>
             </div>
           </div>
         </div>
@@ -562,14 +553,9 @@ let invitesListener = null;
 let adminsListener = null;
 let ownerListener = null;
 let _prevAdminSet = null;
-let _reloadPending = false;
 
 onMounted(() => {
   loadingInvites.value = true;
-  // clear any previous admin-change handled flag so new sessions react
-  try {
-    sessionStorage.removeItem("adminChangeHandled");
-  } catch (e) {}
   window.addEventListener("keydown", onKeyDown);
   window.addEventListener("pointerdown", onOutsideClick);
   invitesListener = onValue(dbRef(db, "invites"), (snap) => {
@@ -600,34 +586,11 @@ onMounted(() => {
     if (currentUid) {
       if (_prevAdminSet === null) {
         _prevAdminSet = new Set(newSet);
-      } else if (!_reloadPending) {
+      } else {
         const wasAdmin = _prevAdminSet.has(currentUid);
         const isAdminNow = newSet.has(currentUid);
-        if (wasAdmin !== isAdminNow) {
-          const handled = sessionStorage.getItem("adminChangeHandled");
-          if (!handled) {
-            sessionStorage.setItem("adminChangeHandled", "1");
-            _reloadPending = true;
-            if (!isAdminNow) {
-              close();
-              confirmAction.value = {
-                show: true,
-                title: "Admin Privileges Removed",
-                message:
-                  "You have been demoted. The app will reload to apply changes.",
-                action: "",
-                confirm: null,
-                loading: false,
-                infoOnly: true,
-              };
-            }
-            // for promotions: do not show a modal, just reload silently
-            setTimeout(() => {
-              try {
-                location.reload();
-              } catch (e) {}
-            }, 800);
-          }
+        if (wasAdmin !== isAdminNow && !isAdminNow) {
+          close();
         }
         _prevAdminSet = new Set(newSet);
       }
