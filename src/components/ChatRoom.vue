@@ -205,7 +205,7 @@
                         @keydown.enter.exact.prevent="saveEdit(item.id)"
                         @keydown.esc.prevent="cancelEdit"
                         @input="resizeEditInput($event.target)"
-                        maxlength="2000"
+                        maxlength="10000"
                         rows="1"
                       ></textarea>
                     </div>
@@ -349,7 +349,7 @@
                 name="message"
                 autocomplete="off"
                 rows="1"
-                maxlength="2000"
+                maxlength="10000"
                 enterkeyhint="send"
                 inputmode="text"
                 :disabled="isMuted || (chatLocked && !isAdmin)"
@@ -365,8 +365,8 @@
                 @input="handleComposerInput"
                 @blur="closeEmojiPicker"
               ></textarea>
-              <span class="char-warning" v-if="newMessage.length > 1800">{{
-                2000 - newMessage.length
+              <span class="char-warning" v-if="newMessage.length > 9000">{{
+                10000 - newMessage.length
               }}</span>
               <button
                 @mousedown.prevent
@@ -1532,7 +1532,7 @@ async function sendMessage() {
   if (isMuted.value) return;
   const text = sanitizeMessage(newMessage.value);
   if (!text.trim()) return;
-  if (text.length > 2000) return;
+  if (text.length > 10000) return;
   syncPresence();
   newMessage.value = "";
   nextTick(resizeComposer);
