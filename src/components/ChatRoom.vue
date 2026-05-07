@@ -729,6 +729,7 @@ let connectedListener = null;
 let lockListener = null;
 let muteListener = null;
 let allMutedUsersListener = null;
+let animationClearTimer = null;
 
 function getPresenceTabId() {
   const storedId = sessionStorage.getItem(PRESENCE_TAB_STORAGE_KEY);
@@ -1263,14 +1264,18 @@ function subscribeMessages() {
               };
             }
           }
-          if (!isNearBottom(messageContainer.value)) {
+          if (
+            !isNearBottom(messageContainer.value) &&
+            msg.uid !== props.user.uid
+          ) {
             scrollUnread.value++;
           }
         }
       });
       if (newAnimIds.size > 0) {
+        clearTimeout(animationClearTimer);
         animatingIds.value = newAnimIds;
-        setTimeout(() => {
+        animationClearTimer = setTimeout(() => {
           animatingIds.value = new Set();
         }, 500);
       }
@@ -1605,6 +1610,10 @@ async function sendMessage() {
     });
   } catch (err) {
     console.error("Failed to send message:", err);
+    newMessage.value = text;
+    replyingTo.value = replySnapshot;
+    totalCount--;
+    nextTick(resizeComposer);
   }
 }
 
@@ -1756,21 +1765,23 @@ async function logout() {
 
 .dropdown-fade-enter-active {
   transition:
-    opacity 160ms ease,
-    transform 160ms cubic-bezier(0.16, 1, 0.3, 1);
+    opacity 0.2s ease,
+    transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform-origin: top right;
 }
 .dropdown-fade-leave-active {
   transition:
-    opacity 120ms ease,
-    transform 120ms ease;
+    opacity 0.13s ease,
+    transform 0.13s ease;
+  transform-origin: top right;
 }
 .dropdown-fade-enter-from {
   opacity: 0;
-  transform: translateY(-8px) scale(0.96);
+  transform: translateY(-8px) scale(0.92);
 }
 .dropdown-fade-leave-to {
   opacity: 0;
-  transform: translateY(-4px) scale(0.98);
+  transform: translateY(-4px) scale(0.97);
 }
 
 .dropdown {
@@ -2270,25 +2281,6 @@ async function logout() {
   padding-right: 2px;
 }
 
-.reply-slide-enter-active,
-.reply-slide-leave-active {
-  transition:
-    transform 0.16s ease,
-    opacity 0.14s ease;
-  transform-origin: top;
-  overflow: hidden;
-}
-.reply-slide-enter-from,
-.reply-slide-leave-to {
-  transform: scaleY(0);
-  opacity: 0;
-}
-.reply-slide-enter-to,
-.reply-slide-leave-from {
-  transform: scaleY(1);
-  opacity: 1;
-}
-
 .reply-bar {
   display: flex;
   align-items: center;
@@ -2450,7 +2442,7 @@ async function logout() {
 }
 
 .edit-input:focus {
-  border-color: var(--border);
+  border-color: rgba(44, 42, 39, 0.28);
 }
 
 .text {
