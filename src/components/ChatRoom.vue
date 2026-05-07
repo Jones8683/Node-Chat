@@ -405,6 +405,12 @@
                 {{ getAvatarInitial(u.displayName, u.uid) }}
               </div>
               <span class="online-item-name">{{ u.displayName }}</span>
+              <MicOff
+                v-if="allMutedUsers.has(u.uid)"
+                :size="12"
+                stroke-width="2.5"
+                class="user-muted-icon"
+              />
               <Crown
                 v-if="adminUsers.has(u.uid)"
                 :size="12"
@@ -432,6 +438,12 @@
                     <span class="online-item-name offline-name">{{
                       u.displayName
                     }}</span>
+                    <MicOff
+                      v-if="allMutedUsers.has(u.uid)"
+                      :size="12"
+                      stroke-width="2.5"
+                      class="user-muted-icon"
+                    />
                     <Crown
                       v-if="adminUsers.has(u.uid)"
                       :size="12"
@@ -710,6 +722,7 @@ let usersListener = null;
 let connectedListener = null;
 let lockListener = null;
 let muteListener = null;
+let allMutedUsersListener = null;
 
 function getPresenceTabId() {
   const storedId = sessionStorage.getItem(PRESENCE_TAB_STORAGE_KEY);
@@ -735,6 +748,7 @@ async function syncPresence() {
 
 const chatLocked = ref(false);
 const isMuted = ref(false);
+const allMutedUsers = ref(new Set());
 const replyingTo = ref(null);
 const highlightedMessageId = ref(null);
 let pendingScrollAnchor = null;
@@ -1342,6 +1356,12 @@ onMounted(async () => {
   muteListener = onValue(dbRef(db, `muted/${props.user.uid}`), (snap) => {
     isMuted.value = snap.val() === true;
   });
+  allMutedUsersListener = onValue(dbRef(db, "muted"), (snap) => {
+    const data = snap.val();
+    allMutedUsers.value = new Set(
+      data ? Object.keys(data).filter((uid) => data[uid] === true) : [],
+    );
+  });
 
   const countSnap = await get(dbRef(db, "messages"));
   totalCount = countSnap.exists() ? Object.keys(countSnap.val()).length : 0;
@@ -1378,6 +1398,7 @@ onUnmounted(() => {
   if (myPresenceTabRef) remove(myPresenceTabRef);
   if (lockListener) lockListener();
   if (muteListener) muteListener();
+  if (allMutedUsersListener) allMutedUsersListener();
   headerRef.value?.removeEventListener("wheel", forwardWheelToMessages);
   typingAreaRef.value?.removeEventListener("wheel", forwardWheelToMessages);
   inputRowRef.value?.removeEventListener("wheel", forwardWheelToMessages);
@@ -2750,6 +2771,11 @@ textarea::placeholder {
   align-items: center;
   gap: 4px;
   min-width: 0;
+}
+
+.user-muted-icon {
+  color: var(--text-muted);
+  flex-shrink: 0;
 }
 
 .online-crown {
