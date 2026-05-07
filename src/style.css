@@ -23,10 +23,17 @@ html,
 body {
   height: 100%;
   width: 100%;
-  background: var(--bg);
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.28), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(44, 42, 39, 0.03), transparent 24%),
+    linear-gradient(180deg, #f4eddc 0%, var(--bg) 46%, #ece3d2 100%);
   color: var(--text);
   font-family: "Satoshi", sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+body {
+  background-attachment: fixed;
 }
 
 #app {
