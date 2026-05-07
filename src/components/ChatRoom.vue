@@ -1444,12 +1444,44 @@ function startEdit(msg) {
   cancelReply();
   editingId.value = msg.id;
   editText.value = msg.text;
+
   nextTick(() => {
-    const el = editInputRef.value;
-    if (!el) return;
-    el.focus();
-    el.setSelectionRange(el.value.length, el.value.length);
-    resizeEditInput(el);
+    nextTick(() => {
+      const container = messageContainer.value;
+      const msgEl = container?.querySelector(`[data-message-id="${msg.id}"]`);
+      let el = msgEl?.querySelector(".edit-input");
+      if (!el) {
+        const refVal = editInputRef.value;
+        if (Array.isArray(refVal)) {
+          el = refVal.find((node) => {
+            try {
+              return (
+                node &&
+                node.closest &&
+                node.closest("[data-message-id]")?.dataset?.messageId === msg.id
+              );
+            } catch (e) {
+              return false;
+            }
+          });
+        } else if (refVal && typeof refVal.focus === "function") {
+          el = refVal;
+        }
+      }
+
+      if (!el) return;
+
+      try {
+        el.focus();
+        if (typeof el.setSelectionRange === "function") {
+          const len = (el.value || "").length;
+          el.setSelectionRange(len, len);
+        }
+        resizeEditInput(el);
+      } catch (e) {
+        console.error("startEdit focus error:", e);
+      }
+    });
   });
 }
 
