@@ -1,8 +1,11 @@
 <template>
   <div id="app">
     <div v-if="showLoadingPage" class="loading-page">
-      <div class="loading-spinner" aria-hidden="true">
-        <span></span>
+      <div class="loading-stack" role="status" aria-live="polite">
+        <div class="loading-spinner" aria-hidden="true">
+          <span></span>
+        </div>
+        <div class="loading-label">Loading Node Chat</div>
       </div>
     </div>
     <ChatRoom
@@ -137,6 +140,13 @@ onMounted(() => {
   z-index: 20;
 }
 
+.loading-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
 .loading-spinner {
   display: flex;
   align-items: center;
@@ -152,6 +162,13 @@ onMounted(() => {
   border: 2px solid rgba(44, 42, 39, 0.12);
   border-top-color: rgba(44, 42, 39, 0.68);
   animation: loadingSpin 0.95s linear infinite;
+}
+
+.loading-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.01em;
 }
 
 @keyframes loadingSpin {

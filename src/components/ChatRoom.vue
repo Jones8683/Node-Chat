@@ -317,7 +317,7 @@
             <span>Chat is locked by an admin</span>
           </div>
 
-          <div class="input-wrap">
+          <div class="input-wrap" @mousedown.prevent="focusComposer">
             <div v-if="replyingTo" class="reply-bar">
               <span class="reply-bar-to"
                 >Replying to
@@ -341,7 +341,11 @@
               </button>
             </div>
 
-            <div class="input-row" ref="inputRowRef">
+            <div
+              class="input-row"
+              ref="inputRowRef"
+              @mousedown.prevent="focusComposer"
+            >
               <textarea
                 ref="composerRef"
                 v-model="newMessage"
@@ -1134,6 +1138,10 @@ async function handleTyping() {
   typingTimeout = setTimeout(() => remove(myTypingRef), 2000);
 }
 
+function focusComposer() {
+  composerRef.value?.focus();
+}
+
 function handleComposerInput() {
   resizeComposer();
   handleTyping();
@@ -1658,11 +1666,19 @@ async function logout() {
   font-family: "Satoshi", sans-serif;
   font-size: 13px;
   font-weight: 600;
-  transition: background 0.15s;
+  transition:
+    background 0.15s,
+    box-shadow 0.15s,
+    transform 0.15s;
 }
 
 .user-btn:hover {
   background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px rgba(44, 42, 39, 0.04);
+}
+
+.user-btn:active {
+  transform: translateY(1px);
 }
 
 .avatar {
@@ -2486,10 +2502,23 @@ async function logout() {
   margin: 0 16px 14px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: 14px;
   overflow: hidden;
   flex-shrink: 0;
-  transition: border-color 0.15s;
+  box-shadow: 0 4px 12px rgba(20, 20, 20, 0.03);
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+
+.input-wrap,
+.input-row {
+  cursor: text;
+}
+
+.input-wrap:focus-within {
+  border-color: rgba(44, 42, 39, 0.16);
+  box-shadow: 0 8px 18px rgba(20, 20, 20, 0.05);
 }
 
 .input-row {
@@ -2531,19 +2560,27 @@ textarea::placeholder {
 }
 
 .send-btn {
-  background: none;
+  background: var(--surface-2);
   border: none;
   cursor: pointer;
-  color: var(--text-muted);
+  color: var(--text);
   display: flex;
   align-items: center;
-  padding: 4px;
-  transition: color 0.2s;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  padding: 0;
+  transition:
+    background 0.15s,
+    transform 0.15s,
+    color 0.15s;
   flex-shrink: 0;
 }
 
 .send-btn:hover {
-  color: var(--text);
+  background: rgba(44, 42, 39, 0.08);
+  transform: translateY(-1px);
 }
 
 .send-btn:disabled {
@@ -2553,7 +2590,8 @@ textarea::placeholder {
 }
 
 .send-btn:disabled:hover {
-  color: var(--text-muted);
+  background: var(--surface-2);
+  transform: none;
 }
 
 .online-btn {
@@ -2581,6 +2619,7 @@ textarea::placeholder {
 .online-btn.active {
   border-color: rgba(44, 42, 39, 0.14);
   background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px rgba(44, 42, 39, 0.03);
 }
 
 .online-btn:active {
