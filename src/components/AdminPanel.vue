@@ -748,7 +748,7 @@ async function deleteInvite(token) {
     try {
       await recordAuditEvent({
         action: "invite_delete",
-        details: `code ${token}`,
+        details: token,
       });
     } catch (e) {}
   } catch (e) {
@@ -905,10 +905,12 @@ function formatAuditText(ev) {
       return `${actor} purged messages${details}`;
     case "invite_create":
       return ev.details
-        ? `${actor} created an invite code - ${escapeHtml(ev.details)}`
+        ? `${actor} created an invite - ${escapeHtml(ev.details)}`
         : `${actor} created an invite`;
     case "invite_delete":
-      return `${actor} deleted an invite${details}`;
+      return ev.details
+        ? `${actor} deleted an invite - ${escapeHtml(ev.details)}`
+        : `${actor} deleted an invite`;
     case "name_renamed":
       return ev.details
         ? `${actor} renamed ${escapeHtml(ev.details)} to ${target}`
