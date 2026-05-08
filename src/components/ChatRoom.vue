@@ -213,7 +213,10 @@
                   </template>
 
                   <template v-else>
-                    <div class="msg-body">
+                    <div
+                      class="msg-body"
+                      :class="{ 'msg-body--emoji': isEmojiOnly(item.text) }"
+                    >
                       <span class="text"
                         ><span v-html="formatMessage(item.text)"></span
                         ><span v-if="item.editedAt" class="edited-label">
@@ -939,6 +942,19 @@ function formatMessage(text) {
       },
     )
     .replace(/\x00(\d+)\x00/g, (_, idx) => escapes[parseInt(idx)]);
+}
+
+function isEmojiOnly(text) {
+  if (!text?.trim()) return false;
+  const stripped = text.replace(
+    /[\p{Emoji_Presentation}\p{Extended_Pictographic}\uFE0F\u200D\u20E3\s]/gu,
+    "",
+  );
+  if (stripped.length > 0) return false;
+  const count = (
+    text.match(/\p{Emoji_Presentation}|\p{Extended_Pictographic}/gu) || []
+  ).length;
+  return count >= 1 && count <= 3;
 }
 
 function captureScrollAnchor(scrollEl) {
@@ -2121,6 +2137,17 @@ async function logout() {
   font-size: 11px;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
+}
+
+.msg-body--emoji .text {
+  font-size: 48px;
+  line-height: 1.15;
+  display: block;
+}
+
+.msg-body--emoji .edited-label {
+  font-size: 10px;
+  vertical-align: middle;
 }
 
 .msg-body {
