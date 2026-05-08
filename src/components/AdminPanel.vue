@@ -1347,14 +1347,6 @@ async function saveUsername(uid) {
   try {
     await adminRenameUser(uid, newName);
     if (u) u.displayName = newName;
-    try {
-      await recordAuditEvent({
-        action: "name_renamed",
-        targetUid: uid,
-        targetName: newName,
-        details: oldName,
-      });
-    } catch (e) {}
     clearEditUsername();
   } catch (e) {
     alert("Failed to update username: " + (e.message || "Unknown error"));

@@ -303,6 +303,15 @@ export async function adminRenameUser(uid, newDisplayName) {
   } catch (e) {}
 
   await batchUpdateMessageDisplayNames(uid, newDisplayName);
+
+  try {
+    await recordAuditEvent({
+      action: "name_renamed",
+      targetUid: uid,
+      targetName: newDisplayName,
+      details: oldDisplayName || null,
+    });
+  } catch (e) {}
 }
 
 async function batchUpdateMessageDisplayNames(uid, newDisplayName) {
