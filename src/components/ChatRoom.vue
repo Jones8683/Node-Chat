@@ -1161,6 +1161,14 @@ function handleClickOutside(e) {
   }
 }
 
+function handleGlobalKeydown(e) {
+  if (e.key !== "Escape") return;
+
+  if (showDropdown.value) {
+    showDropdown.value = false;
+  }
+}
+
 function openSettings() {
   showDropdown.value = false;
   emit("open-settings");
@@ -1369,6 +1377,7 @@ onMounted(async () => {
   window.addEventListener("focus", handleWindowFocus);
   window.addEventListener("online", handleOnline);
   document.addEventListener("click", handleClickOutside);
+  document.addEventListener("keydown", handleGlobalKeydown);
   messageContainer.value?.addEventListener("scroll", handleMessageScroll, {
     passive: true,
   });
@@ -1449,6 +1458,7 @@ onUnmounted(() => {
   window.removeEventListener("focus", handleWindowFocus);
   window.removeEventListener("online", handleOnline);
   document.removeEventListener("click", handleClickOutside);
+  document.removeEventListener("keydown", handleGlobalKeydown);
   messageContainer.value?.removeEventListener("scroll", handleMessageScroll);
   clearTimeout(typingTimeout);
   if (messagesListener) messagesListener();
