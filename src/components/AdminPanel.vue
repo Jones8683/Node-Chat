@@ -905,12 +905,12 @@ function formatAuditText(ev) {
       return `${actor} purged messages${details}`;
     case "invite_create":
       return ev.details
-        ? `${actor} created an invite - ${escapeHtml(ev.details)}`
-        : `${actor} created an invite`;
+        ? `${actor} created an invite code - ${escapeHtml(ev.details)}`
+        : `${actor} created an invite code`;
     case "invite_delete":
       return ev.details
-        ? `${actor} deleted an invite - ${escapeHtml(ev.details)}`
-        : `${actor} deleted an invite`;
+        ? `${actor} deleted an invite code - ${escapeHtml(ev.details)}`
+        : `${actor} deleted an invite code`;
     case "name_renamed":
       return ev.details
         ? `${actor} renamed ${escapeHtml(ev.details)} to ${target}`
