@@ -227,10 +227,27 @@
                     <div class="msg-actions">
                       <button
                         class="msg-action-btn"
+                        :class="{ active: copiedMessageId === item.id }"
+                        @click="copyMessageText(item)"
+                        :title="
+                          copiedMessageId === item.id
+                            ? 'Copied'
+                            : 'Copy message'
+                        "
+                      >
+                        <Check
+                          v-if="copiedMessageId === item.id"
+                          :size="15"
+                          stroke-width="2.2"
+                        />
+                        <Copy v-else :size="15" stroke-width="2" />
+                      </button>
+                      <button
+                        class="msg-action-btn"
                         @click="startReply(item)"
                         title="Reply"
                       >
-                        <CornerUpLeft :size="17" stroke-width="2" />
+                        <Pencil :size="16" stroke-width="2" />
                       </button>
                       <button
                         v-if="item.uid === user.uid"
@@ -238,7 +255,7 @@
                         @click="startEdit(item)"
                         title="Edit"
                       >
-                        <Pencil :size="16" stroke-width="2" />
+                        <CornerUpLeft :size="17" stroke-width="2" />
                       </button>
                       <button
                         v-if="item.uid === user.uid || isAdmin"
@@ -506,6 +523,8 @@ import {
   LogOut,
   Send,
   Crown,
+  Copy,
+  Check,
   Pencil,
   Trash2,
   ChevronDown,
@@ -528,6 +547,7 @@ import {
   goOnline,
   get,
 } from "firebase/database";
+import copy from "clipboard-copy";
 import { initBadge, updateBadge, clearBadge } from "../faviconBadge";
 
 const props = defineProps(["user"]);
@@ -706,6 +726,7 @@ const editingId = ref(null);
 const editText = ref("");
 const editInputRef = ref(null);
 const deleteDialog = ref({ show: false, id: null, name: "" });
+const copiedMessageId = ref(null);
 const MESSAGE_BATCH_SIZE = 100;
 const SCROLL_BOTTOM_THRESHOLD = 24;
 const PRESENCE_TAB_STORAGE_KEY = "node-chat-presence-tab-id";
@@ -733,6 +754,7 @@ let lockListener = null;
 let muteListener = null;
 let allMutedUsersListener = null;
 let animationClearTimer = null;
+let copyResetTimer = null;
 
 function getPresenceTabId() {
   const storedId = sessionStorage.getItem(PRESENCE_TAB_STORAGE_KEY);
@@ -1443,7 +1465,26 @@ onUnmounted(() => {
   headerRef.value?.removeEventListener("wheel", forwardWheelToMessages);
   typingAreaRef.value?.removeEventListener("wheel", forwardWheelToMessages);
   inputRowRef.value?.removeEventListener("wheel", forwardWheelToMessages);
+  clearTimeout(copyResetTimer);
 });
+
+async function copyMessageText(item) {
+  const text = item?.text || "";
+  if (!text.trim()) return;
+
+  try {
+    await copy(text);
+    copiedMessageId.value = item.id;
+    clearTimeout(copyResetTimer);
+    copyResetTimer = setTimeout(() => {
+      if (copiedMessageId.value === item.id) {
+        copiedMessageId.value = null;
+      }
+    }, 1200);
+  } catch (err) {
+    console.error("Failed to copy message:", err);
+  }
+}
 
 function startReply(item) {
   cancelEdit();
@@ -2182,8 +2223,8 @@ async function logout() {
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  width: 24px;
-  height: 24px;
+  width: 25px;
+  height: 25px;
   padding: 0;
   border-radius: 4px;
   display: flex;
@@ -2206,6 +2247,11 @@ async function logout() {
 .msg-action-btn:hover {
   background: var(--surface-2);
   color: var(--text);
+}
+
+.msg-action-btn.active {
+  background: rgba(90, 90, 240, 0.12);
+  color: var(--accent);
 }
 
 .msg-action-btn.danger:hover {
