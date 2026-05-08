@@ -243,17 +243,17 @@
                         <Copy v-else :size="15" stroke-width="2" />
                       </button>
                       <button
-                        class="msg-action-btn"
-                        @click="startReply(item)"
-                        title="Reply"
-                      >
-                        <Pencil :size="16" stroke-width="2" />
-                      </button>
-                      <button
                         v-if="item.uid === user.uid"
                         class="msg-action-btn"
                         @click="startEdit(item)"
                         title="Edit"
+                      >
+                        <Pencil :size="16" stroke-width="2" />
+                      </button>
+                      <button
+                        class="msg-action-btn"
+                        @click="startReply(item)"
+                        title="Reply"
                       >
                         <CornerUpLeft :size="17" stroke-width="2" />
                       </button>
