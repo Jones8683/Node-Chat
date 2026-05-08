@@ -572,6 +572,7 @@ const confirmAction = ref({
 let invitesListener = null;
 let adminsListener = null;
 let ownerListener = null;
+let usersListener = null;
 const now = ref(Date.now());
 let inviteInterval = null;
 let _prevAdminSet = null;
@@ -598,7 +599,6 @@ onMounted(() => {
     mutedUsers.value = new Set(snap.exists() ? Object.keys(snap.val()) : []);
   });
 
-  // ticking clock used to render live countdowns for invite expirations
   inviteInterval = setInterval(() => {
     now.value = Date.now();
   }, 1000);
@@ -641,6 +641,7 @@ onUnmounted(() => {
   if (muteListener) muteListener();
   if (adminsListener) adminsListener();
   if (ownerListener) ownerListener();
+  if (usersListener) usersListener();
   if (inviteInterval) clearInterval(inviteInterval);
 });
 
@@ -757,14 +758,20 @@ async function deleteInvite(token) {
 }
 
 async function loadUsers() {
+  if (usersListener) return;
   loadingUsers.value = true;
   usersError.value = "";
   try {
-    const allUsers = await getAllUsers();
-    users.value = allUsers.filter((u) => u.displayName && u.displayName.trim());
-    totalUsersCount.value = users.value.length;
-    adminCount.value = adminUsers.value.size;
-    sortUsers();
+    usersListener = onValue(dbRef(db, "users"), (snap) => {
+      const all = snap.exists() ? snap.val() : {};
+      users.value = Object.entries(all)
+        .map(([uid, data]) => ({ uid, ...data }))
+        .filter((u) => u.displayName && u.displayName.trim());
+      totalUsersCount.value = users.value.length;
+      adminCount.value = adminUsers.value.size;
+      sortUsers();
+      loadingUsers.value = false;
+    });
   } catch (e) {
     console.error("Failed to load users:", e);
     usersError.value =
@@ -786,10 +793,23 @@ async function loadUsers() {
       ];
       totalUsersCount.value = 1;
     }
-  } finally {
     loadingUsers.value = false;
   }
 }
+
+watch(
+  () => activeTab.value,
+  (val) => {
+    if (val === "users") {
+      loadUsers();
+    } else {
+      if (usersListener) {
+        usersListener();
+        usersListener = null;
+      }
+    }
+  },
+);
 
 async function loadMessagesCount() {
   loadingMessagesCount.value = true;
@@ -845,7 +865,6 @@ function formatRemaining(timestamp) {
     const minutes = Math.floor((sec % 3600) / 60);
     const seconds = sec % 60;
 
-    // Always show seconds, use colon-separated format.
     function pad(n) {
       return String(n).padStart(2, "0");
     }
@@ -857,7 +876,6 @@ function formatRemaining(timestamp) {
     if (hours > 0) {
       return `${hours}:${pad(minutes)}:${pad(seconds)}`;
     }
-    // minutes or less
     return `${minutes}:${pad(seconds)}`;
   } catch (e) {
     return formatDate(timestamp);
@@ -1474,8 +1492,6 @@ async function saveUsername(uid) {
   opacity: 0.5;
   cursor: not-allowed;
 }
-
-/* invite-settings-row and small-toggle removed — seconds always shown */
 
 .error {
   color: var(--danger);
