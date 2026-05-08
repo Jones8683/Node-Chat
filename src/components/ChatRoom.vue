@@ -97,6 +97,7 @@
               v-else
               class="message"
               :data-message-id="item.id"
+              @dblclick="startReply(item)"
               :class="{
                 'message--editing': editingId === item.id,
                 'message--start': item.isGroupStart,
