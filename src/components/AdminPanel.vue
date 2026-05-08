@@ -573,6 +573,7 @@ let invitesListener = null;
 let adminsListener = null;
 let ownerListener = null;
 let usersListener = null;
+let messagesListener = null;
 const now = ref(Date.now());
 let inviteInterval = null;
 let _prevAdminSet = null;
@@ -642,6 +643,8 @@ onUnmounted(() => {
   if (adminsListener) adminsListener();
   if (ownerListener) ownerListener();
   if (usersListener) usersListener();
+  if (auditListener) auditListener();
+  if (messagesListener) messagesListener();
   if (inviteInterval) clearInterval(inviteInterval);
 });
 
@@ -806,6 +809,47 @@ watch(
       if (usersListener) {
         usersListener();
         usersListener = null;
+      }
+    }
+    if (val === "audit") {
+      if (!auditListener) {
+        auditListener = onValue(dbRef(db, "auditLogs"), (snap) => {
+          const all = snap.exists() ? snap.val() : {};
+          const flat = [];
+          for (const [actorUid, items] of Object.entries(all)) {
+            for (const [id, ev] of Object.entries(items || {})) {
+              flat.push({ id, actorUid, ...ev });
+            }
+          }
+          flat.sort((a, b) => {
+            const diff = (b.ts || 0) - (a.ts || 0);
+            if (diff !== 0) return diff;
+            return String(b.id || "").localeCompare(String(a.id || ""));
+          });
+          auditEntries.value = flat.slice(0, 500);
+          loadingAudit.value = false;
+          auditError.value = "";
+        });
+      }
+    } else {
+      if (auditListener) {
+        auditListener();
+        auditListener = null;
+      }
+    }
+    if (val === "controls") {
+      if (!messagesListener) {
+        messagesListener = onValue(dbRef(db, "messages"), (snap) => {
+          totalMessagesCount.value = snap.exists()
+            ? Object.keys(snap.val() || {}).length
+            : 0;
+          loadingMessagesCount.value = false;
+        });
+      }
+    } else {
+      if (messagesListener) {
+        messagesListener();
+        messagesListener = null;
       }
     }
   },
