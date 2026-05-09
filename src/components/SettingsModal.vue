@@ -270,7 +270,7 @@
                     :class="{ active: notificationMode === 'ping' }"
                     @click="setNotificationMode('ping')"
                   >
-                    Mentions only
+                    Mentions and replies
                   </button>
                   <button
                     class="pref-option"

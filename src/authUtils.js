@@ -320,6 +320,7 @@ async function batchUpdateMessageDisplayNames(uid, newDisplayName) {
 
   const authoredPaths = [];
   const replyPaths = [];
+  const mentionPaths = [];
   const msgs = messagesSnap.val();
 
   for (const [msgId, msg] of Object.entries(msgs)) {
@@ -328,6 +329,9 @@ async function batchUpdateMessageDisplayNames(uid, newDisplayName) {
     }
     if (msg.replyTo?.uid === uid) {
       replyPaths.push(`messages/${msgId}/replyTo/displayName`);
+    }
+    if (msg.mentions?.[uid]) {
+      mentionPaths.push(`messages/${msgId}/mentions/${uid}/displayName`);
     }
   }
 
@@ -340,6 +344,12 @@ async function batchUpdateMessageDisplayNames(uid, newDisplayName) {
   if (replyPaths.length > 0) {
     await Promise.all(
       replyPaths.map((path) => set(dbRef(db, path), newDisplayName)),
+    );
+  }
+
+  if (mentionPaths.length > 0) {
+    await Promise.all(
+      mentionPaths.map((path) => set(dbRef(db, path), newDisplayName)),
     );
   }
 }
@@ -357,6 +367,9 @@ async function batchUpdateMessageAvatarColor(uid, avatarColor) {
     }
     if (msg.replyTo?.uid === uid) {
       updates[`messages/${msgId}/replyTo/avatarColor`] = avatarColor;
+    }
+    if (msg.mentions?.[uid]) {
+      updates[`messages/${msgId}/mentions/${uid}/avatarColor`] = avatarColor;
     }
   }
 

@@ -32,6 +32,16 @@
           "avatarColor": {
             ".write": "auth != null && (data.parent().child('uid').val() === auth.uid || root.child('admins').child(auth.uid).val() === true)"
           }
+        },
+        "mentions": {
+          "$uid": {
+            ".write": "auth != null && ($uid === auth.uid || data.parent().parent().child('uid').val() === auth.uid || root.child('admins').child(auth.uid).val() === true)"
+          }
+        },
+        "mentionUids": {
+          "$uid": {
+            ".write": "auth != null && (data.parent().parent().child('uid').val() === auth.uid || root.child('admins').child(auth.uid).val() === true)"
+          }
         }
       }
     },
