@@ -241,7 +241,7 @@
             <div class="pref-card">
               <div class="pref-row">
                 <div class="pref-info">
-                  <div class="pref-label">Browser notifications</div>
+                  <div class="pref-label">Notifications</div>
                   <div class="pref-desc">
                     Get notified for new messages when the tab isn't active
                   </div>
@@ -259,8 +259,8 @@
                 {{ notifError }}
               </p>
               <p v-if="notifBlocked" class="notif-hint">
-                Notifications are blocked by your browser. Click the lock icon
-                in the address bar to allow them, then try again.
+                Notifications are blocked. Allow them in your app or browser
+                settings, then try again.
               </p>
               <div v-if="notificationsEnabled" class="pref-sub">
                 <div class="pref-sub-title">Notify me on</div>
@@ -447,7 +447,7 @@ async function toggleNotifications() {
 
   if (enabling) {
     if (!("Notification" in window)) {
-      notifError.value = "Your browser doesn't support notifications.";
+      notifError.value = "This device doesn't support notifications.";
       return;
     }
     if (Notification.permission === "denied") {
