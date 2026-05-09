@@ -2627,6 +2627,8 @@ async function logout() {
   line-height: 1.55;
   padding: 2px 16px;
   border-radius: 4px;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
   position: relative;
   display: flex;
   flex-direction: column;
