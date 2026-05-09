@@ -3102,8 +3102,8 @@ async function logout() {
 
 .text :deep(.mention) {
   display: inline-block;
-  color: #4338ca;
-  background: #d7d2ff;
+  color: #3e31bf;
+  background: #d3cbff;
   border-radius: 4px;
   padding: 0 4px;
   font-weight: 700;
@@ -3117,18 +3117,18 @@ async function logout() {
 }
 
 .text :deep(.mention:hover) {
-  color: #4f46e5;
-  background: #e7e5ff;
+  color: #4940da;
+  background: #ddd5ff;
 }
 
 .text :deep(.mention--me) {
-  color: #4338ca;
-  background: #d7d2ff;
+  color: #3e31bf;
+  background: #d3cbff;
 }
 
 .text :deep(.mention--me:hover) {
-  color: #4f46e5;
-  background: #e7e5ff;
+  color: #4940da;
+  background: #ddd5ff;
 }
 
 .typing-area {
