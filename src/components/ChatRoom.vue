@@ -174,7 +174,7 @@
                   >
                     {{ getAvatarInitial(item.displayName, item.uid) }}
                   </div>
-                  <span v-else class="msg-side-time">{{
+                  <span v-else-if="showTimestamps" class="msg-side-time">{{
                     formatTimestampShort(item.timestamp)
                   }}</span>
                 </div>
@@ -192,7 +192,7 @@
                       }"
                       >{{ item.displayName }}</span
                     >
-                    <span class="msg-time">{{
+                    <span v-if="showTimestamps" class="msg-time">{{
                       formatTimestamp(item.timestamp)
                     }}</span>
                   </div>
@@ -246,7 +246,6 @@
                             <span class="mention-name">{{
                               mentionUser.displayName
                             }}</span>
-                            
                           </div>
                         </div>
                       </transition>
@@ -382,7 +381,6 @@
                   }}
                 </div>
                 <span class="mention-name">{{ mentionUser.displayName }}</span>
-                
               </div>
             </div>
           </transition>
@@ -786,6 +784,9 @@ const groupedMessages = computed(() => {
   return result;
 });
 const newMessage = ref("");
+const showTimestamps = computed(
+  () => props.user?.preferences?.showTimestamps !== false,
+);
 const menuRef = ref(null);
 const messageContainer = ref(null);
 const composerRef = ref(null);
@@ -3708,8 +3709,6 @@ textarea::placeholder {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
-
 
 .emoji-fade-enter-active {
   transition:

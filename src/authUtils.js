@@ -119,6 +119,9 @@ export async function signupWithToken(
       email,
       displayName: displayName.trim(),
       createdAt: Date.now(),
+      preferences: {
+        showTimestamps: true,
+      },
     });
     await consumeInviteToken(token, userCred.user.uid);
     if (displayName.trim()) {

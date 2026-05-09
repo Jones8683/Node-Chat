@@ -282,6 +282,27 @@
                 </div>
               </div>
             </div>
+            <div class="divider"></div>
+            <h3 class="section-title">DISPLAY</h3>
+            <div class="pref-card">
+              <div class="pref-row">
+                <div class="pref-info">
+                  <div class="pref-label">Show timestamps</div>
+                  <div class="pref-desc">
+                    Toggle message timestamps in the chat. New accounts have
+                    this enabled by default.
+                  </div>
+                </div>
+                <button
+                  class="toggle-btn"
+                  :class="{ active: showTimestamps, saving: savingTimestamps }"
+                  @click="toggleShowTimestamps"
+                  :aria-pressed="showTimestamps"
+                >
+                  <span class="toggle-thumb"></span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -389,6 +410,11 @@ const notificationMode = computed(
 const savingNotif = ref(false);
 const notifError = ref("");
 const notifBlocked = ref(false);
+const savingTimestamps = ref(false);
+
+const showTimestamps = computed(
+  () => props.user?.preferences?.showTimestamps !== false,
+);
 
 watch(
   () => props.isOpen,
@@ -456,6 +482,21 @@ async function setNotificationMode(mode) {
     });
   } catch (e) {
     notifError.value = "Failed to save notification preference.";
+  }
+}
+
+async function toggleShowTimestamps() {
+  if (savingTimestamps.value) return;
+  savingTimestamps.value = true;
+  try {
+    const next = !showTimestamps.value;
+    await update(dbRef(db, `users/${props.user.uid}/preferences`), {
+      showTimestamps: next,
+    });
+  } catch (e) {
+    // ignore UI-safe failure
+  } finally {
+    savingTimestamps.value = false;
   }
 }
 
@@ -680,7 +721,7 @@ async function changePassword() {
   font-size: 14px;
   font-weight: 600;
   font-family: "Satoshi", sans-serif;
-  transition: all 0.2s;
+  transition: all 120ms ease;
 }
 
 .tab-btn:hover {
@@ -1021,8 +1062,8 @@ async function changePassword() {
   padding: 0;
   flex-shrink: 0;
   transition:
-    background 280ms ease,
-    box-shadow 280ms ease;
+    background 120ms ease,
+    box-shadow 120ms ease;
   outline: none;
 }
 
@@ -1051,7 +1092,7 @@ async function changePassword() {
     0 1px 5px rgba(0, 0, 0, 0.22),
     0 0 0 0.5px rgba(0, 0, 0, 0.06);
   transition:
-    transform 350ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    transform 160ms cubic-bezier(0.2, 0.95, 0.3, 1),
     width 180ms ease,
     border-radius 180ms ease;
   will-change: transform;
@@ -1094,9 +1135,9 @@ async function changePassword() {
   padding: 16px;
   margin-bottom: 16px;
   transition:
-    background 280ms ease,
-    border-color 280ms ease,
-    box-shadow 280ms ease;
+    background 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
 }
 
 .pref-card:hover {
