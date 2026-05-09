@@ -1133,9 +1133,10 @@ function applyMentionPlaceholders(html, message) {
         "gi",
       );
       result = result.replace(pattern, (match, prefix) => {
-        const replacementIndex = replacements.push(
-          renderMentionHtml(mention.uid, mention.displayName),
-        ) - 1;
+        const replacementIndex =
+          replacements.push(
+            renderMentionHtml(mention.uid, mention.displayName),
+          ) - 1;
         return `${prefix}\x01${replacementIndex}\x01`;
       });
     }
@@ -1359,7 +1360,10 @@ function getMentionSearchScore(user, query) {
   if (!name || !compactQuery) return Infinity;
 
   if (name === normalizedQuery || compactName === compactQuery) return 0;
-  if (name.startsWith(normalizedQuery) || compactName.startsWith(compactQuery)) {
+  if (
+    name.startsWith(normalizedQuery) ||
+    compactName.startsWith(compactQuery)
+  ) {
     return 4;
   }
 
@@ -1403,9 +1407,7 @@ function checkMentionTrigger(target) {
       if (a.user.isOnline !== b.user.isOnline) {
         return a.user.isOnline ? -1 : 1;
       }
-      return (a.user.displayName || "").localeCompare(
-        b.user.displayName || "",
-      );
+      return (a.user.displayName || "").localeCompare(b.user.displayName || "");
     })
     .map((candidate) => candidate.user);
 
