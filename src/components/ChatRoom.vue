@@ -246,11 +246,7 @@
                             <span class="mention-name">{{
                               mentionUser.displayName
                             }}</span>
-                            <span
-                              v-if="mentionUser.uid === user.uid"
-                              class="mention-you"
-                              >you</span
-                            >
+                            
                           </div>
                         </div>
                       </transition>
@@ -386,9 +382,7 @@
                   }}
                 </div>
                 <span class="mention-name">{{ mentionUser.displayName }}</span>
-                <span v-if="mentionUser.uid === user.uid" class="mention-you"
-                  >you</span
-                >
+                
               </div>
             </div>
           </transition>
@@ -2955,8 +2949,10 @@ async function logout() {
   padding-left: 13px;
 }
 
+/* Make pinged messages more transparent on hover (inverse of previous behavior) */
 .message--ping:hover {
-  background: rgba(122, 92, 255, 0.13);
+  background: rgba(90, 90, 240, 0.04);
+  border-left: 3px solid rgba(90, 90, 240, 0.9);
 }
 
 @keyframes msg-highlight-fade {
@@ -3713,16 +3709,7 @@ textarea::placeholder {
   white-space: nowrap;
 }
 
-.mention-you {
-  color: #5b21b6;
-  background: rgba(124, 58, 237, 0.13);
-  border-radius: 999px;
-  padding: 2px 7px;
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
+
 
 .emoji-fade-enter-active {
   transition:
