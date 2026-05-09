@@ -1132,7 +1132,7 @@ async function changePassword() {
   background: rgba(90, 90, 240, 0.04);
   border: 1px solid rgba(90, 90, 240, 0.14);
   border-radius: 10px;
-  padding: 16px;
+  padding: 20px;
   margin-bottom: 16px;
   transition:
     background 160ms ease,
@@ -1146,9 +1146,13 @@ async function changePassword() {
 }
 
 .pref-card .pref-row {
-  padding: 0;
+  padding: 2px 0;
   border-bottom: none;
   margin-bottom: 0;
+}
+
+.section .divider + .section-title {
+  margin-top: 24px;
 }
 
 .pref-sub {
