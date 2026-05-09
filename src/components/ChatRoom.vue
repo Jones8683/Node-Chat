@@ -2950,7 +2950,6 @@ async function logout() {
   padding-left: 13px;
 }
 
-/* Make pinged messages more transparent on hover (inverse of previous behavior) */
 .message--ping:hover {
   background: rgba(90, 90, 240, 0.04);
   border-left: 3px solid rgba(90, 90, 240, 0.9);

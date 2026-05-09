@@ -838,7 +838,7 @@ async function changePassword() {
 .divider {
   height: 1px;
   background: var(--border);
-  margin: 0;
+  margin: 0 32px;
 }
 
 .field {
@@ -1151,7 +1151,11 @@ async function changePassword() {
   margin-bottom: 0;
 }
 
-.section .divider + .section-title {
+.section > .divider {
+  margin: 8px 0;
+}
+
+.section > .divider + .section-title {
   margin-top: 24px;
 }
 
