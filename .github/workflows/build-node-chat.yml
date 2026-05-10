@@ -77,8 +77,11 @@ jobs:
             'VITE_FIREBASE_APP_ID'
           )
 
-          $missing = $required | Where-Object {
-            [string]::IsNullOrWhiteSpace((Get-Item "Env:$_" -ErrorAction SilentlyContinue).Value)
+          $missing = @()
+          foreach ($name in $required) {
+            $val = (Get-Item "Env:$name" -ErrorAction SilentlyContinue).Value
+            $clean = if ($val) { $val.Trim().Trim('"').Trim("'") } else { $val }
+            if ([string]::IsNullOrWhiteSpace($clean)) { $missing += $name }
           }
 
           if ($missing.Count -gt 0) {
@@ -100,28 +103,36 @@ jobs:
           foreach ($n in $names) {
             $v = (Get-Item "Env:$n" -ErrorAction SilentlyContinue).Value
             if (-not $v) {
-              Write-Output "$n: MISSING"
+              Write-Output ("$($n): MISSING")
             } else {
               $len = $v.Length
               $hasNewline = ($v -match "`r" -or $v -match "`n")
               $trimmedLen = $v.Trim().Length
               $leadingOrTrailing = $trimmedLen -ne $len
-              Write-Output "$n: length=$len, hasNewline=$hasNewline, leadingOrTrailingWhitespace=$leadingOrTrailing"
+              Write-Output ("$($n): length=$len, hasNewline=$hasNewline, leadingOrTrailingWhitespace=$leadingOrTrailing")
             }
           }
 
       - name: Write .env.production for Vite build
         shell: pwsh
         run: |
-          @(
-            "VITE_FIREBASE_API_KEY=$env:VITE_FIREBASE_API_KEY",
-            "VITE_FIREBASE_AUTH_DOMAIN=$env:VITE_FIREBASE_AUTH_DOMAIN",
-            "VITE_FIREBASE_DATABASE_URL=$env:VITE_FIREBASE_DATABASE_URL",
-            "VITE_FIREBASE_PROJECT_ID=$env:VITE_FIREBASE_PROJECT_ID",
-            "VITE_FIREBASE_STORAGE_BUCKET=$env:VITE_FIREBASE_STORAGE_BUCKET",
-            "VITE_FIREBASE_MESSAGING_SENDER_ID=$env:VITE_FIREBASE_MESSAGING_SENDER_ID",
-            "VITE_FIREBASE_APP_ID=$env:VITE_FIREBASE_APP_ID"
-          ) | Set-Content -Path .env.production
+          $map = @{
+            'VITE_FIREBASE_API_KEY' = $env:VITE_FIREBASE_API_KEY
+            'VITE_FIREBASE_AUTH_DOMAIN' = $env:VITE_FIREBASE_AUTH_DOMAIN
+            'VITE_FIREBASE_DATABASE_URL' = $env:VITE_FIREBASE_DATABASE_URL
+            'VITE_FIREBASE_PROJECT_ID' = $env:VITE_FIREBASE_PROJECT_ID
+            'VITE_FIREBASE_STORAGE_BUCKET' = $env:VITE_FIREBASE_STORAGE_BUCKET
+            'VITE_FIREBASE_MESSAGING_SENDER_ID' = $env:VITE_FIREBASE_MESSAGING_SENDER_ID
+            'VITE_FIREBASE_APP_ID' = $env:VITE_FIREBASE_APP_ID
+          }
+
+          $out = @()
+          foreach ($k in $map.Keys) {
+            $v = $map[$k]
+            if ($null -eq $v) { $clean = '' } else { $clean = $v.Trim().Trim('"').Trim("'") }
+            $out += "$($k)=$clean"
+          }
+          $out | Set-Content -Path .env.production -Encoding UTF8
 
       - name: Build Tauri installer (release)
         run: npm run tauri:build
