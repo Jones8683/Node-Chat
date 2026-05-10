@@ -1,6 +1,6 @@
 <template>
   <div class="chat">
-    <div class="header" ref="headerRef">
+    <div class="header" ref="headerRef" data-tauri-drag-region>
       <div class="header-brand">
         <img src="/icon.png" class="header-logo" alt="" aria-hidden="true" />
         <span class="header-wordmark">Node Chat</span>
@@ -74,6 +74,17 @@
               </button>
             </div>
           </transition>
+        </div>
+        <div v-if="isTauriApp" class="window-controls">
+          <button class="window-btn" @click="minimizeWindow" title="Minimize" aria-label="Minimize">
+            <Minus :size="14" stroke-width="2.5" />
+          </button>
+          <button class="window-btn" @click="toggleMaximize" title="Maximize" aria-label="Maximize">
+            <Square :size="14" stroke-width="2" />
+          </button>
+          <button class="window-btn close" @click="closeWindow" title="Close" aria-label="Close">
+            <X :size="14" stroke-width="2.5" />
+          </button>
         </div>
       </div>
     </div>
@@ -608,6 +619,8 @@ import {
   MicOff,
   CornerUpLeft,
   X,
+  Minus,
+  Square,
 } from "lucide-vue-next";
 import {
   ref as dbRef,
@@ -633,6 +646,7 @@ import {
 const props = defineProps(["user"]);
 const emit = defineEmits(["ready", "open-settings", "open-admin"]);
 const messages = ref([]);
+const isTauriApp = ref(false);
 const isAtBottom = ref(true);
 const showJumpButton = ref(false);
 const animatingIds = ref(new Set());
@@ -1906,7 +1920,49 @@ async function loadMore() {
   subscribeMessages();
 }
 
+async function minimizeWindow() {
+  if (!isTauriApp.value) return;
+  try {
+    const { getCurrentWindow } = await import("@tauri-apps/api/window");
+    await getCurrentWindow().minimize();
+  } catch (e) {
+    console.error("Minimize failed:", e);
+  }
+}
+
+async function toggleMaximize() {
+  if (!isTauriApp.value) return;
+  try {
+    const { getCurrentWindow } = await import("@tauri-apps/api/window");
+    const win = getCurrentWindow();
+    const isMaximized = await win.isMaximized();
+    if (isMaximized) {
+      await win.unmaximize();
+    } else {
+      await win.maximize();
+    }
+  } catch (e) {
+    console.error("Maximize failed:", e);
+  }
+}
+
+async function closeWindow() {
+  if (!isTauriApp.value) return;
+  try {
+    const { getCurrentWindow } = await import("@tauri-apps/api/window");
+    await getCurrentWindow().close();
+  } catch (e) {
+    console.error("Close failed:", e);
+  }
+}
+
 onMounted(async () => {
+  try {
+    const { isTauri } = await import("@tauri-apps/api/core");
+    isTauriApp.value = await isTauri();
+  } catch {
+    isTauriApp.value = false;
+  }
   initBadge();
   document.title = "Node Chat";
   if (props.user.preferences?.notificationsEnabled) {
@@ -2319,8 +2375,92 @@ async function logout() {
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   flex-shrink: 0;
+}
+
+.online-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  font-family: "Satoshi", sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.15s;
+}
+
+.online-btn:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.online-btn.active {
+  background: var(--surface-2);
+  color: var(--accent);
+}
+
+.online-btn-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #22c55e;
+  flex-shrink: 0;
+}
+
+.window-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 4px;
+  flex-shrink: 0;
+  -webkit-app-region: no-drag;
+}
+
+.window-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(44, 42, 39, 0.08);
+  border: none;
+  cursor: pointer;
+  color: var(--text);
+  border-radius: 4px;
+  transition: all 0.15s ease;
+  padding: 0;
+  user-select: none;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.window-btn:hover {
+  background: rgba(44, 42, 39, 0.15);
+}
+
+.window-btn:active {
+  background: rgba(44, 42, 39, 0.25);
+}
+
+.window-btn svg {
+  display: block;
+  stroke: currentColor;
+}
+
+.window-btn.close:hover {
+  background: #ef4444;
+  color: #fff;
+}
+
+.window-btn.close:active {
+  background: #dc2626;
+  color: #fff;
 }
 
 .user-menu {
