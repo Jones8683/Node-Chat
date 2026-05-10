@@ -625,6 +625,10 @@ import {
 } from "firebase/database";
 import copy from "clipboard-copy";
 import { initBadge, updateBadge, clearBadge } from "../faviconBadge";
+import {
+  ensureNotificationPermission,
+  sendSystemNotification,
+} from "../notifications";
 
 const props = defineProps(["user"]);
 const emit = defineEmits(["ready", "open-settings", "open-admin"]);
@@ -1817,16 +1821,18 @@ function subscribeMessages() {
           if (!document.hidden && wasNearBottom) {
             newAnimIds.add(msg.id);
           }
+          const appBackgrounded = document.hidden || !document.hasFocus();
           if (document.hidden) {
             unreadCount++;
             updateBadge(unreadCount);
+          }
+          if (appBackgrounded) {
             const notifMode =
               props.user.preferences?.notificationMode || "ping";
             const isPing = isMessagePing(msg);
             const baseOk =
               msg.uid !== props.user.uid &&
-              props.user.preferences?.notificationsEnabled &&
-              Notification.permission === "granted";
+              props.user.preferences?.notificationsEnabled;
             let shouldNotify = false;
             if (baseOk) {
               shouldNotify =
@@ -1834,14 +1840,11 @@ function subscribeMessages() {
             }
             if (shouldNotify) {
               const body = msg.text?.slice(0, 100) || "";
-              const n = new Notification(msg.displayName || "Node Chat", {
+              sendSystemNotification({
+                title: msg.displayName || "Node Chat",
                 body,
                 icon: "/icon.png",
               });
-              n.onclick = () => {
-                window.focus();
-                n.close();
-              };
             }
           }
           if (
@@ -1906,6 +1909,13 @@ async function loadMore() {
 onMounted(async () => {
   initBadge();
   document.title = "Node Chat";
+  if (props.user.preferences?.notificationsEnabled) {
+    try {
+      await ensureNotificationPermission();
+    } catch {
+      // Ignore permission errors; notifications remain optional.
+    }
+  }
   document.addEventListener("visibilitychange", handleVisibilityChange);
   window.addEventListener("focus", handleWindowFocus);
   window.addEventListener("online", handleOnline);

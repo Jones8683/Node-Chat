@@ -321,6 +321,10 @@ import {
   changeDisplayName,
   changeUserPassword,
 } from "../authUtils";
+import {
+  notificationsSupported,
+  ensureNotificationPermission,
+} from "../notifications";
 
 const props = defineProps({ isOpen: Boolean, user: Object });
 const emit = defineEmits(["close", "refreshUser"]);
@@ -446,20 +450,14 @@ async function toggleNotifications() {
   const enabling = !notificationsEnabled.value;
 
   if (enabling) {
-    if (!("Notification" in window)) {
+    if (!notificationsSupported()) {
       notifError.value = "This device doesn't support notifications.";
       return;
     }
-    if (Notification.permission === "denied") {
+    const granted = await ensureNotificationPermission();
+    if (!granted) {
       notifBlocked.value = true;
       return;
-    }
-    if (Notification.permission !== "granted") {
-      const result = await Notification.requestPermission();
-      if (result !== "granted") {
-        notifBlocked.value = true;
-        return;
-      }
     }
   }
 
