@@ -1,7 +1,12 @@
 <template>
   <div v-if="isTauriApp" class="desktop-titlebar" data-tauri-drag-region>
     <div class="desktop-titlebar-brand">
-      <img src="/icon.png" class="desktop-titlebar-logo" alt="" aria-hidden="true" />
+      <img
+        src="/icon.png"
+        class="desktop-titlebar-logo"
+        alt=""
+        aria-hidden="true"
+      />
       <span class="desktop-titlebar-wordmark">Node Chat</span>
     </div>
     <div class="desktop-titlebar-controls">

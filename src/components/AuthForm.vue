@@ -35,7 +35,11 @@
         </div>
 
         <form @submit.prevent="handleSubmit" autocomplete="off">
-          <fieldset class="auth-fields" :disabled="loading" :aria-busy="loading">
+          <fieldset
+            class="auth-fields"
+            :disabled="loading"
+            :aria-busy="loading"
+          >
             <div
               class="field-collapse"
               :class="{ 'field-collapse--open': !isLogin }"
@@ -51,7 +55,9 @@
                     placeholder="Enter your invite code"
                     maxlength="7"
                     @input="
-                      signupToken = $event.target.value.toUpperCase().slice(0, 7)
+                      signupToken = $event.target.value
+                        .toUpperCase()
+                        .slice(0, 7)
                     "
                     autocomplete="off"
                     :disabled="loading || isLogin"
@@ -110,7 +116,9 @@
                 </span>
                 <span class="btn-label-item btn-label-createacc">
                   {{
-                    loading && !isLogin ? "Creating account..." : "Create account"
+                    loading && !isLogin
+                      ? "Creating account..."
+                      : "Create account"
                   }}
                 </span>
               </span>
