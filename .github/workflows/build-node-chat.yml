@@ -34,6 +34,14 @@ jobs:
   build-installer:
     name: build-node-chat
     runs-on: windows-latest
+    env:
+      VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+      VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+      VITE_FIREBASE_DATABASE_URL: ${{ secrets.VITE_FIREBASE_DATABASE_URL }}
+      VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+      VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+      VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+      VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
 
     steps:
       - name: Checkout
@@ -56,21 +64,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Load Firebase env
-        shell: pwsh
-        run: |
-          @(
-            "VITE_FIREBASE_API_KEY=${{ secrets.VITE_FIREBASE_API_KEY }}",
-            "VITE_FIREBASE_AUTH_DOMAIN=${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}",
-            "VITE_FIREBASE_DATABASE_URL=${{ secrets.VITE_FIREBASE_DATABASE_URL }}",
-            "VITE_FIREBASE_PROJECT_ID=${{ secrets.VITE_FIREBASE_PROJECT_ID }}",
-            "VITE_FIREBASE_STORAGE_BUCKET=${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}",
-            "VITE_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}",
-            "VITE_FIREBASE_APP_ID=${{ secrets.VITE_FIREBASE_APP_ID }}"
-          ) | ForEach-Object {
-            Add-Content -Path $env:GITHUB_ENV -Value $_
-          }
-
       - name: Validate Firebase env
         shell: pwsh
         run: |
@@ -87,6 +80,31 @@ jobs:
           $missing = $required | Where-Object { [string]::IsNullOrWhiteSpace((Get-Item "Env:$_" -ErrorAction SilentlyContinue).Value) }
           if ($missing.Count -gt 0) {
             throw "Missing required Firebase env values: $($missing -join ', '). Add them as GitHub Actions secrets named the same as the VITE_FIREBASE_* variables."
+          }
+
+          # Catch common "secret exists but wrong value" cases without printing secrets.
+          if ($env:VITE_FIREBASE_API_KEY -notmatch '^AIza') {
+            throw 'VITE_FIREBASE_API_KEY does not look like a Firebase Web API key.'
+          }
+
+          if ($env:VITE_FIREBASE_AUTH_DOMAIN -notmatch '\.firebaseapp\.com$') {
+            throw 'VITE_FIREBASE_AUTH_DOMAIN should usually end with .firebaseapp.com (e.g. your-project.firebaseapp.com).'
+          }
+
+          if ($env:VITE_FIREBASE_DATABASE_URL -notmatch '^https://') {
+            throw 'VITE_FIREBASE_DATABASE_URL must start with https://'
+          }
+
+          if ($env:VITE_FIREBASE_DATABASE_URL -notmatch '(firebaseio\.com|firebasedatabase\.app)') {
+            throw 'VITE_FIREBASE_DATABASE_URL must point to a Firebase Realtime Database host (firebaseio.com or firebasedatabase.app).'
+          }
+
+          if ($env:VITE_FIREBASE_PROJECT_ID -match '[A-Z\s]') {
+            throw 'VITE_FIREBASE_PROJECT_ID looks invalid (contains uppercase letters or spaces).'
+          }
+
+          if ($env:VITE_FIREBASE_APP_ID -notmatch '^1:[0-9]+:web:[A-Za-z0-9]+') {
+            throw 'VITE_FIREBASE_APP_ID does not look like a Firebase Web App ID.'
           }
 
       - name: Build Tauri installer (release)
