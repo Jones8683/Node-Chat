@@ -582,56 +582,86 @@ onMounted(() => {
   loadingInvites.value = true;
   window.addEventListener("keydown", onKeyDown);
   window.addEventListener("pointerdown", onOutsideClick);
-  invitesListener = onValue(dbRef(db, "invites"), (snap) => {
-    const now = Date.now();
-    invites.value = snap.exists()
-      ? Object.entries(snap.val())
-          .filter(([, data]) => !data.used && data.expiresAt > now)
-          .map(([token, data]) => ({ token, ...data }))
-          .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
-      : [];
-    loadingInvites.value = false;
-    errorInvite.value = "";
-  });
-  settingsListener = onValue(dbRef(db, "settings/chatLocked"), (snap) => {
-    chatLocked.value = snap.val() === true;
-  });
-  muteListener = onValue(dbRef(db, "muted"), (snap) => {
-    mutedUsers.value = new Set(snap.exists() ? Object.keys(snap.val()) : []);
-  });
+  invitesListener = onValue(
+    dbRef(db, "invites"),
+    (snap) => {
+      const now = Date.now();
+      invites.value = snap.exists()
+        ? Object.entries(snap.val())
+            .filter(([, data]) => !data.used && data.expiresAt > now)
+            .map(([token, data]) => ({ token, ...data }))
+            .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+        : [];
+      loadingInvites.value = false;
+      errorInvite.value = "";
+    },
+    (error) => {
+      invites.value = [];
+      loadingInvites.value = false;
+      errorInvite.value =
+        error?.code === "PERMISSION_DENIED" ||
+        String(error?.message || "")
+          .toLowerCase()
+          .includes("permission")
+          ? "Database rules are blocking invite reads. Make sure your uid is listed under /admins and the rules are published."
+          : "Failed to load invites.";
+    },
+  );
+  settingsListener = onValue(
+    dbRef(db, "settings/chatLocked"),
+    (snap) => {
+      chatLocked.value = snap.val() === true;
+    },
+    (error) => {},
+  );
+  muteListener = onValue(
+    dbRef(db, "muted"),
+    (snap) => {
+      mutedUsers.value = new Set(snap.exists() ? Object.keys(snap.val()) : []);
+    },
+    (error) => {},
+  );
 
   inviteInterval = setInterval(() => {
     now.value = Date.now();
   }, 1000);
 
-  adminsListener = onValue(dbRef(db, "admins"), (snap) => {
-    const newSet = new Set(snap.exists() ? Object.keys(snap.val()) : []);
-    adminUsers.value = newSet;
-    adminCount.value = newSet.size;
-    if (users.value.length) sortUsers();
+  adminsListener = onValue(
+    dbRef(db, "admins"),
+    (snap) => {
+      const newSet = new Set(snap.exists() ? Object.keys(snap.val()) : []);
+      adminUsers.value = newSet;
+      adminCount.value = newSet.size;
+      if (users.value.length) sortUsers();
 
-    const currentUid = auth.currentUser && auth.currentUser.uid;
-    if (currentUid) {
-      if (_prevAdminSet === null) {
-        _prevAdminSet = new Set(newSet);
-      } else {
-        const wasAdmin = _prevAdminSet.has(currentUid);
-        const isAdminNow = newSet.has(currentUid);
-        if (wasAdmin !== isAdminNow && !isAdminNow) {
-          close();
+      const currentUid = auth.currentUser && auth.currentUser.uid;
+      if (currentUid) {
+        if (_prevAdminSet === null) {
+          _prevAdminSet = new Set(newSet);
+        } else {
+          const wasAdmin = _prevAdminSet.has(currentUid);
+          const isAdminNow = newSet.has(currentUid);
+          if (wasAdmin !== isAdminNow && !isAdminNow) {
+            close();
+          }
+          _prevAdminSet = new Set(newSet);
         }
+      } else {
         _prevAdminSet = new Set(newSet);
       }
-    } else {
-      _prevAdminSet = new Set(newSet);
-    }
-  });
+    },
+    (error) => {},
+  );
 
-  ownerListener = onValue(dbRef(db, "owner"), (snap) => {
-    ownerUsers.value = new Set();
-    if (snap.exists()) ownerUsers.value.add(snap.val());
-    if (users.value.length) sortUsers();
-  });
+  ownerListener = onValue(
+    dbRef(db, "owner"),
+    (snap) => {
+      ownerUsers.value = new Set();
+      if (snap.exists()) ownerUsers.value.add(snap.val());
+      if (users.value.length) sortUsers();
+    },
+    (error) => {},
+  );
 });
 
 onUnmounted(() => {
@@ -705,7 +735,6 @@ async function loadAuditLogs() {
     });
     auditEntries.value = flat.slice(0, 500);
   } catch (e) {
-    console.error("Failed to load audit logs:", e);
     auditError.value =
       e?.code === "PERMISSION_DENIED" ||
       String(e?.message || "")
@@ -730,7 +759,13 @@ async function generateInvite() {
       });
     } catch (e) {}
   } catch (e) {
-    errorInvite.value = "Failed to generate invite";
+    errorInvite.value =
+      e?.code === "PERMISSION_DENIED" ||
+      String(e?.message || "")
+        .toLowerCase()
+        .includes("permission")
+        ? "Database rules are blocking invite writes. Make sure your uid is listed under /admins."
+        : `Failed to generate invite${e?.message ? `: ${e.message}` : ""}`;
   } finally {
     generatingInvite.value = false;
   }
@@ -755,9 +790,7 @@ async function deleteInvite(token) {
         details: token,
       });
     } catch (e) {}
-  } catch (e) {
-    console.error("Failed to delete invite:", e);
-  }
+  } catch (e) {}
 }
 
 async function loadUsers() {
@@ -765,18 +798,42 @@ async function loadUsers() {
   loadingUsers.value = true;
   usersError.value = "";
   try {
-    usersListener = onValue(dbRef(db, "users"), (snap) => {
-      const all = snap.exists() ? snap.val() : {};
-      users.value = Object.entries(all)
-        .map(([uid, data]) => ({ uid, ...data }))
-        .filter((u) => u.displayName && u.displayName.trim());
-      totalUsersCount.value = users.value.length;
-      adminCount.value = adminUsers.value.size;
-      sortUsers();
-      loadingUsers.value = false;
-    });
+    usersListener = onValue(
+      dbRef(db, "users"),
+      (snap) => {
+        const all = snap.exists() ? snap.val() : {};
+        users.value = Object.entries(all)
+          .map(([uid, data]) => ({ uid, ...data }))
+          .filter((u) => u.displayName && u.displayName.trim());
+        totalUsersCount.value = users.value.length;
+        adminCount.value = adminUsers.value.size;
+        sortUsers();
+        loadingUsers.value = false;
+      },
+      (error) => {
+        usersError.value =
+          error?.code === "PERMISSION_DENIED" ||
+          String(error?.message || "").includes("Permission denied")
+            ? "Database rules are blocking the users list. Add your admin uid under /admins and publish the rules."
+            : "Failed to load users.";
+
+        if (auth.currentUser) {
+          users.value = [
+            {
+              uid: auth.currentUser.uid,
+              displayName: auth.currentUser.displayName || "You",
+              email: auth.currentUser.email || "",
+              createdAt: auth.currentUser.metadata?.creationTime
+                ? new Date(auth.currentUser.metadata.creationTime).getTime()
+                : null,
+            },
+          ];
+          totalUsersCount.value = 1;
+        }
+        loadingUsers.value = false;
+      },
+    );
   } catch (e) {
-    console.error("Failed to load users:", e);
     usersError.value =
       e?.code === "PERMISSION_DENIED" ||
       String(e?.message || "").includes("Permission denied")
@@ -813,23 +870,37 @@ watch(
     }
     if (val === "audit") {
       if (!auditListener) {
-        auditListener = onValue(dbRef(db, "auditLogs"), (snap) => {
-          const all = snap.exists() ? snap.val() : {};
-          const flat = [];
-          for (const [actorUid, items] of Object.entries(all)) {
-            for (const [id, ev] of Object.entries(items || {})) {
-              flat.push({ id, actorUid, ...ev });
+        auditListener = onValue(
+          dbRef(db, "auditLogs"),
+          (snap) => {
+            const all = snap.exists() ? snap.val() : {};
+            const flat = [];
+            for (const [actorUid, items] of Object.entries(all)) {
+              for (const [id, ev] of Object.entries(items || {})) {
+                flat.push({ id, actorUid, ...ev });
+              }
             }
-          }
-          flat.sort((a, b) => {
-            const diff = (b.ts || 0) - (a.ts || 0);
-            if (diff !== 0) return diff;
-            return String(b.id || "").localeCompare(String(a.id || ""));
-          });
-          auditEntries.value = flat.slice(0, 500);
-          loadingAudit.value = false;
-          auditError.value = "";
-        });
+            flat.sort((a, b) => {
+              const diff = (b.ts || 0) - (a.ts || 0);
+              if (diff !== 0) return diff;
+              return String(b.id || "").localeCompare(String(a.id || ""));
+            });
+            auditEntries.value = flat.slice(0, 500);
+            loadingAudit.value = false;
+            auditError.value = "";
+          },
+          (error) => {
+            auditEntries.value = [];
+            loadingAudit.value = false;
+            auditError.value =
+              error?.code === "PERMISSION_DENIED" ||
+              String(error?.message || "")
+                .toLowerCase()
+                .includes("permission")
+                ? "Database rules are blocking audit logs. Make sure your uid is listed in /admins and the rules are published."
+                : "Failed to load audit logs.";
+          },
+        );
       }
     } else {
       if (auditListener) {
@@ -863,7 +934,6 @@ async function loadMessagesCount() {
       ? Object.keys(snap.val() || {}).length
       : 0;
   } catch (e) {
-    console.error("Failed to load message count:", e);
     totalMessagesCount.value = null;
   } finally {
     loadingMessagesCount.value = false;
@@ -1208,7 +1278,6 @@ async function toggleMute(uid) {
       } catch (e) {}
     }
   } catch (e) {
-    console.error("Failed to toggle mute:", e);
   } finally {
     mutingUid.value = null;
   }
@@ -1223,7 +1292,6 @@ async function toggleChatLock() {
       await recordAuditEvent({ action: next ? "lock_chat" : "unlock_chat" });
     } catch (e) {}
   } catch (e) {
-    console.error("Failed to toggle chat lock:", e);
   } finally {
     lockLoading.value = false;
   }
@@ -1367,6 +1435,7 @@ async function saveUsername(uid) {
   overflow-y: auto;
   -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
+  -webkit-app-region: no-drag;
 }
 
 .modal-container {
@@ -1380,6 +1449,7 @@ async function saveUsername(uid) {
   flex-direction: column;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
   position: relative;
+  -webkit-app-region: no-drag;
 }
 
 .modal-fade-enter-active,
