@@ -76,13 +76,28 @@
           </transition>
         </div>
         <div v-if="isTauriApp" class="window-controls">
-          <button class="window-btn" @click="minimizeWindow" title="Minimize" aria-label="Minimize">
+          <button
+            class="window-btn"
+            @click="minimizeWindow"
+            title="Minimize"
+            aria-label="Minimize"
+          >
             <Minus :size="14" stroke-width="2.5" />
           </button>
-          <button class="window-btn" @click="toggleMaximize" title="Maximize" aria-label="Maximize">
+          <button
+            class="window-btn"
+            @click="toggleMaximize"
+            title="Maximize"
+            aria-label="Maximize"
+          >
             <Square :size="14" stroke-width="2" />
           </button>
-          <button class="window-btn close" @click="closeWindow" title="Close" aria-label="Close">
+          <button
+            class="window-btn close"
+            @click="closeWindow"
+            title="Close"
+            aria-label="Close"
+          >
             <X :size="14" stroke-width="2.5" />
           </button>
         </div>
