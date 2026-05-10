@@ -1,122 +1,125 @@
 <template>
   <div class="auth-page">
-    <div class="auth-card">
-      <div class="logo">Node Chat</div>
-      <p class="subtitle">
-        {{ isLogin ? "Log in to continue" : "Sign up with invite" }}
-      </p>
+    <DesktopDragHeader />
+    <div class="auth-content">
+      <div class="auth-card">
+        <div class="logo">Node Chat</div>
+        <p class="subtitle">
+          {{ isLogin ? "Log in to continue" : "Sign up with invite" }}
+        </p>
 
-      <div class="auth-tabs" role="tablist" aria-label="Authentication mode">
-        <div class="auth-tabs-track">
-          <div class="auth-tabs-pill" :class="{ signup: !isLogin }"></div>
-          <button
-            class="tab-btn"
-            :class="{ active: isLogin }"
-            type="button"
-            role="tab"
-            :aria-selected="isLogin"
-            @click="switchMode(true)"
-          >
-            Log In
-          </button>
-          <button
-            class="tab-btn"
-            :class="{ active: !isLogin }"
-            type="button"
-            role="tab"
-            :aria-selected="!isLogin"
-            @click="switchMode(false)"
-          >
-            Sign Up
-          </button>
+        <div class="auth-tabs" role="tablist" aria-label="Authentication mode">
+          <div class="auth-tabs-track">
+            <div class="auth-tabs-pill" :class="{ signup: !isLogin }"></div>
+            <button
+              class="tab-btn"
+              :class="{ active: isLogin }"
+              type="button"
+              role="tab"
+              :aria-selected="isLogin"
+              @click="switchMode(true)"
+            >
+              Log In
+            </button>
+            <button
+              class="tab-btn"
+              :class="{ active: !isLogin }"
+              type="button"
+              role="tab"
+              :aria-selected="!isLogin"
+              @click="switchMode(false)"
+            >
+              Sign Up
+            </button>
+          </div>
         </div>
-      </div>
 
-      <form @submit.prevent="handleSubmit" autocomplete="off">
-        <fieldset class="auth-fields" :disabled="loading" :aria-busy="loading">
-          <div
-            class="field-collapse"
-            :class="{ 'field-collapse--open': !isLogin }"
-          >
-            <div class="field-collapse-inner">
-              <div class="field">
-                <label for="invite-token">Invite Code</label>
-                <input
-                  v-model="signupToken"
-                  id="invite-token"
-                  name="invite-token"
-                  type="text"
-                  placeholder="Enter your invite code"
-                  maxlength="7"
-                  @input="
-                    signupToken = $event.target.value.toUpperCase().slice(0, 7)
-                  "
-                  autocomplete="off"
-                  :disabled="loading || isLogin"
-                  :tabindex="isLogin ? -1 : 0"
-                />
+        <form @submit.prevent="handleSubmit" autocomplete="off">
+          <fieldset class="auth-fields" :disabled="loading" :aria-busy="loading">
+            <div
+              class="field-collapse"
+              :class="{ 'field-collapse--open': !isLogin }"
+            >
+              <div class="field-collapse-inner">
+                <div class="field">
+                  <label for="invite-token">Invite Code</label>
+                  <input
+                    v-model="signupToken"
+                    id="invite-token"
+                    name="invite-token"
+                    type="text"
+                    placeholder="Enter your invite code"
+                    maxlength="7"
+                    @input="
+                      signupToken = $event.target.value.toUpperCase().slice(0, 7)
+                    "
+                    autocomplete="off"
+                    :disabled="loading || isLogin"
+                    :tabindex="isLogin ? -1 : 0"
+                  />
+                </div>
               </div>
             </div>
-          </div>
 
-          <div class="field">
-            <label for="email">Email</label>
-            <input
-              v-model="email"
-              id="email"
-              name="email"
-              type="email"
-              placeholder="you@example.com"
-              autocomplete="email"
-              :disabled="loading"
-            />
-          </div>
-
-          <div class="field">
-            <label for="password">Password</label>
-            <div class="password-wrap">
+            <div class="field">
+              <label for="email">Email</label>
               <input
-                v-model="password"
-                id="password"
-                name="password"
-                :type="showPassword ? 'text' : 'password'"
-                :placeholder="isLogin ? 'Password' : 'At least 6 characters'"
-                :autocomplete="isLogin ? 'current-password' : 'new-password'"
+                v-model="email"
+                id="email"
+                name="email"
+                type="email"
+                placeholder="you@example.com"
+                autocomplete="email"
                 :disabled="loading"
               />
-              <button
-                type="button"
-                class="toggle-pw"
-                @click="showPassword = !showPassword"
-                :disabled="loading"
-                :aria-pressed="showPassword"
-                :aria-label="showPassword ? 'Hide password' : 'Show password'"
-              >
-                <EyeOff v-if="showPassword" :size="16" stroke-width="2" />
-                <Eye v-else :size="16" stroke-width="2" />
-              </button>
             </div>
-          </div>
 
-          <button type="submit" class="submit-btn" :disabled="loading">
-            <span
-              class="btn-label-track"
-              :class="{ 'btn-label-track--signup': !isLogin }"
-            >
-              <span class="btn-label-item btn-label-signin">
-                {{ loading && isLogin ? "Logging in..." : "Log in" }}
-              </span>
-              <span class="btn-label-item btn-label-createacc">
-                {{
-                  loading && !isLogin ? "Creating account..." : "Create account"
-                }}
-              </span>
-            </span>
-          </button>
+            <div class="field">
+              <label for="password">Password</label>
+              <div class="password-wrap">
+                <input
+                  v-model="password"
+                  id="password"
+                  name="password"
+                  :type="showPassword ? 'text' : 'password'"
+                  :placeholder="isLogin ? 'Password' : 'At least 6 characters'"
+                  :autocomplete="isLogin ? 'current-password' : 'new-password'"
+                  :disabled="loading"
+                />
+                <button
+                  type="button"
+                  class="toggle-pw"
+                  @click="showPassword = !showPassword"
+                  :disabled="loading"
+                  :aria-pressed="showPassword"
+                  :aria-label="showPassword ? 'Hide password' : 'Show password'"
+                >
+                  <EyeOff v-if="showPassword" :size="16" stroke-width="2" />
+                  <Eye v-else :size="16" stroke-width="2" />
+                </button>
+              </div>
+            </div>
 
-          <p class="error" v-if="error" aria-live="polite">{{ error }}</p>
-        </fieldset>
-      </form>
+            <button type="submit" class="submit-btn" :disabled="loading">
+              <span
+                class="btn-label-track"
+                :class="{ 'btn-label-track--signup': !isLogin }"
+              >
+                <span class="btn-label-item btn-label-signin">
+                  {{ loading && isLogin ? "Logging in..." : "Log in" }}
+                </span>
+                <span class="btn-label-item btn-label-createacc">
+                  {{
+                    loading && !isLogin ? "Creating account..." : "Create account"
+                  }}
+                </span>
+              </span>
+            </button>
+
+            <p class="error" v-if="error" aria-live="polite">{{ error }}</p>
+          </fieldset>
+        </form>
+      </div>
     </div>
   </div>
 </template>
@@ -127,6 +130,7 @@ import { auth } from "../firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { signupWithToken } from "../authUtils";
 import { Eye, EyeOff } from "lucide-vue-next";
+import DesktopDragHeader from "./DesktopDragHeader.vue";
 
 const isLogin = ref(true);
 
@@ -249,12 +253,19 @@ async function submitSignup() {
 .auth-page {
   min-height: 100vh;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
+  flex-direction: column;
   background-image: url("data:image/svg+xml,%3Csvg width='24' height='24' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='12' cy='12' r='1.1' fill='%232c2a27' opacity='0.09'/%3E%3C/svg%3E");
   background-size: 24px 24px;
   background-position: center center;
+}
+
+.auth-content {
+  display: flex;
+  flex: 1;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
 }
 
 .auth-card {

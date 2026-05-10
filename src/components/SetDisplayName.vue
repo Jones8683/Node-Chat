@@ -1,35 +1,39 @@
 <template>
   <div class="auth-page">
-    <div class="auth-card">
-      <div class="logo">Node Chat</div>
-      <p class="subtitle">Pick a display name to get started</p>
-      <form @submit.prevent="submit">
-        <div class="field">
-          <label for="displayName"
-            >Display name
-            <span class="char-count">{{ name.length }}/12</span></label
-          >
-          <input
-            v-model="name"
-            id="displayName"
-            name="displayName"
-            type="text"
-            maxlength="12"
-            placeholder="How you'll appear in chat"
-            autocomplete="off"
-          />
-        </div>
-        <button type="submit" class="submit-btn" :disabled="loading">
-          {{ loading ? "Checking..." : "Let's go" }}
-        </button>
-        <p class="error" v-if="error">{{ error }}</p>
-      </form>
+    <DesktopDragHeader />
+    <div class="auth-content">
+      <div class="auth-card">
+        <div class="logo">Node Chat</div>
+        <p class="subtitle">Pick a display name to get started</p>
+        <form @submit.prevent="submit">
+          <div class="field">
+            <label for="displayName"
+              >Display name
+              <span class="char-count">{{ name.length }}/12</span></label
+            >
+            <input
+              v-model="name"
+              id="displayName"
+              name="displayName"
+              type="text"
+              maxlength="12"
+              placeholder="How you'll appear in chat"
+              autocomplete="off"
+            />
+          </div>
+          <button type="submit" class="submit-btn" :disabled="loading">
+            {{ loading ? "Checking..." : "Let's go" }}
+          </button>
+          <p class="error" v-if="error">{{ error }}</p>
+        </form>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from "vue";
+import DesktopDragHeader from "./DesktopDragHeader.vue";
 
 onMounted(() => {
   document.title = "Set Up Profile • Node Chat";
@@ -76,12 +80,19 @@ async function submit() {
 .auth-page {
   min-height: 100vh;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
+  flex-direction: column;
   background-image: url("data:image/svg+xml,%3Csvg width='24' height='24' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='12' cy='12' r='1.1' fill='%232c2a27' opacity='0.09'/%3E%3C/svg%3E");
   background-size: 24px 24px;
   background-position: center center;
+}
+
+.auth-content {
+  display: flex;
+  flex: 1;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
 }
 
 @keyframes cardIn {
