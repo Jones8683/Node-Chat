@@ -130,7 +130,6 @@ onMounted(() => {
           }
         },
         () => {
-          // If profile read fails (permissions/CSP/network), still unblock auth flow.
           user.value = {
             ...u,
             displayName: u.displayName || "",
