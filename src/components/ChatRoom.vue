@@ -2443,7 +2443,7 @@ async function logout() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(44, 42, 39, 0.08);
+  background: transparent;
   border: none;
   cursor: pointer;
   color: var(--text);
