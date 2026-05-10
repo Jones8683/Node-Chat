@@ -90,7 +90,34 @@
             title="Maximize"
             aria-label="Maximize"
           >
-            <Square :size="14" stroke-width="2" />
+            <svg
+              class="window-maximize-icon"
+              width="13"
+              height="13"
+              viewBox="0 0 13 13"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <rect
+                x="4"
+                y="1"
+                width="8"
+                height="8"
+                rx="1.5"
+                stroke="currentColor"
+                stroke-width="1.4"
+              />
+              <rect
+                x="1"
+                y="4"
+                width="8"
+                height="8"
+                rx="1.5"
+                stroke="currentColor"
+                stroke-width="1.4"
+                fill="var(--surface)"
+              />
+            </svg>
           </button>
           <button
             class="window-btn close"
@@ -635,7 +662,6 @@ import {
   CornerUpLeft,
   X,
   Minus,
-  Square,
 } from "lucide-vue-next";
 import {
   ref as dbRef,
@@ -2357,7 +2383,7 @@ async function logout() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 14px;
+  padding: 0 8px 0 14px;
   height: 48px;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
@@ -2431,24 +2457,28 @@ async function logout() {
 .window-controls {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 2px;
   margin-left: 4px;
+  padding-left: 8px;
   flex-shrink: 0;
   -webkit-app-region: no-drag;
+  border-left: 1px solid var(--border);
 }
 
 .window-btn {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: transparent;
   border: none;
   cursor: pointer;
-  color: var(--text);
-  border-radius: 4px;
-  transition: all 0.15s ease;
+  color: var(--text-muted);
+  border-radius: 6px;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
   padding: 0;
   user-select: none;
   line-height: 1;
@@ -2456,11 +2486,12 @@ async function logout() {
 }
 
 .window-btn:hover {
-  background: rgba(44, 42, 39, 0.15);
+  background: var(--surface-2);
+  color: var(--text);
 }
 
 .window-btn:active {
-  background: rgba(44, 42, 39, 0.25);
+  background: var(--border);
 }
 
 .window-btn svg {
@@ -2468,14 +2499,18 @@ async function logout() {
   stroke: currentColor;
 }
 
+.window-maximize-icon rect {
+  transition: stroke 0.15s ease;
+}
+
 .window-btn.close:hover {
-  background: #ef4444;
-  color: #fff;
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
 }
 
 .window-btn.close:active {
-  background: #dc2626;
-  color: #fff;
+  background: rgba(239, 68, 68, 0.2);
+  color: #dc2626;
 }
 
 .user-menu {
