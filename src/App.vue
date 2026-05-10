@@ -79,6 +79,13 @@ function refreshUser() {
         preferences: data.preferences || {},
       };
     },
+    () => {
+      user.value = {
+        ...auth.currentUser,
+        displayName: auth.currentUser.displayName || "",
+        preferences: {},
+      };
+    },
     { onlyOnce: true },
   );
 }
@@ -108,18 +115,33 @@ onMounted(() => {
     if (u) {
       let isFirst = true;
       const userRef = dbRef(db, `users/${u.uid}`);
-      userDbUnsub = onValue(userRef, (snap) => {
-        const data = snap.val() || {};
-        user.value = {
-          ...u,
-          displayName: data.displayName || u.displayName || "",
-          preferences: data.preferences || {},
-        };
-        if (isFirst) {
-          isFirst = false;
-          authReady.value = true;
-        }
-      });
+      userDbUnsub = onValue(
+        userRef,
+        (snap) => {
+          const data = snap.val() || {};
+          user.value = {
+            ...u,
+            displayName: data.displayName || u.displayName || "",
+            preferences: data.preferences || {},
+          };
+          if (isFirst) {
+            isFirst = false;
+            authReady.value = true;
+          }
+        },
+        () => {
+          // If profile read fails (permissions/CSP/network), still unblock auth flow.
+          user.value = {
+            ...u,
+            displayName: u.displayName || "",
+            preferences: {},
+          };
+          if (isFirst) {
+            isFirst = false;
+            authReady.value = true;
+          }
+        },
+      );
     } else {
       user.value = null;
       authReady.value = true;
