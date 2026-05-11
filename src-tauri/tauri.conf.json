@@ -15,8 +15,8 @@
         "title": "Node Chat",
         "width": 950,
         "height": 700,
-        "minWidth": 800,
-        "minHeight": 600,
+        "minWidth": 550,
+        "minHeight": 400,
         "resizable": true,
         "fullscreen": false,
         "decorations": false
