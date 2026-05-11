@@ -2361,7 +2361,6 @@ async function logout() {
 
 .online-btn.active {
   background: var(--surface-2);
-  color: var(--accent);
 }
 
 .online-btn-dot {
