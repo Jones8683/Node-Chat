@@ -1819,6 +1819,7 @@ function subscribeMessages() {
     (snapshot) => {
       const scrollEl = messageContainer.value;
       const wasNearBottom = isNearBottom(scrollEl);
+      const isPagingHistory = isLoadingMore.value;
       const data = snapshot.val();
       const loaded = data
         ? Object.entries(data).map(([id, msg]) => ({ id, ...msg }))
@@ -1838,37 +1839,40 @@ function subscribeMessages() {
         sorted.forEach((msg) => {
           if (!knownIds.has(msg.id)) {
             knownIds.add(msg.id);
-            if (!document.hidden && wasNearBottom) {
+            if (!isPagingHistory && !document.hidden && wasNearBottom) {
               newAnimIds.add(msg.id);
             }
-            const appBackgrounded = document.hidden || !document.hasFocus();
-            if (document.hidden) {
-              unreadCount++;
-              updateBadge(unreadCount);
-            }
-            if (appBackgrounded) {
-              const notifMode =
-                props.user.preferences?.notificationMode || "ping";
-              const isPing = isMessagePing(msg);
-              const baseOk =
-                msg.uid !== props.user.uid &&
-                props.user.preferences?.notificationsEnabled;
-              let shouldNotify = false;
-              let isPingNotif = false;
-              if (baseOk) {
-                isPingNotif = notifMode === "ping" && isPing;
-                shouldNotify = notifMode === "all" || isPingNotif;
+            if (!isPagingHistory) {
+              const appBackgrounded = document.hidden || !document.hasFocus();
+              if (document.hidden) {
+                unreadCount++;
+                updateBadge(unreadCount);
               }
-              if (shouldNotify && msg.text) {
-                const body = msg.text.slice(0, 100);
-                void sendSystemNotification({
-                  title: msg.displayName || "Node Chat",
-                  body,
-                  icon: "/icon.png",
-                });
+              if (appBackgrounded) {
+                const notifMode =
+                  props.user.preferences?.notificationMode || "ping";
+                const isPing = isMessagePing(msg);
+                const baseOk =
+                  msg.uid !== props.user.uid &&
+                  props.user.preferences?.notificationsEnabled;
+                let shouldNotify = false;
+                let isPingNotif = false;
+                if (baseOk) {
+                  isPingNotif = notifMode === "ping" && isPing;
+                  shouldNotify = notifMode === "all" || isPingNotif;
+                }
+                if (shouldNotify && msg.text) {
+                  const body = msg.text.slice(0, 100);
+                  void sendSystemNotification({
+                    title: msg.displayName || "Node Chat",
+                    body,
+                    icon: "/icon.png",
+                  });
+                }
               }
             }
             if (
+              !isPagingHistory &&
               !isNearBottom(messageContainer.value) &&
               msg.uid !== props.user.uid
             ) {

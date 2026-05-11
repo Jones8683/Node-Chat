@@ -1,7 +1,6 @@
 import { isTauri } from "@tauri-apps/api/core";
 
 let tauriNotificationModulePromise = null;
-let tauriWindowModulePromise = null;
 
 const notificationHistory = new Map();
 const NOTIFICATION_THROTTLE_MS = 1500;
@@ -21,16 +20,6 @@ async function getTauriNotificationModule() {
   return tauriNotificationModulePromise;
 }
 
-async function getTauriWindowModule() {
-  if (!isTauri()) return null;
-  if (!tauriWindowModulePromise) {
-    tauriWindowModulePromise = import("@tauri-apps/api/window")
-      .then((mod) => mod)
-      .catch(() => null);
-  }
-  return tauriWindowModulePromise;
-}
-
 async function isWindowsTauri() {
   if (!isTauri()) return false;
   if (typeof navigator === "undefined") return false;
@@ -38,26 +27,6 @@ async function isWindowsTauri() {
     navigator.platform || navigator.userAgent || "",
   ).toLowerCase();
   return platform.includes("win");
-}
-
-async function focusAppWindow() {
-  try {
-    if (isTauri()) {
-      const windowModule = await getTauriWindowModule();
-      if (!windowModule) return;
-
-      const currentWindow = windowModule.getCurrentWindow();
-      await currentWindow.show();
-      await currentWindow.setFocus();
-      return;
-    }
-
-    if (typeof window !== "undefined" && typeof window.focus === "function") {
-      window.focus();
-    }
-  } catch (err) {
-    console.error("Failed to focus app window:", err);
-  }
 }
 
 export function notificationsSupported() {
@@ -146,8 +115,6 @@ async function sendTauriNotification({ title, body, icon }) {
       ...(icon ? { icon } : {}),
     });
 
-    await focusAppWindow();
-
     return true;
   } catch (err) {
     console.error("Tauri notification failed:", err);
@@ -174,11 +141,6 @@ async function sendWebNotification({ title, body, icon }) {
       badge: "/icon.png",
       silent: true,
     });
-
-    notification.onclick = () => {
-      void focusAppWindow();
-      notification.close();
-    };
 
     const closeTimer = setTimeout(() => {
       notification.close();
