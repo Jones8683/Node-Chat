@@ -1696,6 +1696,22 @@ function handleClickOutside(e) {
 }
 
 function handleGlobalKeydown(e) {
+  // Focus composer when `/` is pressed and the user isn't typing in another field.
+  if (e.key === "/") {
+    const active = document.activeElement;
+    const isTypingEl =
+      active &&
+      (active.tagName === "INPUT" || active.tagName === "TEXTAREA" ||
+        active.isContentEditable ||
+        composerRef.value?.contains(active));
+
+    if (!isTypingEl) {
+      e.preventDefault();
+      focusComposer();
+      return;
+    }
+  }
+
   if (e.key !== "Escape") return;
 
   if (showDropdown.value) {
