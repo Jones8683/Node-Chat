@@ -98,7 +98,6 @@
               v-else
               class="message"
               :data-message-id="item.id"
-              @dblclick="startReply(item)"
               :class="{
                 'message--editing': editingId === item.id,
                 'message--start': item.isGroupStart,
@@ -257,6 +256,7 @@
                     <div
                       class="msg-body"
                       :class="{ 'msg-body--emoji': isEmojiOnly(item.text) }"
+                      @dblclick="startReply(item)"
                     >
                       <span class="text"
                         ><span v-html="formatMessage(item)"></span
