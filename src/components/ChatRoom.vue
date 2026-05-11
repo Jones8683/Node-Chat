@@ -1865,7 +1865,6 @@ function subscribeMessages() {
                   title: msg.displayName || "Node Chat",
                   body,
                   icon: "/icon.png",
-                  silent: !isPingNotif,
                 });
               }
             }

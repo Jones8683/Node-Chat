@@ -467,7 +467,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch } from "vue";
+import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 import { auth, db } from "../firebase";
 import copy from "clipboard-copy";
 import {
@@ -528,6 +528,7 @@ const loadingUsers = ref(false);
 const adminUsers = ref(new Set());
 const ownerUsers = ref(new Set());
 const usersError = ref("");
+const adminRoleResolved = ref(false);
 
 const totalUsersCount = ref(0);
 const adminCount = ref(0);
@@ -582,11 +583,25 @@ let messagesListener = null;
 const now = ref(Date.now());
 let inviteInterval = null;
 let _prevAdminSet = null;
+let adminsLoaded = false;
+let ownerLoaded = false;
 
-onMounted(() => {
+const hasAdminAccess = computed(() => {
+  const uid = props.currentUserUid;
+  return !!uid && (adminUsers.value.has(uid) || ownerUsers.value.has(uid));
+});
+
+const canUseAdminPanel = computed(
+  () => adminRoleResolved.value && hasAdminAccess.value,
+);
+
+function syncAdminRoleResolved() {
+  adminRoleResolved.value = adminsLoaded && ownerLoaded;
+}
+
+function ensureInvitesListener() {
+  if (invitesListener || !canUseAdminPanel.value) return;
   loadingInvites.value = true;
-  window.addEventListener("keydown", onKeyDown);
-  window.addEventListener("pointerdown", onOutsideClick);
   invitesListener = onValue(
     dbRef(db, "invites"),
     (snap) => {
@@ -612,6 +627,21 @@ onMounted(() => {
           : "Failed to load invites.";
     },
   );
+}
+
+function stopInvitesListener() {
+  if (invitesListener) {
+    invitesListener();
+    invitesListener = null;
+  }
+  invites.value = [];
+  loadingInvites.value = false;
+  errorInvite.value = "";
+}
+
+onMounted(() => {
+  window.addEventListener("keydown", onKeyDown);
+  window.addEventListener("pointerdown", onOutsideClick);
   settingsListener = onValue(
     dbRef(db, "settings/chatLocked"),
     (snap) => {
@@ -634,6 +664,7 @@ onMounted(() => {
   adminsListener = onValue(
     dbRef(db, "admins"),
     (snap) => {
+      adminsLoaded = true;
       const newSet = new Set(snap.exists() ? Object.keys(snap.val()) : []);
       adminUsers.value = newSet;
       adminCount.value = newSet.size;
@@ -654,6 +685,7 @@ onMounted(() => {
       } else {
         _prevAdminSet = new Set(newSet);
       }
+      syncAdminRoleResolved();
     },
     (error) => {},
   );
@@ -661,9 +693,11 @@ onMounted(() => {
   ownerListener = onValue(
     dbRef(db, "owner"),
     (snap) => {
+      ownerLoaded = true;
       ownerUsers.value = new Set();
       if (snap.exists()) ownerUsers.value.add(snap.val());
       if (users.value.length) sortUsers();
+      syncAdminRoleResolved();
     },
     (error) => {},
   );
@@ -684,9 +718,26 @@ onUnmounted(() => {
 });
 
 watch(
-  () => props.isOpen,
-  (isOpen) => {
-    if (isOpen) {
+  [() => props.isOpen, () => activeTab.value, canUseAdminPanel],
+  ([isOpen, tab, canUsePanel]) => {
+    if (!isOpen || !canUsePanel) {
+      stopInvitesListener();
+      return;
+    }
+
+    if (tab === "invites") {
+      ensureInvitesListener();
+    } else {
+      stopInvitesListener();
+    }
+
+    if (tab === "users") {
+      loadUsers();
+    }
+    if (tab === "audit") {
+      loadAuditLogs();
+    }
+    if (tab === "controls") {
       loadMessagesCount();
     }
   },
@@ -721,6 +772,7 @@ function onOutsideClick(e) {
 }
 
 async function loadAuditLogs() {
+  if (!canUseAdminPanel.value) return;
   loadingAudit.value = true;
   auditEntries.value = [];
   auditError.value = "";
@@ -757,6 +809,7 @@ async function loadAuditLogs() {
 }
 
 async function generateInvite() {
+  if (!canUseAdminPanel.value) return;
   generatingInvite.value = true;
   errorInvite.value = "";
   try {
@@ -799,7 +852,7 @@ async function deleteInvite(token) {
 }
 
 async function loadUsers() {
-  if (usersListener) return;
+  if (!canUseAdminPanel.value || usersListener) return;
   loadingUsers.value = true;
   usersError.value = "";
   try {
@@ -865,6 +918,29 @@ async function loadUsers() {
 watch(
   () => activeTab.value,
   (val) => {
+    if (!canUseAdminPanel.value) {
+      stopInvitesListener();
+      if (usersListener) {
+        usersListener();
+        usersListener = null;
+      }
+      if (auditListener) {
+        auditListener();
+        auditListener = null;
+      }
+      if (messagesListener) {
+        messagesListener();
+        messagesListener = null;
+      }
+      return;
+    }
+
+    if (val === "invites") {
+      ensureInvitesListener();
+    } else {
+      stopInvitesListener();
+    }
+
     if (val === "users") {
       loadUsers();
     } else {
@@ -947,6 +1023,7 @@ watch(
 );
 
 async function loadMessagesCount() {
+  if (!canUseAdminPanel.value) return;
   loadingMessagesCount.value = true;
   messagesCountError.value = "";
   try {
@@ -1328,6 +1405,7 @@ async function toggleMute(uid) {
 }
 
 async function toggleChatLock() {
+  if (!canUseAdminPanel.value) return;
   lockLoading.value = true;
   adminActionError.value = "";
   const previousState = chatLocked.value;

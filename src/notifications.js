@@ -1,6 +1,7 @@
 import { isTauri } from "@tauri-apps/api/core";
 
 let tauriNotificationModulePromise = null;
+let tauriWindowModulePromise = null;
 
 const notificationHistory = new Map();
 const NOTIFICATION_THROTTLE_MS = 1500;
@@ -18,6 +19,45 @@ async function getTauriNotificationModule() {
       .catch(() => null);
   }
   return tauriNotificationModulePromise;
+}
+
+async function getTauriWindowModule() {
+  if (!isTauri()) return null;
+  if (!tauriWindowModulePromise) {
+    tauriWindowModulePromise = import("@tauri-apps/api/window")
+      .then((mod) => mod)
+      .catch(() => null);
+  }
+  return tauriWindowModulePromise;
+}
+
+async function isWindowsTauri() {
+  if (!isTauri()) return false;
+  if (typeof navigator === "undefined") return false;
+  const platform = String(
+    navigator.platform || navigator.userAgent || "",
+  ).toLowerCase();
+  return platform.includes("win");
+}
+
+async function focusAppWindow() {
+  try {
+    if (isTauri()) {
+      const windowModule = await getTauriWindowModule();
+      if (!windowModule) return;
+
+      const currentWindow = windowModule.getCurrentWindow();
+      await currentWindow.show();
+      await currentWindow.setFocus();
+      return;
+    }
+
+    if (typeof window !== "undefined" && typeof window.focus === "function") {
+      window.focus();
+    }
+  } catch (err) {
+    console.error("Failed to focus app window:", err);
+  }
 }
 
 export function notificationsSupported() {
@@ -50,12 +90,7 @@ export async function ensureNotificationPermission() {
   }
 }
 
-export async function sendSystemNotification({
-  title,
-  body = "",
-  icon,
-  silent = false,
-} = {}) {
+export async function sendSystemNotification({ title, body = "", icon } = {}) {
   if (!title || typeof title !== "string") {
     console.error("Invalid notification title");
     return false;
@@ -81,9 +116,9 @@ export async function sendSystemNotification({
 
   try {
     if (isTauri()) {
-      return await sendTauriNotification({ title, body, icon, silent });
+      return await sendTauriNotification({ title, body, icon });
     } else {
-      return await sendWebNotification({ title, body, icon, silent });
+      return await sendWebNotification({ title, body, icon });
     }
   } catch (err) {
     console.error("Failed to send notification:", err);
@@ -91,7 +126,7 @@ export async function sendSystemNotification({
   }
 }
 
-async function sendTauriNotification({ title, body, icon, silent }) {
+async function sendTauriNotification({ title, body, icon }) {
   const notification = await getTauriNotificationModule();
   if (!notification) return false;
 
@@ -102,15 +137,16 @@ async function sendTauriNotification({ title, body, icon, silent }) {
       return false;
     }
 
+    const nativeSoundEnabled = await isWindowsTauri();
+
     await notification.sendNotification({
       title: title.slice(0, 256),
       body: body.slice(0, 256),
+      silent: !nativeSoundEnabled,
       ...(icon ? { icon } : {}),
     });
 
-    if (!silent) {
-      playNotificationSound().catch(() => {});
-    }
+    await focusAppWindow();
 
     return true;
   } catch (err) {
@@ -119,7 +155,7 @@ async function sendTauriNotification({ title, body, icon, silent }) {
   }
 }
 
-async function sendWebNotification({ title, body, icon, silent }) {
+async function sendWebNotification({ title, body, icon }) {
   if (!notificationsSupported()) {
     return false;
   }
@@ -136,11 +172,11 @@ async function sendWebNotification({ title, body, icon, silent }) {
       tag: hashNotification({ title, body }),
       requireInteraction: false,
       badge: "/icon.png",
-      silent: silent,
+      silent: true,
     });
 
     notification.onclick = () => {
-      window.focus();
+      void focusAppWindow();
       notification.close();
     };
 
@@ -157,35 +193,6 @@ async function sendWebNotification({ title, body, icon, silent }) {
     console.error("Web notification failed:", err);
     return false;
   }
-}
-
-async function playNotificationSound() {
-  try {
-    if (document.hidden || typeof AudioContext === "undefined") {
-      return;
-    }
-
-    const audioContext = new (
-      window.AudioContext || window.webkitAudioContext
-    )();
-    const now = audioContext.currentTime;
-    const duration = 0.1;
-
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-
-    oscillator.frequency.value = 800;
-    oscillator.type = "sine";
-
-    gainNode.gain.setValueAtTime(0.3, now);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, now + duration);
-
-    oscillator.start(now);
-    oscillator.stop(now + duration);
-  } catch (err) {}
 }
 
 export function clearNotificationHistory() {
