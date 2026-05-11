@@ -1785,12 +1785,13 @@ function insertEmoji(emoji) {
   const textarea = composerRef.value;
   if (!textarea) return;
   const cursor = textarea.selectionStart;
+  const insertionStart = emojiQueryStart;
   const before = newMessage.value.slice(0, emojiQueryStart);
   const after = newMessage.value.slice(cursor);
-  newMessage.value = before + native + " " + after;
+  newMessage.value = before + native + after;
   closeEmojiPicker();
   nextTick(() => {
-    const newPos = emojiQueryStart + native.length + 1;
+    const newPos = insertionStart + native.length;
     textarea.setSelectionRange(newPos, newPos);
     textarea.focus();
     resizeComposer();
