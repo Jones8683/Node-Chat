@@ -1857,8 +1857,7 @@ function subscribeMessages() {
               let isPingNotif = false;
               if (baseOk) {
                 isPingNotif = notifMode === "ping" && isPing;
-                shouldNotify =
-                  notifMode === "all" || isPingNotif;
+                shouldNotify = notifMode === "all" || isPingNotif;
               }
               if (shouldNotify && msg.text) {
                 const body = msg.text.slice(0, 100);

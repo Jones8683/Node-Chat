@@ -183,8 +183,9 @@ async function playNotificationSound() {
       return;
     }
 
-    const audioContext = new (window.AudioContext ||
-      window.webkitAudioContext)();
+    const audioContext = new (
+      window.AudioContext || window.webkitAudioContext
+    )();
     const now = audioContext.currentTime;
     const duration = 0.1;
 
