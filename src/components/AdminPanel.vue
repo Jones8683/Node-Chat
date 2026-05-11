@@ -57,6 +57,9 @@
         </div>
 
         <div class="modal-content">
+          <p v-if="adminActionError" class="error admin-action-error">
+            {{ adminActionError }}
+          </p>
           <div v-if="activeTab === 'invites'">
             <div class="section">
               <h3 class="section-title">Generate New Invite Code</h3>
@@ -530,6 +533,8 @@ const totalUsersCount = ref(0);
 const adminCount = ref(0);
 const totalMessagesCount = ref(null);
 const loadingMessagesCount = ref(false);
+const messagesCountError = ref("");
+const adminActionError = ref("");
 
 const copyFeedback = ref(false);
 
@@ -695,6 +700,10 @@ function close() {
   emit("close");
 }
 
+function queueAuditEvent(payload) {
+  void recordAuditEvent(payload).catch(() => {});
+}
+
 function onKeyDown(e) {
   if (e.key === "Escape") {
     if (purgeDropdownOpen.value) {
@@ -752,12 +761,10 @@ async function generateInvite() {
   errorInvite.value = "";
   try {
     const token = await createInviteToken();
-    try {
-      await recordAuditEvent({
-        action: "invite_create",
-        details: token,
-      });
-    } catch (e) {}
+    queueAuditEvent({
+      action: "invite_create",
+      details: token,
+    });
   } catch (e) {
     errorInvite.value =
       e?.code === "PERMISSION_DENIED" ||
@@ -784,12 +791,10 @@ async function deleteInvite(token) {
   try {
     await deleteInviteToken(token);
     invites.value = invites.value.filter((inv) => inv.token !== token);
-    try {
-      await recordAuditEvent({
-        action: "invite_delete",
-        details: token,
-      });
-    } catch (e) {}
+    queueAuditEvent({
+      action: "invite_delete",
+      details: token,
+    });
   } catch (e) {}
 }
 
@@ -910,12 +915,27 @@ watch(
     }
     if (val === "controls") {
       if (!messagesListener) {
-        messagesListener = onValue(dbRef(db, "messages"), (snap) => {
-          totalMessagesCount.value = snap.exists()
-            ? Object.keys(snap.val() || {}).length
-            : 0;
-          loadingMessagesCount.value = false;
-        });
+        messagesListener = onValue(
+          dbRef(db, "messages"),
+          (snap) => {
+            messagesCountError.value = "";
+            totalMessagesCount.value = snap.exists()
+              ? Object.keys(snap.val() || {}).length
+              : 0;
+            loadingMessagesCount.value = false;
+          },
+          (error) => {
+            totalMessagesCount.value = null;
+            loadingMessagesCount.value = false;
+            messagesCountError.value =
+              error?.code === "PERMISSION_DENIED" ||
+              String(error?.message || "")
+                .toLowerCase()
+                .includes("permission")
+                ? "Database rules are blocking the message count. Verify your admin access and publish the rules."
+                : "Failed to load the current message count.";
+          },
+        );
       }
     } else {
       if (messagesListener) {
@@ -928,6 +948,7 @@ watch(
 
 async function loadMessagesCount() {
   loadingMessagesCount.value = true;
+  messagesCountError.value = "";
   try {
     const snap = await get(dbRef(db, "messages"));
     totalMessagesCount.value = snap.exists()
@@ -935,6 +956,13 @@ async function loadMessagesCount() {
       : 0;
   } catch (e) {
     totalMessagesCount.value = null;
+    messagesCountError.value =
+      e?.code === "PERMISSION_DENIED" ||
+      String(e?.message || "")
+        .toLowerCase()
+        .includes("permission")
+        ? "Database rules are blocking the message count. Verify your admin access and publish the rules."
+        : "Failed to load the current message count.";
   } finally {
     loadingMessagesCount.value = false;
   }
@@ -1261,29 +1289,39 @@ function canShowMuteButton(uid) {
 
 async function toggleMute(uid) {
   mutingUid.value = uid;
+  adminActionError.value = "";
+  const previousMutedUsers = new Set(mutedUsers.value);
+  const wasMuted = previousMutedUsers.has(uid);
+  const nextMutedUsers = new Set(previousMutedUsers);
+  if (wasMuted) {
+    nextMutedUsers.delete(uid);
+  } else {
+    nextMutedUsers.add(uid);
+  }
+  mutedUsers.value = nextMutedUsers;
   try {
-    if (isUserMuted(uid)) {
+    if (wasMuted) {
       await remove(dbRef(db, `muted/${uid}`));
-      try {
-        const u = users.value.find((x) => x.uid === uid);
-        await recordAuditEvent({
-          action: "unmute",
-          targetUid: uid,
-          targetName: u?.displayName || null,
-        });
-      } catch (e) {}
+      const u = users.value.find((x) => x.uid === uid);
+      queueAuditEvent({
+        action: "unmute",
+        targetUid: uid,
+        targetName: u?.displayName || null,
+      });
     } else {
       await set(dbRef(db, `muted/${uid}`), true);
-      try {
-        const u = users.value.find((x) => x.uid === uid);
-        await recordAuditEvent({
-          action: "mute",
-          targetUid: uid,
-          targetName: u?.displayName || null,
-        });
-      } catch (e) {}
+      const u = users.value.find((x) => x.uid === uid);
+      queueAuditEvent({
+        action: "mute",
+        targetUid: uid,
+        targetName: u?.displayName || null,
+      });
     }
   } catch (e) {
+    mutedUsers.value = previousMutedUsers;
+    adminActionError.value = wasMuted
+      ? "Failed to unmute this user."
+      : "Failed to mute this user.";
   } finally {
     mutingUid.value = null;
   }
@@ -1291,13 +1329,18 @@ async function toggleMute(uid) {
 
 async function toggleChatLock() {
   lockLoading.value = true;
+  adminActionError.value = "";
+  const previousState = chatLocked.value;
+  const next = !previousState;
+  chatLocked.value = next;
   try {
-    const next = !chatLocked.value;
     await set(dbRef(db, "settings/chatLocked"), next);
-    try {
-      await recordAuditEvent({ action: next ? "lock_chat" : "unlock_chat" });
-    } catch (e) {}
+    queueAuditEvent({ action: next ? "lock_chat" : "unlock_chat" });
   } catch (e) {
+    chatLocked.value = previousState;
+    adminActionError.value = next
+      ? "Failed to lock the chat."
+      : "Failed to unlock the chat.";
   } finally {
     lockLoading.value = false;
   }
@@ -1363,15 +1406,13 @@ async function executePurge() {
         );
       }
     }
-    try {
-      await recordAuditEvent({
-        action: "purge_messages",
-        details:
-          purgeAmount.value === "all"
-            ? "all messages"
-            : `${purgeAmount.value} messages - ${purgeOrder.value}`,
-      });
-    } catch (e) {}
+    queueAuditEvent({
+      action: "purge_messages",
+      details:
+        purgeAmount.value === "all"
+          ? "all messages"
+          : `${purgeAmount.value} messages - ${purgeOrder.value}`,
+    });
     await loadMessagesCount();
     confirmAction.value.show = false;
   } catch (e) {
