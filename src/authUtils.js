@@ -6,6 +6,7 @@ import {
   update,
   remove,
   push,
+  runTransaction,
 } from "firebase/database";
 import {
   createUserWithEmailAndPassword,
@@ -106,13 +107,12 @@ export async function signupWithToken(
   try {
     if (displayName.trim()) {
       const nameKey = displayName.toLowerCase().replace(/\s+/g, "_");
-      const existingUser = await get(dbRef(db, `usernames/${nameKey}`));
-      if (existingUser.exists()) {
+      const reserved = await reserveDisplayName(nameKey, userCred.user.uid);
+      if (!reserved) {
         throw new Error("Display name already taken");
       }
 
       await updateProfile(userCred.user, { displayName });
-      await set(dbRef(db, `usernames/${nameKey}`), userCred.user.uid);
     }
 
     await set(dbRef(db, `users/${userCred.user.uid}`), {
@@ -183,8 +183,8 @@ export async function recordAuditEvent({
 
 export async function changeDisplayName(uid, newDisplayName) {
   const nameKey = newDisplayName.toLowerCase().replace(/\s+/g, "_");
-  const snap = await get(dbRef(db, `usernames/${nameKey}`));
-  if (snap.exists() && snap.val() !== uid) {
+  const reserved = await reserveDisplayName(nameKey, uid);
+  if (!reserved) {
     throw new Error("Display name already taken");
   }
 
@@ -206,7 +206,6 @@ export async function changeDisplayName(uid, newDisplayName) {
     await remove(dbRef(db, `usernames/${oldNameKey}`));
   }
 
-  await set(dbRef(db, `usernames/${nameKey}`), uid);
   await updateProfile(user, { displayName: newDisplayName });
   await update(dbRef(db, `users/${uid}`), { displayName: newDisplayName });
   try {
@@ -225,6 +224,20 @@ export async function changeDisplayName(uid, newDisplayName) {
       details: newDisplayName,
     });
   } catch (e) {}
+}
+
+async function reserveDisplayName(nameKey, uid) {
+  const reservation = await runTransaction(
+    dbRef(db, `usernames/${nameKey}`),
+    (current) => {
+      if (current === null || current === uid) {
+        return uid;
+      }
+      return;
+    },
+  );
+
+  return reservation.committed === true;
 }
 
 export async function changeAvatarColor(uid, avatarColor) {
