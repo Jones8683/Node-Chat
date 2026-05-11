@@ -1854,17 +1854,20 @@ function subscribeMessages() {
                 msg.uid !== props.user.uid &&
                 props.user.preferences?.notificationsEnabled;
               let shouldNotify = false;
+              let isPingNotif = false;
               if (baseOk) {
+                isPingNotif = notifMode === "ping" && isPing;
                 shouldNotify =
-                  notifMode === "all" || (notifMode === "ping" && isPing);
+                  notifMode === "all" || isPingNotif;
               }
-              if (shouldNotify) {
-                const body = msg.text?.slice(0, 100) || "";
+              if (shouldNotify && msg.text) {
+                const body = msg.text.slice(0, 100);
                 void sendSystemNotification({
                   title: msg.displayName || "Node Chat",
                   body,
                   icon: "/icon.png",
-                }).catch(() => {});
+                  silent: !isPingNotif,
+                });
               }
             }
             if (
