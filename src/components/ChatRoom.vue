@@ -149,12 +149,10 @@
                       }"
                       >{{ item.replyTo.displayName }}</span
                     >
-                    <span class="reply-text"
-                      >{{ item.replyTo.text?.slice(0, 100)
-                      }}{{
-                        (item.replyTo.text?.length || 0) > 100 ? "…" : ""
-                      }}</span
-                    >
+                    <span
+                      class="reply-text"
+                      v-html="formatMessage(item.replyTo.text || '')"
+                    ></span>
                   </template>
                 </div>
               </div>
