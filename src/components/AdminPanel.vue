@@ -299,7 +299,7 @@
                 <div class="user-item" v-for="u in users" :key="u.uid">
                   <div class="user-info">
                     <div class="user-avatar">
-                      {{ (u.displayName || "?")[0].toUpperCase() }}
+                      {{ getAvatarInitial(u.displayName) }}
                     </div>
                     <div class="user-details">
                       <div class="user-name-slot">
@@ -994,6 +994,10 @@ function formatRemaining(timestamp) {
   } catch (e) {
     return formatDate(timestamp);
   }
+}
+
+function getAvatarInitial(name) {
+  return (name && name[0]?.toUpperCase()) || "?";
 }
 
 function resolveDisplayName(uid, fallback = "") {
