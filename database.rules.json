@@ -4,13 +4,13 @@
       ".read": "auth != null",
       "$uid": {
         ".read": "auth != null",
-        ".write": "auth != null && ($uid === auth.uid || root.child('admins').child(auth.uid).val() === true)"
+        ".write": "auth != null && ($uid === auth.uid || root.child('admins').child(auth.uid).val() === true || root.child('owner').val() === auth.uid)"
       }
     },
     "usernames": {
       ".read": true,
       "$key": {
-        ".write": "auth != null && newData.exists() && newData.val() === auth.uid && (!data.exists() || data.val() === auth.uid || root.child('admins').child(auth.uid).val() === true)"
+        ".write": "auth != null && newData.exists() && newData.val() === auth.uid && (!data.exists() || data.val() === auth.uid || root.child('admins').child(auth.uid).val() === true || root.child('owner').val() === auth.uid)"
       }
     },
     "messages": {
@@ -20,27 +20,27 @@
       "$id": {
         ".write": "auth != null && (\n          (!data.exists() && newData.exists() && newData.child('uid').val() === auth.uid) ||\n          (data.exists() && newData.exists() && (\n            data.child('uid').val() === auth.uid && newData.child('uid').val() === data.child('uid').val()\n            || root.child('admins').child(auth.uid).val() === true\n          )) ||\n          (data.exists() && !newData.exists() && (data.child('uid').val() === auth.uid || root.child('admins').child(auth.uid).val() === true))\n        )",
         "displayName": {
-          ".write": "auth != null && (data.parent().child('uid').val() === auth.uid || root.child('admins').child(auth.uid).val() === true)"
+          ".write": "auth != null && (data.parent().child('uid').val() === auth.uid || root.child('admins').child(auth.uid).val() === true || root.child('owner').val() === auth.uid)"
         },
         "avatarColor": {
-          ".write": "auth != null && (data.parent().child('uid').val() === auth.uid || root.child('admins').child(auth.uid).val() === true)"
+          ".write": "auth != null && (data.parent().child('uid').val() === auth.uid || root.child('admins').child(auth.uid).val() === true || root.child('owner').val() === auth.uid)"
         },
         "replyTo": {
           "displayName": {
-            ".write": "auth != null && (data.parent().child('uid').val() === auth.uid || root.child('admins').child(auth.uid).val() === true)"
+            ".write": "auth != null && (data.parent().child('uid').val() === auth.uid || root.child('admins').child(auth.uid).val() === true || root.child('owner').val() === auth.uid)"
           },
           "avatarColor": {
-            ".write": "auth != null && (data.parent().child('uid').val() === auth.uid || root.child('admins').child(auth.uid).val() === true)"
+            ".write": "auth != null && (data.parent().child('uid').val() === auth.uid || root.child('admins').child(auth.uid).val() === true || root.child('owner').val() === auth.uid)"
           }
         },
         "mentions": {
           "$uid": {
-            ".write": "auth != null && ($uid === auth.uid || data.parent().parent().child('uid').val() === auth.uid || root.child('admins').child(auth.uid).val() === true)"
+            ".write": "auth != null && ($uid === auth.uid || data.parent().parent().child('uid').val() === auth.uid || root.child('admins').child(auth.uid).val() === true || root.child('owner').val() === auth.uid)"
           }
         },
         "mentionUids": {
           "$uid": {
-            ".write": "auth != null && (data.parent().parent().child('uid').val() === auth.uid || root.child('admins').child(auth.uid).val() === true)"
+            ".write": "auth != null && (data.parent().parent().child('uid').val() === auth.uid || root.child('admins').child(auth.uid).val() === true || root.child('owner').val() === auth.uid)"
           }
         }
       }
@@ -54,14 +54,14 @@
     "admins": {
       ".read": "auth != null",
       "$uid": {
-        ".write": "auth != null && root.child('admins').child(auth.uid).val() === true"
+        ".write": "auth != null && (root.child('admins').child(auth.uid).val() === true || root.child('owner').val() === auth.uid)"
       }
     },
     "invites": {
-      ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      ".read": "auth != null && (root.child('admins').child(auth.uid).val() === true || root.child('owner').val() === auth.uid)",
       "$token": {
         ".read": true,
-        ".write": "root.child('admins').child(auth.uid).val() === true || (auth != null && data.exists() && data.child('used').val() === false && newData.exists() && newData.child('used').val() === true && newData.child('usedByUid').val() === auth.uid) || (auth != null && data.exists() && !newData.exists() && data.child('usedByUid').val() === auth.uid)"
+        ".write": "root.child('admins').child(auth.uid).val() === true || root.child('owner').val() === auth.uid || (auth != null && data.exists() && data.child('used').val() === false && newData.exists() && newData.child('used').val() === true && newData.child('usedByUid').val() === auth.uid) || (auth != null && data.exists() && !newData.exists() && data.child('usedByUid').val() === auth.uid)"
       }
     },
     "owner": {
@@ -77,17 +77,17 @@
     "settings": {
       ".read": "auth != null",
       "chatLocked": {
-        ".write": "auth != null && root.child('admins').child(auth.uid).val() === true"
+        ".write": "auth != null && (root.child('admins').child(auth.uid).val() === true || root.child('owner').val() === auth.uid)"
       }
     },
     "muted": {
       ".read": "auth != null",
       "$uid": {
-        ".write": "auth != null && root.child('admins').child(auth.uid).val() === true"
+        ".write": "auth != null && (root.child('admins').child(auth.uid).val() === true || root.child('owner').val() === auth.uid)"
       }
     },
     "auditLogs": {
-      ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      ".read": "auth != null && (root.child('admins').child(auth.uid).val() === true || root.child('owner').val() === auth.uid)",
       "$actorUid": {
         "$pushId": {
           ".write": "auth != null && auth.uid === $actorUid && !data.exists() && newData.exists()",

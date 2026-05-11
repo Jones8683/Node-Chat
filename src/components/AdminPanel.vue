@@ -608,7 +608,7 @@ onMounted(() => {
         String(error?.message || "")
           .toLowerCase()
           .includes("permission")
-          ? "Database rules are blocking invite reads. Make sure your uid is listed under /admins and the rules are published."
+          ? "Database rules are blocking invite reads. Make sure your uid is listed under /admins or /owner and the rules are published."
           : "Failed to load invites.";
     },
   );
@@ -749,7 +749,7 @@ async function loadAuditLogs() {
       String(e?.message || "")
         .toLowerCase()
         .includes("permission")
-        ? "Database rules are blocking audit logs. Make sure your uid is listed in /admins and the rules are published."
+        ? "Database rules are blocking audit logs. Make sure your uid is listed in /admins or /owner and the rules are published."
         : "Failed to load audit logs.";
   } finally {
     loadingAudit.value = false;
@@ -771,7 +771,7 @@ async function generateInvite() {
       String(e?.message || "")
         .toLowerCase()
         .includes("permission")
-        ? "Database rules are blocking invite writes. Make sure your uid is listed under /admins."
+        ? "Database rules are blocking invite writes. Make sure your uid is listed under /admins or /owner."
         : `Failed to generate invite${e?.message ? `: ${e.message}` : ""}`;
   } finally {
     generatingInvite.value = false;
@@ -819,7 +819,7 @@ async function loadUsers() {
         usersError.value =
           error?.code === "PERMISSION_DENIED" ||
           String(error?.message || "").includes("Permission denied")
-            ? "Database rules are blocking the users list. Add your admin uid under /admins and publish the rules."
+            ? "Database rules are blocking the users list. Add your admin uid under /admins or /owner and publish the rules."
             : "Failed to load users.";
 
         if (auth.currentUser) {
@@ -842,7 +842,7 @@ async function loadUsers() {
     usersError.value =
       e?.code === "PERMISSION_DENIED" ||
       String(e?.message || "").includes("Permission denied")
-        ? "Database rules are blocking the users list. Add your admin uid under /admins and publish the rules."
+        ? "Database rules are blocking the users list. Add your admin uid under /admins or /owner and publish the rules."
         : "Failed to load users.";
 
     if (auth.currentUser) {
@@ -902,7 +902,7 @@ watch(
               String(error?.message || "")
                 .toLowerCase()
                 .includes("permission")
-                ? "Database rules are blocking audit logs. Make sure your uid is listed in /admins and the rules are published."
+                ? "Database rules are blocking audit logs. Make sure your uid is listed in /admins or /owner and the rules are published."
                 : "Failed to load audit logs.";
           },
         );
