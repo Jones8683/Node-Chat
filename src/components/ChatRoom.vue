@@ -415,7 +415,7 @@
             <span>Chat is locked by an admin</span>
           </div>
 
-          <div class="input-wrap" @mousedown="handleComposerMouseDown">
+          <div class="input-wrap" @mousedown.prevent="focusComposer">
             <div v-if="replyingTo" class="reply-bar">
               <span class="reply-bar-to"
                 >Replying to
@@ -442,7 +442,7 @@
             <div
               class="input-row"
               ref="inputRowRef"
-              @mousedown="handleComposerMouseDown"
+              @mousedown.prevent="focusComposer"
             >
               <textarea
                 ref="composerRef"
@@ -1724,16 +1724,6 @@ async function handleTyping() {
 
 function focusComposer() {
   composerRef.value?.focus();
-}
-
-function handleComposerMouseDown(event) {
-  if (
-    event.target instanceof HTMLElement &&
-    composerRef.value?.contains(event.target)
-  ) {
-    return;
-  }
-  focusComposer();
 }
 
 function handleComposerInput() {
