@@ -103,32 +103,38 @@ export async function signupWithToken(
   }
 
   const userCred = await createUserWithEmailAndPassword(auth, email, password);
+  const trimmedDisplayName = displayName.trim();
+  let reservedNameKey = null;
+  let createdUserRow = false;
 
   try {
-    if (displayName.trim()) {
-      const nameKey = displayName.toLowerCase().replace(/\s+/g, "_");
+    if (trimmedDisplayName) {
+      const nameKey = trimmedDisplayName.toLowerCase().replace(/\s+/g, "_");
       const reserved = await reserveDisplayName(nameKey, userCred.user.uid);
       if (!reserved) {
         throw new Error("Display name already taken");
       }
-
-      await updateProfile(userCred.user, { displayName });
+      reservedNameKey = nameKey;
+      await updateProfile(userCred.user, { displayName: trimmedDisplayName });
     }
 
     await set(dbRef(db, `users/${userCred.user.uid}`), {
       email,
-      displayName: displayName.trim(),
+      displayName: trimmedDisplayName,
       createdAt: Date.now(),
       preferences: {
         showTimestamps: true,
       },
     });
+    createdUserRow = true;
+
     await consumeInviteToken(token, userCred.user.uid);
-    if (displayName.trim()) {
+
+    if (trimmedDisplayName) {
       try {
         if (auth && auth.currentUser) {
           const { uid, displayName: dn } = auth.currentUser;
-          const signupName = displayName.trim() || dn || null;
+          const signupName = trimmedDisplayName || dn || null;
           await recordAuditEvent({
             action: "signup",
             actorUid: uid,
@@ -138,9 +144,22 @@ export async function signupWithToken(
         }
       } catch (e) {}
     }
+
     return userCred.user;
   } catch (error) {
-    await userCred.user.delete();
+    if (createdUserRow) {
+      try {
+        await remove(dbRef(db, `users/${userCred.user.uid}`));
+      } catch (e) {}
+    }
+    if (reservedNameKey) {
+      try {
+        await remove(dbRef(db, `usernames/${reservedNameKey}`));
+      } catch (e) {}
+    }
+    try {
+      await userCred.user.delete();
+    } catch (e) {}
     throw error;
   }
 }
@@ -201,29 +220,42 @@ export async function changeDisplayName(uid, newDisplayName) {
     oldDisplayName && oldDisplayName.trim()
       ? oldDisplayName.toLowerCase().replace(/\s+/g, "_")
       : null;
+  const shouldRestoreOldName = !!(oldNameKey && oldNameKey !== nameKey);
 
-  if (oldNameKey && oldNameKey !== nameKey) {
-    await remove(dbRef(db, `usernames/${oldNameKey}`));
+  try {
+    if (shouldRestoreOldName) {
+      await remove(dbRef(db, `usernames/${oldNameKey}`));
+    }
+
+    await updateProfile(user, { displayName: newDisplayName });
+    await update(dbRef(db, `users/${uid}`), { displayName: newDisplayName });
+    try {
+      await update(dbRef(db, `presence/${uid}/profile`), {
+        displayName: newDisplayName,
+      });
+    } catch (e) {}
+
+    await batchUpdateMessageDisplayNames(uid, newDisplayName);
+    try {
+      await recordAuditEvent({
+        action: hadDisplayName ? "display_name_changed" : "signup",
+        actorName: oldDisplayName,
+        targetUid: uid,
+        targetName: oldDisplayName,
+        details: newDisplayName,
+      });
+    } catch (e) {}
+  } catch (error) {
+    if (shouldRestoreOldName) {
+      try {
+        await set(dbRef(db, `usernames/${oldNameKey}`), uid);
+      } catch (e) {}
+    }
+    try {
+      await remove(dbRef(db, `usernames/${nameKey}`));
+    } catch (e) {}
+    throw error;
   }
-
-  await updateProfile(user, { displayName: newDisplayName });
-  await update(dbRef(db, `users/${uid}`), { displayName: newDisplayName });
-  try {
-    await update(dbRef(db, `presence/${uid}/profile`), {
-      displayName: newDisplayName,
-    });
-  } catch (e) {}
-
-  await batchUpdateMessageDisplayNames(uid, newDisplayName);
-  try {
-    await recordAuditEvent({
-      action: hadDisplayName ? "display_name_changed" : "signup",
-      actorName: oldDisplayName,
-      targetUid: uid,
-      targetName: oldDisplayName,
-      details: newDisplayName,
-    });
-  } catch (e) {}
 }
 
 async function reserveDisplayName(nameKey, uid) {

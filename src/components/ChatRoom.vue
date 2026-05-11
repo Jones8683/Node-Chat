@@ -1814,103 +1814,116 @@ function scrollEmojiItemIntoView() {
 function subscribeMessages() {
   if (messagesListener) messagesListener();
   const messagesRef = query(dbRef(db, "messages"), limitToLast(messageLimit));
-  messagesListener = onValue(messagesRef, (snapshot) => {
-    const scrollEl = messageContainer.value;
-    const wasNearBottom = isNearBottom(scrollEl);
-    const data = snapshot.val();
-    const loaded = data
-      ? Object.entries(data).map(([id, msg]) => ({ id, ...msg }))
-      : [];
-    const sorted = loaded.sort(
-      (a, b) => (a.timestamp || 0) - (b.timestamp || 0),
-    );
+  messagesListener = onValue(
+    messagesRef,
+    (snapshot) => {
+      const scrollEl = messageContainer.value;
+      const wasNearBottom = isNearBottom(scrollEl);
+      const data = snapshot.val();
+      const loaded = data
+        ? Object.entries(data).map(([id, msg]) => ({ id, ...msg }))
+        : [];
+      const sorted = loaded.sort(
+        (a, b) => (a.timestamp || 0) - (b.timestamp || 0),
+      );
 
-    hasMore.value = sorted.length === messageLimit && totalCount > messageLimit;
+      hasMore.value =
+        sorted.length === messageLimit && totalCount > messageLimit;
 
-    if (!initialLoadDone) {
-      sorted.forEach((msg) => knownIds.add(msg.id));
-      initialLoadDone = true;
-    } else {
-      const newAnimIds = new Set();
-      sorted.forEach((msg) => {
-        if (!knownIds.has(msg.id)) {
-          knownIds.add(msg.id);
-          if (!document.hidden && wasNearBottom) {
-            newAnimIds.add(msg.id);
-          }
-          const appBackgrounded = document.hidden || !document.hasFocus();
-          if (document.hidden) {
-            unreadCount++;
-            updateBadge(unreadCount);
-          }
-          if (appBackgrounded) {
-            const notifMode =
-              props.user.preferences?.notificationMode || "ping";
-            const isPing = isMessagePing(msg);
-            const baseOk =
-              msg.uid !== props.user.uid &&
-              props.user.preferences?.notificationsEnabled;
-            let shouldNotify = false;
-            if (baseOk) {
-              shouldNotify =
-                notifMode === "all" || (notifMode === "ping" && isPing);
+      if (!initialLoadDone) {
+        sorted.forEach((msg) => knownIds.add(msg.id));
+        initialLoadDone = true;
+      } else {
+        const newAnimIds = new Set();
+        sorted.forEach((msg) => {
+          if (!knownIds.has(msg.id)) {
+            knownIds.add(msg.id);
+            if (!document.hidden && wasNearBottom) {
+              newAnimIds.add(msg.id);
             }
-            if (shouldNotify) {
-              const body = msg.text?.slice(0, 100) || "";
-              sendSystemNotification({
-                title: msg.displayName || "Node Chat",
-                body,
-                icon: "/icon.png",
-              });
+            const appBackgrounded = document.hidden || !document.hasFocus();
+            if (document.hidden) {
+              unreadCount++;
+              updateBadge(unreadCount);
+            }
+            if (appBackgrounded) {
+              const notifMode =
+                props.user.preferences?.notificationMode || "ping";
+              const isPing = isMessagePing(msg);
+              const baseOk =
+                msg.uid !== props.user.uid &&
+                props.user.preferences?.notificationsEnabled;
+              let shouldNotify = false;
+              if (baseOk) {
+                shouldNotify =
+                  notifMode === "all" || (notifMode === "ping" && isPing);
+              }
+              if (shouldNotify) {
+                const body = msg.text?.slice(0, 100) || "";
+                void sendSystemNotification({
+                  title: msg.displayName || "Node Chat",
+                  body,
+                  icon: "/icon.png",
+                }).catch(() => {});
+              }
+            }
+            if (
+              !isNearBottom(messageContainer.value) &&
+              msg.uid !== props.user.uid
+            ) {
+              scrollUnread.value++;
             }
           }
-          if (
-            !isNearBottom(messageContainer.value) &&
-            msg.uid !== props.user.uid
-          ) {
-            scrollUnread.value++;
-          }
+        });
+        if (newAnimIds.size > 0) {
+          clearTimeout(animationClearTimer);
+          animatingIds.value = newAnimIds;
+          animationClearTimer = setTimeout(() => {
+            animatingIds.value = new Set();
+          }, 500);
         }
-      });
-      if (newAnimIds.size > 0) {
-        clearTimeout(animationClearTimer);
-        animatingIds.value = newAnimIds;
-        animationClearTimer = setTimeout(() => {
-          animatingIds.value = new Set();
-        }, 500);
       }
-    }
 
-    messages.value = sorted;
+      messages.value = sorted;
 
-    nextTick(() => {
-      const container = messageContainer.value;
-      if (!container) return;
+      nextTick(() => {
+        const container = messageContainer.value;
+        if (!container) return;
 
-      if (restoreScrollAnchor(container)) {
-        isLoadingMore.value = false;
+        if (restoreScrollAnchor(container)) {
+          isLoadingMore.value = false;
+          shouldScrollToBottom = false;
+          if (!hasEmittedReady) {
+            hasEmittedReady = true;
+            emit("ready");
+          }
+          return;
+        }
+
+        const needsInitialScroll = !hasPositionedInitialScroll;
+        if (needsInitialScroll || wasNearBottom || shouldScrollToBottom) {
+          container.scrollTop = container.scrollHeight;
+          hasPositionedInitialScroll = true;
+        }
+
         shouldScrollToBottom = false;
+
         if (!hasEmittedReady) {
           hasEmittedReady = true;
           emit("ready");
         }
-        return;
-      }
-
-      const needsInitialScroll = !hasPositionedInitialScroll;
-      if (needsInitialScroll || wasNearBottom || shouldScrollToBottom) {
-        container.scrollTop = container.scrollHeight;
-        hasPositionedInitialScroll = true;
-      }
-
-      shouldScrollToBottom = false;
-
+      });
+    },
+    () => {
       if (!hasEmittedReady) {
         hasEmittedReady = true;
         emit("ready");
       }
-    });
-  });
+      isLoadingMore.value = false;
+      shouldScrollToBottom = false;
+      console.error("Failed to load messages listener");
+    },
+  );
 }
 
 async function loadMore() {
@@ -1994,8 +2007,13 @@ onMounted(async () => {
     );
   });
 
-  const countSnap = await get(dbRef(db, "messages"));
-  totalCount = countSnap.exists() ? Object.keys(countSnap.val()).length : 0;
+  try {
+    const countSnap = await get(dbRef(db, "messages"));
+    totalCount = countSnap.exists() ? Object.keys(countSnap.val()).length : 0;
+  } catch (e) {
+    totalCount = 0;
+    console.error("Failed to read initial message count", e);
+  }
   hasMore.value = totalCount > messageLimit;
 
   typingListener = onValue(dbRef(db, "typing"), (snapshot) => {

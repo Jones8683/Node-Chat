@@ -18,53 +18,61 @@ export function notificationsSupported() {
 }
 
 export async function ensureNotificationPermission() {
-  if (isTauri()) {
-    const notification = await getTauriNotificationModule();
-    if (!notification) return false;
+  try {
+    if (isTauri()) {
+      const notification = await getTauriNotificationModule();
+      if (!notification) return false;
 
-    const granted = await notification.isPermissionGranted();
-    if (granted) return true;
+      const granted = await notification.isPermissionGranted();
+      if (granted) return true;
 
-    const permission = await notification.requestPermission();
+      const permission = await notification.requestPermission();
+      return permission === "granted";
+    }
+
+    if (!notificationsSupported()) return false;
+    if (Notification.permission === "granted") return true;
+    if (Notification.permission === "denied") return false;
+
+    const permission = await Notification.requestPermission();
     return permission === "granted";
+  } catch {
+    return false;
   }
-
-  if (!notificationsSupported()) return false;
-  if (Notification.permission === "granted") return true;
-  if (Notification.permission === "denied") return false;
-
-  const permission = await Notification.requestPermission();
-  return permission === "granted";
 }
 
 export async function sendSystemNotification({ title, body = "", icon }) {
-  if (isTauri()) {
-    const notification = await getTauriNotificationModule();
-    if (!notification) return false;
+  try {
+    if (isTauri()) {
+      const notification = await getTauriNotificationModule();
+      if (!notification) return false;
 
-    const granted = await notification.isPermissionGranted();
-    if (!granted) return false;
+      const granted = await notification.isPermissionGranted();
+      if (!granted) return false;
 
-    await notification.sendNotification({
-      title,
+      await notification.sendNotification({
+        title,
+        body,
+        ...(icon ? { icon } : {}),
+      });
+      return true;
+    }
+
+    if (!notificationsSupported() || Notification.permission !== "granted") {
+      return false;
+    }
+
+    const n = new Notification(title, {
       body,
       ...(icon ? { icon } : {}),
     });
-    return true;
-  }
+    n.onclick = () => {
+      window.focus();
+      n.close();
+    };
 
-  if (!notificationsSupported() || Notification.permission !== "granted") {
+    return true;
+  } catch {
     return false;
   }
-
-  const n = new Notification(title, {
-    body,
-    ...(icon ? { icon } : {}),
-  });
-  n.onclick = () => {
-    window.focus();
-    n.close();
-  };
-
-  return true;
 }
