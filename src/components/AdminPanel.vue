@@ -1052,7 +1052,9 @@ function formatAuditText(ev) {
         ? `${actor} renamed ${escapeHtml(ev.details)} to ${target}`
         : `${actor} renamed ${target}`;
     case "display_name_changed":
-      return `${actor} changed their display name${details}`;
+      return ev.details
+        ? `${actor} changed their display name to ${escapeHtml(ev.details)}`
+        : `${actor} changed their display name`;
     case "signup":
       return ev.details
         ? `${actor} signed up ${escapeHtml(ev.details)}`

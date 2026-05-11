@@ -219,8 +219,10 @@ export async function changeDisplayName(uid, newDisplayName) {
   try {
     await recordAuditEvent({
       action: hadDisplayName ? "display_name_changed" : "signup",
+      actorName: oldDisplayName,
       targetUid: uid,
-      targetName: newDisplayName,
+      targetName: oldDisplayName,
+      details: newDisplayName,
     });
   } catch (e) {}
 }
