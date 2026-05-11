@@ -492,7 +492,6 @@ async function toggleShowTimestamps() {
       showTimestamps: next,
     });
   } catch (e) {
-    // ignore UI-safe failure
   } finally {
     savingTimestamps.value = false;
   }

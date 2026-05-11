@@ -1694,7 +1694,6 @@ function handleClickOutside(e) {
 }
 
 function handleGlobalKeydown(e) {
-  // Focus composer when `/` is pressed and the user isn't typing in another field.
   if (e.key === "/") {
     const active = document.activeElement;
     const isTypingEl =
@@ -1929,9 +1928,7 @@ onMounted(async () => {
   if (props.user.preferences?.notificationsEnabled) {
     try {
       await ensureNotificationPermission();
-    } catch {
-      // Ignore permission errors; notifications remain optional.
-    }
+    } catch {}
   }
   document.addEventListener("visibilitychange", handleVisibilityChange);
   window.addEventListener("focus", handleWindowFocus);
