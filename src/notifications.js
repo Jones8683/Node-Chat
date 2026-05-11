@@ -1,7 +1,6 @@
 import { isTauri } from "@tauri-apps/api/core";
 
 let tauriNotificationModulePromise = null;
-let appWindowPromise = null;
 
 const notificationHistory = new Map();
 const NOTIFICATION_THROTTLE_MS = 1500;
@@ -19,16 +18,6 @@ async function getTauriNotificationModule() {
       .catch(() => null);
   }
   return tauriNotificationModulePromise;
-}
-
-async function getTauriWindowModule() {
-  if (!isTauri()) return null;
-  if (!appWindowPromise) {
-    appWindowPromise = import("@tauri-apps/api/window")
-      .then((mod) => mod.appWindow)
-      .catch(() => null);
-  }
-  return appWindowPromise;
 }
 
 export function notificationsSupported() {
@@ -122,13 +111,6 @@ async function sendTauriNotification({ title, body, icon, silent }) {
     if (!silent) {
       playNotificationSound().catch(() => {});
     }
-
-    try {
-      const appWindow = await getTauriWindowModule();
-      if (appWindow) {
-        appWindow.minimize(false).catch(() => {});
-      }
-    } catch (err) {}
 
     return true;
   } catch (err) {
