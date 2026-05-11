@@ -1701,7 +1701,8 @@ function handleGlobalKeydown(e) {
     const active = document.activeElement;
     const isTypingEl =
       active &&
-      (active.tagName === "INPUT" || active.tagName === "TEXTAREA" ||
+      (active.tagName === "INPUT" ||
+        active.tagName === "TEXTAREA" ||
         active.isContentEditable ||
         composerRef.value?.contains(active));
 
