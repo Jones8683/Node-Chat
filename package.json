@@ -2,6 +2,7 @@
   "name": "node-chat",
   "private": true,
   "version": "1.0.0",
+  "description": "Real-time chat app built with Vue 3 and Firebase for web and desktop",
   "type": "module",
   "scripts": {
     "dev": "vite",
