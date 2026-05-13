@@ -590,8 +590,8 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
-import { auth, db } from "../firebase";
-import { signOut } from "firebase/auth";
+import { db } from "../firebase";
+import { logoutCurrentUser } from "../authUtils";
 import {
   ShieldCheck,
   Settings2,
@@ -2218,7 +2218,7 @@ async function logout() {
   try {
     if (myTypingRef) await remove(myTypingRef);
     await stopPresence();
-    await signOut(auth);
+    await logoutCurrentUser();
   } catch (err) {
     console.error("Failed to sign out:", err);
   }

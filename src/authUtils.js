@@ -10,10 +10,37 @@ import {
 } from "firebase/database";
 import {
   createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
   updateProfile,
   updatePassword,
 } from "firebase/auth";
 import cryptoRandomString from "crypto-random-string";
+
+const INVITE_TTL_MS = 24 * 60 * 60 * 1000;
+const DISPLAY_NAME_MIN = 2;
+const DISPLAY_NAME_MAX = 12;
+const DISPLAY_NAME_PATTERN = /^[a-zA-Z0-9_\-. ]+$/;
+
+export function normalizeDisplayName(raw) {
+  return String(raw || "").trim();
+}
+
+export function nameToKey(name) {
+  return normalizeDisplayName(name).toLowerCase().replace(/\s+/g, "_");
+}
+
+export function validateDisplayName(raw) {
+  const name = normalizeDisplayName(raw);
+  if (!name) return "Please enter a display name.";
+  if (name.length < DISPLAY_NAME_MIN)
+    return `Display name must be at least ${DISPLAY_NAME_MIN} characters.`;
+  if (name.length > DISPLAY_NAME_MAX)
+    return `Display name must be at most ${DISPLAY_NAME_MAX} characters.`;
+  if (!DISPLAY_NAME_PATTERN.test(name))
+    return "Only letters, numbers, spaces, and _ - . are allowed.";
+  return null;
+}
 
 export function generateInviteToken() {
   return cryptoRandomString({ length: 7, type: "alphanumeric" }).toUpperCase();
@@ -22,25 +49,12 @@ export function generateInviteToken() {
 export async function createInviteToken() {
   const token = generateInviteToken();
   const now = Date.now();
-  const expiresAt = now + 24 * 60 * 60 * 1000;
-
   await set(dbRef(db, `invites/${token}`), {
     createdAt: now,
-    expiresAt,
+    expiresAt: now + INVITE_TTL_MS,
     used: false,
   });
-
   return token;
-}
-
-export async function getValidInvites() {
-  const snap = await get(dbRef(db, "invites"));
-  if (!snap.exists()) return [];
-
-  const now = Date.now();
-  return Object.entries(snap.val())
-    .filter(([, data]) => !data.used && data.expiresAt > now)
-    .map(([token, data]) => ({ token, ...data }));
 }
 
 export async function deleteInviteToken(token) {
@@ -48,120 +62,139 @@ export async function deleteInviteToken(token) {
 }
 
 export async function validateInviteToken(token) {
-  const snap = await get(dbRef(db, `invites/${token}`));
-  if (!snap.exists()) {
-    return { valid: false, error: "Invite not found" };
-  }
-
+  const key = String(token || "")
+    .trim()
+    .toUpperCase();
+  if (!key) return { valid: false, error: "Please enter your invite code." };
+  const snap = await get(dbRef(db, `invites/${key}`));
+  if (!snap.exists()) return { valid: false, error: "Invite not found." };
   const data = snap.val();
-  if (data.used) {
-    return { valid: false, error: "Invite already used" };
-  }
-
-  const now = Date.now();
-  if (data.expiresAt < now) {
-    return { valid: false, error: "Invite expired" };
-  }
-
-  return { valid: true };
+  if (data.used) return { valid: false, error: "Invite already used." };
+  if ((data.expiresAt || 0) < Date.now())
+    return { valid: false, error: "Invite expired." };
+  return { valid: true, token: key };
 }
 
-export async function consumeInviteToken(token, uid) {
-  const snap = await get(dbRef(db, `invites/${token}`));
-  if (!snap.exists()) {
-    throw new Error("Invite not found");
-  }
-
-  const data = snap.val();
-  if (data.used) {
-    throw new Error("Invite already used");
-  }
-
+async function consumeInviteToken(token, uid) {
+  const path = `invites/${token}`;
   const now = Date.now();
-  if (data.expiresAt < now) {
-    throw new Error("Invite expired");
-  }
-
-  await update(dbRef(db, `invites/${token}`), {
-    used: true,
-    usedAt: now,
-    usedByUid: uid,
+  const result = await runTransaction(dbRef(db, path), (current) => {
+    if (!current) return;
+    if (current.used) return;
+    if ((current.expiresAt || 0) < now) return;
+    return { ...current, used: true, usedAt: now, usedByUid: uid };
   });
-
-  await remove(dbRef(db, `invites/${token}`));
+  if (!result.committed) {
+    throw new Error("Invite already used or expired.");
+  }
+  try {
+    await remove(dbRef(db, path));
+  } catch (e) {}
 }
 
-export async function signupWithToken(
-  token,
-  email,
-  password,
-  displayName = "",
-) {
-  const validation = await validateInviteToken(token);
-  if (!validation.valid) {
-    throw new Error(validation.error);
-  }
+async function reserveUsername(nameKey, uid) {
+  const result = await runTransaction(
+    dbRef(db, `usernames/${nameKey}`),
+    (current) => {
+      if (current === null || current === uid) return uid;
+      return;
+    },
+  );
+  return result.committed === true && result.snapshot.val() === uid;
+}
+
+async function releaseUsername(nameKey, uid) {
+  try {
+    await runTransaction(dbRef(db, `usernames/${nameKey}`), (current) =>
+      current === uid ? null : current,
+    );
+  } catch (e) {}
+}
+
+export async function signupWithToken(rawToken, email, password, rawName) {
+  const nameError = validateDisplayName(rawName);
+  if (nameError) throw new Error(nameError);
+  const displayName = normalizeDisplayName(rawName);
+  const nameKey = nameToKey(displayName);
+
+  const tokenCheck = await validateInviteToken(rawToken);
+  if (!tokenCheck.valid) throw new Error(tokenCheck.error);
+  const token = tokenCheck.token;
 
   const userCred = await createUserWithEmailAndPassword(auth, email, password);
-  const trimmedDisplayName = displayName.trim();
-  let reservedNameKey = null;
-  let createdUserRow = false;
+  const uid = userCred.user.uid;
+
+  let reservedName = false;
+  let createdRow = false;
+  let consumedInvite = false;
 
   try {
-    if (trimmedDisplayName) {
-      const nameKey = trimmedDisplayName.toLowerCase().replace(/\s+/g, "_");
-      const reserved = await reserveDisplayName(nameKey, userCred.user.uid);
-      if (!reserved) {
-        throw new Error("Display name already taken");
-      }
-      reservedNameKey = nameKey;
-      await updateProfile(userCred.user, { displayName: trimmedDisplayName });
-    }
+    reservedName = await reserveUsername(nameKey, uid);
+    if (!reservedName) throw new Error("Display name already taken.");
 
-    await set(dbRef(db, `users/${userCred.user.uid}`), {
+    await updateProfile(userCred.user, { displayName });
+
+    await set(dbRef(db, `users/${uid}`), {
       email,
-      displayName: trimmedDisplayName,
+      displayName,
       createdAt: Date.now(),
-      preferences: {
-        showTimestamps: true,
-      },
+      preferences: { showTimestamps: true },
     });
-    createdUserRow = true;
+    createdRow = true;
 
-    await consumeInviteToken(token, userCred.user.uid);
+    await consumeInviteToken(token, uid);
+    consumedInvite = true;
 
-    if (trimmedDisplayName) {
-      try {
-        if (auth && auth.currentUser) {
-          const { uid, displayName: dn } = auth.currentUser;
-          const signupName = trimmedDisplayName || dn || null;
-          await recordAuditEvent({
-            action: "signup",
-            actorUid: uid,
-            actorName: signupName,
-            details: `with invite code ${token}`,
-          });
-        }
-      } catch (e) {}
-    }
+    recordAuditEvent({
+      action: "signup",
+      actorUid: uid,
+      actorName: displayName,
+      details: `with invite code ${token}`,
+    });
 
     return userCred.user;
   } catch (error) {
-    if (createdUserRow) {
+    if (createdRow) {
       try {
-        await remove(dbRef(db, `users/${userCred.user.uid}`));
+        await remove(dbRef(db, `users/${uid}`));
       } catch (e) {}
     }
-    if (reservedNameKey) {
+    if (reservedName) await releaseUsername(nameKey, uid);
+    if (!consumedInvite) {
       try {
-        await remove(dbRef(db, `usernames/${reservedNameKey}`));
-      } catch (e) {}
+        await userCred.user.delete();
+      } catch (e) {
+        try {
+          await signOut(auth);
+        } catch (e2) {}
+      }
     }
-    try {
-      await userCred.user.delete();
-    } catch (e) {}
     throw error;
   }
+}
+
+export async function loginWithPassword(email, password) {
+  const cred = await signInWithEmailAndPassword(auth, email, password);
+  recordAuditEvent({
+    action: "login",
+    actorUid: cred.user.uid,
+    actorName: cred.user.displayName || null,
+  });
+  return cred.user;
+}
+
+export async function logoutCurrentUser() {
+  const user = auth.currentUser;
+  if (user) {
+    try {
+      await recordAuditEvent({
+        action: "logout",
+        actorUid: user.uid,
+        actorName: user.displayName || null,
+      });
+    } catch (e) {}
+  }
+  await signOut(auth);
 }
 
 export async function recordAuditEvent({
@@ -175,123 +208,77 @@ export async function recordAuditEvent({
   try {
     const user = auth.currentUser;
     const uid = actorUid || (user && user.uid) || null;
-    let name = actorName || null;
-    if (!name && uid) {
-      try {
-        const userSnap = await get(dbRef(db, `users/${uid}`));
-        name = userSnap.exists() ? userSnap.val().displayName || null : null;
-      } catch {
-        name = null;
-      }
-    }
+    if (!uid) return;
+    const name = actorName || (user && user.displayName) || uid;
     const event = {
       action: action || "unknown",
       actorUid: uid,
-      actorName: name || uid,
+      actorName: name,
       targetUid: targetUid || null,
       targetName: targetName || null,
       details: details || null,
       ts: Date.now(),
     };
-
     await push(dbRef(db, `auditLogs/${uid}`), event);
-  } catch (e) {
-    console.error("Failed to write audit event:", e);
-  }
+  } catch (e) {}
 }
 
-export async function changeDisplayName(uid, newDisplayName) {
-  const nameKey = newDisplayName.toLowerCase().replace(/\s+/g, "_");
-  const reserved = await reserveDisplayName(nameKey, uid);
-  if (!reserved) {
-    throw new Error("Display name already taken");
-  }
-
+export async function changeDisplayName(uid, rawName) {
   const user = auth.currentUser;
-  if (!user || user.uid !== uid) {
-    throw new Error("Not authorized");
-  }
+  if (!user || user.uid !== uid) throw new Error("Not authorized.");
+
+  const nameError = validateDisplayName(rawName);
+  if (nameError) throw new Error(nameError);
+  const newName = normalizeDisplayName(rawName);
+  const newKey = nameToKey(newName);
 
   const userSnap = await get(dbRef(db, `users/${uid}`));
-  const dbDisplayName = userSnap.exists() ? userSnap.val().displayName : null;
-  const oldDisplayName = dbDisplayName || user.displayName;
-  const hadDisplayName = !!(dbDisplayName && dbDisplayName.trim());
-  const oldNameKey =
-    oldDisplayName && oldDisplayName.trim()
-      ? oldDisplayName.toLowerCase().replace(/\s+/g, "_")
-      : null;
-  const shouldRestoreOldName = !!(oldNameKey && oldNameKey !== nameKey);
+  const oldName =
+    (userSnap.exists() && userSnap.val().displayName) || user.displayName || "";
+  const oldKey = oldName ? nameToKey(oldName) : null;
+
+  if (oldKey === newKey && oldName === newName) return;
+
+  const reserved = await reserveUsername(newKey, uid);
+  if (!reserved) throw new Error("Display name already taken.");
 
   try {
-    if (shouldRestoreOldName) {
-      await remove(dbRef(db, `usernames/${oldNameKey}`));
-    }
-
-    await updateProfile(user, { displayName: newDisplayName });
-    await update(dbRef(db, `users/${uid}`), { displayName: newDisplayName });
+    await updateProfile(user, { displayName: newName });
+    await update(dbRef(db, `users/${uid}`), { displayName: newName });
     try {
       await update(dbRef(db, `presence/${uid}/profile`), {
-        displayName: newDisplayName,
+        displayName: newName,
       });
     } catch (e) {}
-
-    await batchUpdateMessageDisplayNames(uid, newDisplayName);
-    try {
-      await recordAuditEvent({
-        action: hadDisplayName ? "display_name_changed" : "signup",
-        actorName: oldDisplayName,
-        targetUid: uid,
-        targetName: oldDisplayName,
-        details: newDisplayName,
-      });
-    } catch (e) {}
+    if (oldKey && oldKey !== newKey) await releaseUsername(oldKey, uid);
+    await batchUpdateMessageDisplayNames(uid, newName);
+    recordAuditEvent({
+      action: oldName ? "display_name_changed" : "signup",
+      actorUid: uid,
+      actorName: newName,
+      details: oldName || null,
+    });
   } catch (error) {
-    if (shouldRestoreOldName) {
-      try {
-        await set(dbRef(db, `usernames/${oldNameKey}`), uid);
-      } catch (e) {}
-    }
-    try {
-      await remove(dbRef(db, `usernames/${nameKey}`));
-    } catch (e) {}
+    await releaseUsername(newKey, uid);
     throw error;
   }
-}
-
-async function reserveDisplayName(nameKey, uid) {
-  const reservation = await runTransaction(
-    dbRef(db, `usernames/${nameKey}`),
-    (current) => {
-      if (current === null || current === uid) {
-        return uid;
-      }
-      return;
-    },
-  );
-
-  return reservation.committed === true;
 }
 
 export async function changeAvatarColor(uid, avatarColor) {
   await update(dbRef(db, `users/${uid}/preferences`), {
     avatarColor: avatarColor ?? null,
   });
-
   try {
     await update(dbRef(db, `presence/${uid}/profile`), {
       avatarColor: avatarColor ?? null,
     });
   } catch (e) {}
-
   await batchUpdateMessageAvatarColor(uid, avatarColor ?? null);
 }
 
 export async function changeUserPassword(newPassword) {
   const user = auth.currentUser;
-  if (!user) {
-    throw new Error("Not authenticated");
-  }
-
+  if (!user) throw new Error("Not authenticated.");
   await updatePassword(user, newPassword);
 }
 
@@ -310,108 +297,81 @@ export async function getOwnerUid() {
 }
 
 export async function isUserOwner(uid) {
-  const ownerUid = await getOwnerUid();
-  return ownerUid === uid;
+  return (await getOwnerUid()) === uid;
 }
 
 export async function getAllUsers() {
   const snap = await get(dbRef(db, "users"));
   if (!snap.exists()) return [];
-
-  return Object.entries(snap.val()).map(([uid, data]) => ({
-    uid,
-    ...data,
-  }));
+  return Object.entries(snap.val()).map(([uid, data]) => ({ uid, ...data }));
 }
 
-export async function adminRenameUser(uid, newDisplayName) {
+export async function adminRenameUser(uid, rawName) {
+  const nameError = validateDisplayName(rawName);
+  if (nameError) throw new Error(nameError);
+  const newName = normalizeDisplayName(rawName);
+  const newKey = nameToKey(newName);
+
   const userSnap = await get(dbRef(db, `users/${uid}`));
-  if (!userSnap.exists()) throw new Error("User not found");
+  if (!userSnap.exists()) throw new Error("User not found.");
   const userData = userSnap.val();
+  const oldName = userData.displayName || "";
+  const oldKey = oldName ? nameToKey(oldName) : null;
 
-  const newNameKey = newDisplayName.toLowerCase().replace(/\s+/g, "_");
-  const snap = await get(dbRef(db, `usernames/${newNameKey}`));
-  if (snap.exists() && snap.val() !== uid) {
-    throw new Error("Display name already taken");
+  if (oldKey === newKey && oldName === newName) return;
+
+  const claimSnap = await get(dbRef(db, `usernames/${newKey}`));
+  if (claimSnap.exists() && claimSnap.val() !== uid) {
+    throw new Error("Display name already taken.");
   }
 
-  const oldDisplayName = userData.displayName;
-  if (oldDisplayName && oldDisplayName.trim()) {
-    const oldKey = oldDisplayName.toLowerCase().replace(/\s+/g, "_");
-    if (oldKey !== newNameKey) {
+  await set(dbRef(db, `usernames/${newKey}`), uid);
+  if (oldKey && oldKey !== newKey) {
+    try {
       await remove(dbRef(db, `usernames/${oldKey}`));
-    }
+    } catch (e) {}
   }
-  await set(dbRef(db, `usernames/${newNameKey}`), uid);
 
-  await update(dbRef(db, `users/${uid}`), { displayName: newDisplayName });
-
+  await update(dbRef(db, `users/${uid}`), { displayName: newName });
   try {
     await update(dbRef(db, `presence/${uid}/profile`), {
-      displayName: newDisplayName,
+      displayName: newName,
     });
   } catch (e) {}
 
-  await batchUpdateMessageDisplayNames(uid, newDisplayName);
+  await batchUpdateMessageDisplayNames(uid, newName);
 
-  try {
-    await recordAuditEvent({
-      action: "name_renamed",
-      targetUid: uid,
-      targetName: newDisplayName,
-      details: oldDisplayName || null,
-    });
-  } catch (e) {}
+  recordAuditEvent({
+    action: "name_renamed",
+    targetUid: uid,
+    targetName: newName,
+    details: oldName || null,
+  });
 }
 
 async function batchUpdateMessageDisplayNames(uid, newDisplayName) {
   const messagesSnap = await get(dbRef(db, "messages"));
   if (!messagesSnap.exists()) return;
-
-  const authoredPaths = [];
-  const replyPaths = [];
-  const mentionPaths = [];
-  const msgs = messagesSnap.val();
-
-  for (const [msgId, msg] of Object.entries(msgs)) {
+  const updates = {};
+  for (const [msgId, msg] of Object.entries(messagesSnap.val())) {
     if (msg.uid === uid) {
-      authoredPaths.push(`messages/${msgId}/displayName`);
+      updates[`messages/${msgId}/displayName`] = newDisplayName;
     }
     if (msg.replyTo?.uid === uid) {
-      replyPaths.push(`messages/${msgId}/replyTo/displayName`);
+      updates[`messages/${msgId}/replyTo/displayName`] = newDisplayName;
     }
     if (msg.mentions?.[uid]) {
-      mentionPaths.push(`messages/${msgId}/mentions/${uid}/displayName`);
+      updates[`messages/${msgId}/mentions/${uid}/displayName`] = newDisplayName;
     }
   }
-
-  if (authoredPaths.length > 0) {
-    await Promise.all(
-      authoredPaths.map((path) => set(dbRef(db, path), newDisplayName)),
-    );
-  }
-
-  if (replyPaths.length > 0) {
-    await Promise.all(
-      replyPaths.map((path) => set(dbRef(db, path), newDisplayName)),
-    );
-  }
-
-  if (mentionPaths.length > 0) {
-    await Promise.all(
-      mentionPaths.map((path) => set(dbRef(db, path), newDisplayName)),
-    );
-  }
+  if (Object.keys(updates).length) await update(dbRef(db), updates);
 }
 
 async function batchUpdateMessageAvatarColor(uid, avatarColor) {
   const messagesSnap = await get(dbRef(db, "messages"));
   if (!messagesSnap.exists()) return;
-
   const updates = {};
-  const msgs = messagesSnap.val();
-
-  for (const [msgId, msg] of Object.entries(msgs)) {
+  for (const [msgId, msg] of Object.entries(messagesSnap.val())) {
     if (msg.uid === uid) {
       updates[`messages/${msgId}/avatarColor`] = avatarColor;
     }
@@ -422,10 +382,7 @@ async function batchUpdateMessageAvatarColor(uid, avatarColor) {
       updates[`messages/${msgId}/mentions/${uid}/avatarColor`] = avatarColor;
     }
   }
-
-  if (Object.keys(updates).length > 0) {
-    await update(dbRef(db), updates);
-  }
+  if (Object.keys(updates).length) await update(dbRef(db), updates);
 }
 
 export async function promoteToAdmin(uid) {

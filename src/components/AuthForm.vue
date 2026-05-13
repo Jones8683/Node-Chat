@@ -64,6 +64,23 @@
                     :tabindex="isLogin ? -1 : 0"
                   />
                 </div>
+                <div class="field">
+                  <label for="display-name">
+                    Display Name
+                    <span class="char-count">{{ displayName.length }}/12</span>
+                  </label>
+                  <input
+                    v-model="displayName"
+                    id="display-name"
+                    name="display-name"
+                    type="text"
+                    placeholder="How you'll appear in chat"
+                    maxlength="12"
+                    autocomplete="off"
+                    :disabled="loading || isLogin"
+                    :tabindex="isLogin ? -1 : 0"
+                  />
+                </div>
               </div>
             </div>
 
@@ -134,13 +151,18 @@
 
 <script setup>
 import { ref, watch, onMounted } from "vue";
-import { auth } from "../firebase";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { signupWithToken } from "../authUtils";
+import { loginWithPassword, signupWithToken } from "../authUtils";
 import { Eye, EyeOff } from "lucide-vue-next";
 import DesktopDragHeader from "./DesktopDragHeader.vue";
 
 const isLogin = ref(true);
+const email = ref("");
+const password = ref("");
+const displayName = ref("");
+const signupToken = ref("");
+const showPassword = ref(false);
+const error = ref("");
+const loading = ref(false);
 
 onMounted(() => {
   document.title = "Log In • Node Chat";
@@ -149,23 +171,22 @@ onMounted(() => {
 watch(isLogin, (val) => {
   document.title = val ? "Log In • Node Chat" : "Sign Up • Node Chat";
 });
-const email = ref("");
-const password = ref("");
-const error = ref("");
-const loading = ref(false);
-const showPassword = ref(false);
-const signupToken = ref("");
 
 function switchMode(login) {
+  if (loading.value) return;
   isLogin.value = login;
   error.value = "";
 }
 
-function friendlyError(code) {
+function friendlyError(err) {
+  const code = err?.code || "";
   switch (code) {
     case "auth/invalid-email":
       return "Please enter a valid email address.";
+    case "auth/missing-password":
+      return "Please enter your password.";
     case "auth/invalid-credential":
+    case "auth/invalid-login-credentials":
     case "auth/wrong-password":
     case "auth/user-not-found":
       return "Invalid email or password.";
@@ -177,33 +198,31 @@ function friendlyError(code) {
       return "Password must be at least 6 characters.";
     case "auth/email-already-in-use":
       return "Email already in use.";
-    default:
-      if (code && typeof code === "string" && code.includes("Invite")) {
-        return code;
-      }
-      if (code && typeof code === "string" && code.includes("Display name")) {
-        return code;
-      }
-      return "Something went wrong. Try again.";
+    case "auth/user-disabled":
+      return "This account has been disabled.";
   }
+  const message = String(err?.message || "").trim();
+  if (message) return message;
+  return "Something went wrong. Try again.";
 }
 
 async function handleSubmit() {
-  if (isLogin.value) {
-    await submitLogin();
-  } else {
-    await submitSignup();
-  }
+  if (loading.value) return;
+  error.value = "";
+  if (isLogin.value) await submitLogin();
+  else await submitSignup();
 }
 
 async function submitLogin() {
-  if (!email.value || !password.value) return;
-  error.value = "";
+  if (!email.value.trim() || !password.value) {
+    error.value = "Please enter your email and password.";
+    return;
+  }
   loading.value = true;
   try {
-    await signInWithEmailAndPassword(auth, email.value, password.value);
+    await loginWithPassword(email.value.trim(), password.value);
   } catch (e) {
-    error.value = friendlyError(e.code);
+    error.value = friendlyError(e);
   } finally {
     loading.value = false;
   }
@@ -214,32 +233,25 @@ async function submitSignup() {
     error.value = "Please enter your invite code.";
     return;
   }
-
-  if (!email.value || !password.value) {
+  if (!displayName.value.trim()) {
+    error.value = "Please enter a display name.";
+    return;
+  }
+  if (!email.value.trim() || !password.value) {
     error.value = "Please fill in all fields.";
     return;
   }
 
   loading.value = true;
-  error.value = "";
-
   try {
     await signupWithToken(
       signupToken.value.trim(),
-      email.value,
+      email.value.trim(),
       password.value,
+      displayName.value,
     );
   } catch (e) {
-    if (e.code) {
-      error.value = friendlyError(e.code);
-    } else {
-      const msg = e.message || "";
-      if (msg.includes("Invite") || msg.includes("Display name")) {
-        error.value = msg;
-      } else {
-        error.value = msg || "Signup failed. Try again.";
-      }
-    }
+    error.value = friendlyError(e);
   } finally {
     loading.value = false;
   }
@@ -425,11 +437,17 @@ async function submitSignup() {
 }
 
 .field label {
-  display: block;
+  display: flex;
+  justify-content: space-between;
   font-size: 12px;
   font-weight: 600;
   color: var(--text-muted);
   margin-bottom: 5px;
+}
+
+.char-count {
+  font-weight: 400;
+  color: var(--text-muted);
 }
 
 .field input {
