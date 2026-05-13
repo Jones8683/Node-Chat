@@ -24,12 +24,8 @@ body {
   height: 100%;
   width: 100%;
   background:
-    radial-gradient(
-      circle at top left,
-      rgba(255, 255, 255, 0.28),
-      transparent 30%
-    ),
-    linear-gradient(180deg, transparent 70%, rgba(44, 42, 39, 0.04) 100%),
+    radial-gradient(circle at top left, #ffffff47, transparent 30%),
+    linear-gradient(180deg, transparent 70%, #2c2a270a 100%),
     linear-gradient(180deg, #f4eddc 0%, var(--bg) 46%, #f0e4cd 100%);
   color: var(--text);
   font-family: "Satoshi", sans-serif;
@@ -74,11 +70,11 @@ textarea::-webkit-scrollbar-button {
   background: transparent;
 }
 .messages::-webkit-scrollbar-thumb {
-  background: rgba(44, 42, 39, 0.1);
+  background: #2c2a271a;
   border-radius: 999px;
 }
 .messages::-webkit-scrollbar-thumb:hover {
-  background: rgba(44, 42, 39, 0.25);
+  background: #2c2a2740;
 }
 
 .online-panel-list::-webkit-scrollbar {
@@ -88,11 +84,11 @@ textarea::-webkit-scrollbar-button {
   background: transparent;
 }
 .online-panel-list::-webkit-scrollbar-thumb {
-  background: rgba(44, 42, 39, 0.1);
+  background: #2c2a271a;
   border-radius: 999px;
 }
 .online-panel-list::-webkit-scrollbar-thumb:hover {
-  background: rgba(44, 42, 39, 0.22);
+  background: #2c2a2738;
 }
 
 textarea::-webkit-scrollbar {
@@ -102,11 +98,11 @@ textarea::-webkit-scrollbar-track {
   background: transparent;
 }
 textarea::-webkit-scrollbar-thumb {
-  background: rgba(44, 42, 39, 0.1);
+  background: #2c2a271a;
   border-radius: 999px;
 }
 textarea::-webkit-scrollbar-thumb:hover {
-  background: rgba(44, 42, 39, 0.25);
+  background: #2c2a2740;
 }
 
 @supports (-moz-appearance: none) {
@@ -119,7 +115,7 @@ textarea::-webkit-scrollbar-thumb:hover {
   .messages:hover,
   .online-panel-list:hover,
   textarea:hover {
-    scrollbar-color: rgba(44, 42, 39, 0.18) transparent;
+    scrollbar-color: #2c2a272e transparent;
   }
 }
 
