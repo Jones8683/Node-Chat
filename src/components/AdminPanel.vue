@@ -848,7 +848,9 @@ async function deleteInvite(token) {
       action: "invite_delete",
       details: token,
     });
-  } catch (e) {}
+  } catch (e) {
+    adminActionError.value = "Failed to delete invite.";
+  }
 }
 
 async function loadUsers() {

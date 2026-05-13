@@ -486,12 +486,14 @@ async function setNotificationMode(mode) {
 async function toggleShowTimestamps() {
   if (savingTimestamps.value) return;
   savingTimestamps.value = true;
+  notifError.value = "";
   try {
     const next = !showTimestamps.value;
     await update(dbRef(db, `users/${props.user.uid}/preferences`), {
       showTimestamps: next,
     });
   } catch (e) {
+    notifError.value = "Failed to save timestamp preference.";
   } finally {
     savingTimestamps.value = false;
   }
