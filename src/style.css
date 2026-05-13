@@ -29,12 +29,8 @@ body {
       rgba(255, 255, 255, 0.28),
       transparent 30%
     ),
-    radial-gradient(
-      circle at bottom right,
-      rgba(44, 42, 39, 0.03),
-      transparent 24%
-    ),
-    linear-gradient(180deg, #f4eddc 0%, var(--bg) 46%, #ece3d2 100%);
+    linear-gradient(180deg, transparent 70%, rgba(44, 42, 39, 0.04) 100%),
+    linear-gradient(180deg, #f4eddc 0%, var(--bg) 46%, #f0e4cd 100%);
   color: var(--text);
   font-family: "Satoshi", sans-serif;
   -webkit-font-smoothing: antialiased;
