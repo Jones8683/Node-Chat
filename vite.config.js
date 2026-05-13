@@ -3,6 +3,17 @@ import vue from "@vitejs/plugin-vue";
 
 export default defineConfig({
   plugins: [vue()],
+  optimizeDeps: {
+    include: [
+      "firebase/app",
+      "firebase/auth",
+      "firebase/database",
+      "emoji-mart",
+      "lucide-vue-next",
+      "clipboard-copy",
+      "crypto-random-string",
+    ],
+  },
   build: {
     rollupOptions: {
       output: {
