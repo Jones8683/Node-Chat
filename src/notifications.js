@@ -74,13 +74,7 @@ export async function sendSystemNotification({ title, body = "", icon } = {}) {
   }
   notificationHistory.set(hash, now);
   if (notificationHistory.size > NOTIFICATION_HISTORY_SIZE) {
-    const oldest = Math.min(...notificationHistory.values());
-    for (const [key, time] of notificationHistory.entries()) {
-      if (time === oldest) {
-        notificationHistory.delete(key);
-        break;
-      }
-    }
+    notificationHistory.delete(notificationHistory.keys().next().value);
   }
 
   try {
