@@ -5,14 +5,12 @@ import {
   onDisconnect,
   set,
   remove,
-  update,
   serverTimestamp,
   goOnline,
-  push,
 } from "firebase/database";
 
 const HEARTBEAT_MS = 25000;
-const STALE_TAB_MS = 90000;
+const STALE_TAB_MS = 75000;
 
 let currentUid = null;
 let currentProfile = null;
@@ -24,16 +22,22 @@ let visibilityHandler = null;
 let focusHandler = null;
 let onlineHandler = null;
 let pageShowHandler = null;
+let pageHideHandler = null;
 let beforeUnloadHandler = null;
+
+function generateTabId() {
+  if (
+    typeof crypto !== "undefined" &&
+    typeof crypto.randomUUID === "function"
+  ) {
+    return crypto.randomUUID();
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
 
 function tabRef() {
   if (!currentUid || !tabId) return null;
   return dbRef(db, `presence/${currentUid}/tabs/${tabId}`);
-}
-
-function lastSeenRef() {
-  if (!currentUid) return null;
-  return dbRef(db, `presence/${currentUid}/lastSeen`);
 }
 
 function profileRef() {
@@ -41,45 +45,55 @@ function profileRef() {
   return dbRef(db, `presence/${currentUid}/profile`);
 }
 
-async function writeTab() {
-  const ref = tabRef();
-  if (!ref) return;
+function lastSeenRef() {
+  if (!currentUid) return null;
+  return dbRef(db, `presence/${currentUid}/lastSeen`);
+}
+
+function profilePayload() {
+  return {
+    displayName: currentProfile?.displayName || null,
+    avatarColor: currentProfile?.avatarColor || null,
+  };
+}
+
+async function writeTabOnline() {
+  const tRef = tabRef();
+  if (!tRef) return;
   try {
-    await set(ref, {
-      online: true,
-      seenAt: serverTimestamp(),
-      focused: typeof document !== "undefined" ? !document.hidden : true,
-    });
+    await set(tRef, { online: true, seenAt: serverTimestamp() });
+  } catch (e) {}
+  try {
+    const pRef = profileRef();
+    if (pRef) await set(pRef, profilePayload());
+  } catch (e) {}
+  try {
+    const lRef = lastSeenRef();
+    if (lRef) await set(lRef, serverTimestamp());
   } catch (e) {}
 }
 
-async function writeProfile() {
-  const ref = profileRef();
-  if (!ref || !currentProfile) return;
+async function writeProfileOnly() {
+  const pRef = profileRef();
+  if (!pRef) return;
   try {
-    await update(ref, {
-      displayName: currentProfile.displayName || null,
-      avatarColor: currentProfile.avatarColor || null,
-    });
+    await set(pRef, profilePayload());
   } catch (e) {}
 }
 
 async function armDisconnect() {
   const tRef = tabRef();
   const lRef = lastSeenRef();
-  if (!tRef || !lRef) return;
-  try {
-    await onDisconnect(tRef).remove();
-    await onDisconnect(lRef).set(serverTimestamp());
-  } catch (e) {}
-}
-
-async function touchLastSeen() {
-  const ref = lastSeenRef();
-  if (!ref) return;
-  try {
-    await set(ref, serverTimestamp());
-  } catch (e) {}
+  if (tRef) {
+    try {
+      await onDisconnect(tRef).remove();
+    } catch (e) {}
+  }
+  if (lRef) {
+    try {
+      await onDisconnect(lRef).set(serverTimestamp());
+    } catch (e) {}
+  }
 }
 
 function clearHeartbeat() {
@@ -91,56 +105,53 @@ function clearHeartbeat() {
 
 function scheduleHeartbeat() {
   clearHeartbeat();
-  heartbeatTimer = setInterval(async () => {
-    if (!currentUid) return;
-    await writeTab();
-    await touchLastSeen();
+  heartbeatTimer = setInterval(() => {
+    if (isConnected) writeTabOnline();
   }, HEARTBEAT_MS);
 }
 
 async function handleConnectionChange(connected) {
   isConnected = connected;
   if (!connected || !currentUid) return;
-  await writeProfile();
   await armDisconnect();
-  await writeTab();
-  await touchLastSeen();
+  await writeTabOnline();
 }
 
-async function forceReconnect() {
+function reconnect() {
   if (!currentUid) return;
   try {
     goOnline(db);
   } catch (e) {}
-  if (isConnected) {
-    await writeTab();
-    await touchLastSeen();
-  }
+  if (isConnected) writeTabOnline();
 }
 
 function attachWindowListeners() {
   if (typeof window === "undefined") return;
-
   visibilityHandler = () => {
-    if (!document.hidden) forceReconnect();
-    else if (currentUid) writeTab();
+    if (!document.hidden) reconnect();
   };
-  focusHandler = () => forceReconnect();
-  onlineHandler = () => forceReconnect();
-  pageShowHandler = () => forceReconnect();
+  focusHandler = () => reconnect();
+  onlineHandler = () => reconnect();
+  pageShowHandler = () => reconnect();
+  pageHideHandler = () => {
+    const tRef = tabRef();
+    if (!tRef) return;
+    try {
+      remove(tRef);
+    } catch (e) {}
+  };
   beforeUnloadHandler = () => {
-    const ref = tabRef();
-    if (ref) {
-      try {
-        remove(ref);
-      } catch (e) {}
-    }
+    const tRef = tabRef();
+    if (!tRef) return;
+    try {
+      remove(tRef);
+    } catch (e) {}
   };
-
   document.addEventListener("visibilitychange", visibilityHandler);
   window.addEventListener("focus", focusHandler);
   window.addEventListener("online", onlineHandler);
   window.addEventListener("pageshow", pageShowHandler);
+  window.addEventListener("pagehide", pageHideHandler);
   window.addEventListener("beforeunload", beforeUnloadHandler);
 }
 
@@ -151,12 +162,14 @@ function detachWindowListeners() {
   if (focusHandler) window.removeEventListener("focus", focusHandler);
   if (onlineHandler) window.removeEventListener("online", onlineHandler);
   if (pageShowHandler) window.removeEventListener("pageshow", pageShowHandler);
+  if (pageHideHandler) window.removeEventListener("pagehide", pageHideHandler);
   if (beforeUnloadHandler)
     window.removeEventListener("beforeunload", beforeUnloadHandler);
   visibilityHandler = null;
   focusHandler = null;
   onlineHandler = null;
   pageShowHandler = null;
+  pageHideHandler = null;
   beforeUnloadHandler = null;
 }
 
@@ -166,23 +179,16 @@ export async function startPresence(user) {
     await stopPresence();
   }
   currentUid = user.uid;
+  tabId = generateTabId();
   currentProfile = {
     displayName: user.displayName || null,
     avatarColor: user.preferences?.avatarColor || null,
   };
-  if (!tabId) {
-    tabId = (
-      push(dbRef(db, `presence/${currentUid}/tabs`)).key ||
-      `${Date.now()}-${Math.random().toString(36).slice(2)}`
-    ).replace(/[^a-zA-Z0-9_-]/g, "");
-  }
-
   attachWindowListeners();
-
+  void writeProfileOnly();
   connectedUnsub = onValue(dbRef(db, ".info/connected"), (snap) => {
     handleConnectionChange(snap.val() === true);
   });
-
   scheduleHeartbeat();
 }
 
@@ -191,7 +197,7 @@ export function updatePresenceProfile(profile = {}) {
     displayName: profile.displayName ?? currentProfile?.displayName ?? null,
     avatarColor: profile.avatarColor ?? currentProfile?.avatarColor ?? null,
   };
-  writeProfile();
+  void writeProfileOnly();
 }
 
 export async function stopPresence() {
@@ -227,7 +233,7 @@ export async function stopPresence() {
   isConnected = false;
 }
 
-export function isTabActive(tab) {
+function isTabActive(tab) {
   if (!tab || typeof tab !== "object") return false;
   if (tab.online !== true) return false;
   const seenAt = Number(tab.seenAt || 0);
@@ -237,9 +243,17 @@ export function isTabActive(tab) {
 
 export function userIsOnline(presenceEntry) {
   if (!presenceEntry || typeof presenceEntry !== "object") return false;
-  const tabs = presenceEntry.tabs || {};
-  for (const tab of Object.values(tabs)) {
-    if (isTabActive(tab)) return true;
+  const tabs = presenceEntry.tabs;
+  if (tabs && typeof tabs === "object") {
+    for (const tab of Object.values(tabs)) {
+      if (isTabActive(tab)) return true;
+    }
+    return false;
+  }
+  if (presenceEntry.online === true) {
+    const seen = Number(presenceEntry.lastSeen || 0);
+    if (!seen) return true;
+    return Date.now() - seen < STALE_TAB_MS;
   }
   return false;
 }
