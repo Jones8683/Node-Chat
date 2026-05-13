@@ -1,20 +1,38 @@
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 
+const host = process.env.TAURI_DEV_HOST;
+
 export default defineConfig({
   plugins: [vue()],
+  clearScreen: false,
+  server: {
+    port: 5173,
+    strictPort: true,
+    host: host || "localhost",
+    hmr: host
+      ? { protocol: "ws", host, port: 5174 }
+      : { host: "localhost", port: 5173 },
+    watch: {
+      ignored: ["**/src-tauri/**"],
+    },
+  },
+  envPrefix: ["VITE_", "TAURI_ENV_*"],
   optimizeDeps: {
     include: [
+      "vue",
       "firebase/app",
       "firebase/auth",
       "firebase/database",
-      "emoji-mart",
       "lucide-vue-next",
       "clipboard-copy",
       "crypto-random-string",
     ],
+    exclude: ["@emoji-mart/data", "emoji-mart"],
   },
   build: {
+    target: "esnext",
+    sourcemap: false,
     rollupOptions: {
       output: {
         manualChunks(id) {
@@ -22,6 +40,7 @@ export default defineConfig({
           if (id.includes("node_modules/@emoji-mart/data")) return "emoji-data";
           if (id.includes("node_modules/emoji-mart")) return "emoji-lib";
           if (id.includes("node_modules/lucide-vue-next")) return "icons";
+          if (id.includes("node_modules/@tauri-apps")) return "tauri";
         },
       },
     },

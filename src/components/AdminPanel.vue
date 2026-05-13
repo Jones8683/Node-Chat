@@ -741,6 +741,7 @@ watch(
       loadMessagesCount();
     }
   },
+  { immediate: true },
 );
 
 function closeIfClickedOutside(e) {

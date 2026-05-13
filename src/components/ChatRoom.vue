@@ -618,8 +618,6 @@ import {
   set,
   update,
   remove,
-  onDisconnect,
-  goOnline,
   get,
 } from "firebase/database";
 import copy from "clipboard-copy";
@@ -628,6 +626,12 @@ import {
   ensureNotificationPermission,
   sendSystemNotification,
 } from "../notifications";
+import {
+  startPresence,
+  stopPresence,
+  updatePresenceProfile,
+  userIsOnline,
+} from "../presence";
 import WindowControls from "./WindowControls.vue";
 
 const props = defineProps(["user"]);
@@ -702,29 +706,15 @@ function getLatestUser(uid, fallback = {}) {
 const onlineUsers = computed(() => {
   return Object.entries(presenceUsers.value)
     .map(([uid, data]) => {
-      const tabs = data?.tabs && typeof data.tabs === "object" ? data.tabs : {};
-      const activeTabs = Object.values(tabs).filter(Boolean);
-      const isLegacyPresence =
-        !activeTabs.length &&
-        data &&
-        typeof data === "object" &&
-        data.uid &&
-        data.displayName;
-
-      if (!activeTabs.length && !isLegacyPresence) return null;
-
+      if (!userIsOnline(data)) return null;
       const profile =
-        data?.profile && typeof data.profile === "object" ? data.profile : data;
+        data?.profile && typeof data.profile === "object" ? data.profile : {};
       const user = getLatestUser(uid, profile);
       return {
         uid,
-        displayName:
-          user.displayName || profile.displayName || data.displayName || "?",
+        displayName: user.displayName || profile.displayName || "?",
         avatarColor:
-          user.preferences?.avatarColor ||
-          profile.avatarColor ||
-          data.avatarColor ||
-          null,
+          user.preferences?.avatarColor || profile.avatarColor || null,
       };
     })
     .filter(Boolean)
@@ -812,7 +802,6 @@ const deleteDialog = ref({ show: false, id: null, name: "" });
 const copiedMessageId = ref(null);
 const MESSAGE_BATCH_SIZE = 100;
 const SCROLL_BOTTOM_THRESHOLD = 24;
-const PRESENCE_TAB_STORAGE_KEY = "node-chat-presence-tab-id";
 let messageLimit = MESSAGE_BATCH_SIZE;
 let totalCount = 0;
 let unreadCount = 0;
@@ -851,44 +840,17 @@ const mentionableUsers = computed(() => {
 });
 let typingTimeout = null;
 let myTypingRef = null;
-let myLastSeenRef = null;
-let myPresenceRootRef = null;
-let myPresenceTabRef = null;
-const presenceTabId = getPresenceTabId();
 let messagesListener = null;
 let typingListener = null;
 let presenceListener = null;
 let ownerListener = null;
 let adminsListener = null;
 let usersListener = null;
-let connectedListener = null;
 let lockListener = null;
 let muteListener = null;
 let allMutedUsersListener = null;
 let animationClearTimer = null;
 let copyResetTimer = null;
-
-function getPresenceTabId() {
-  const storedId = sessionStorage.getItem(PRESENCE_TAB_STORAGE_KEY);
-  if (storedId) return storedId;
-  const newId = crypto.randomUUID();
-  sessionStorage.setItem(PRESENCE_TAB_STORAGE_KEY, newId);
-  return newId;
-}
-
-async function syncPresence() {
-  if (!myPresenceRootRef || !myPresenceTabRef) return;
-  await update(myPresenceRootRef, {
-    profile: {
-      displayName: props.user.displayName,
-      uid: props.user.uid,
-      avatarColor: props.user.preferences?.avatarColor || null,
-    },
-    [`tabs/${presenceTabId}`]: {
-      seenAt: serverTimestamp(),
-    },
-  });
-}
 
 const chatLocked = ref(false);
 const isMuted = ref(false);
@@ -938,16 +900,16 @@ const offlineMembers = computed(() => {
     .map(([uid, data]) => ({
       uid,
       displayName: data.displayName,
-      lastSeen: data.lastSeen || null,
+      lastSeen: presenceUsers.value[uid]?.lastSeen || data.lastSeen || null,
       avatarColor: data.preferences?.avatarColor || null,
     }))
     .sort((a, b) => (b.lastSeen || 0) - (a.lastSeen || 0));
 });
 
 watch(
-  () => props.user.displayName,
-  () => {
-    syncPresence();
+  () => [props.user.displayName, props.user.preferences?.avatarColor],
+  ([displayName, avatarColor]) => {
+    updatePresenceProfile({ displayName, avatarColor });
   },
 );
 
@@ -1673,18 +1635,7 @@ function handleVisibilityChange() {
     unreadCount = 0;
     document.title = "Node Chat";
     clearBadge();
-    goOnline(db);
-    syncPresence();
   }
-}
-
-function handleWindowFocus() {
-  goOnline(db);
-  syncPresence();
-}
-
-function handleOnline() {
-  syncPresence();
 }
 
 function handleClickOutside(e) {
@@ -1950,8 +1901,6 @@ onMounted(async () => {
     } catch {}
   }
   document.addEventListener("visibilitychange", handleVisibilityChange);
-  window.addEventListener("focus", handleWindowFocus);
-  window.addEventListener("online", handleOnline);
   document.addEventListener("click", handleClickOutside);
   document.addEventListener("keydown", handleGlobalKeydown);
   messageContainer.value?.addEventListener("scroll", handleMessageScroll, {
@@ -1968,19 +1917,11 @@ onMounted(async () => {
   });
 
   myTypingRef = dbRef(db, `typing/${props.user.uid}`);
-  myLastSeenRef = dbRef(db, `users/${props.user.uid}/lastSeen`);
-  myPresenceRootRef = dbRef(db, `presence/${props.user.uid}`);
-  myPresenceTabRef = dbRef(
-    db,
-    `presence/${props.user.uid}/tabs/${presenceTabId}`,
-  );
 
-  connectedListener = onValue(dbRef(db, ".info/connected"), (snap) => {
-    if (snap.val() !== true) return;
-    onDisconnect(myTypingRef).remove();
-    onDisconnect(myLastSeenRef).set(serverTimestamp());
-    onDisconnect(myPresenceTabRef).remove();
-    syncPresence();
+  await startPresence({
+    uid: props.user.uid,
+    displayName: props.user.displayName,
+    preferences: props.user.preferences || {},
   });
 
   usersListener = onValue(dbRef(db, "users"), (snap) => {
@@ -2036,8 +1977,6 @@ onMounted(async () => {
 
 onUnmounted(() => {
   document.removeEventListener("visibilitychange", handleVisibilityChange);
-  window.removeEventListener("focus", handleWindowFocus);
-  window.removeEventListener("online", handleOnline);
   document.removeEventListener("click", handleClickOutside);
   document.removeEventListener("keydown", handleGlobalKeydown);
   messageContainer.value?.removeEventListener("scroll", handleMessageScroll);
@@ -2048,9 +1987,7 @@ onUnmounted(() => {
   if (ownerListener) ownerListener();
   if (adminsListener) adminsListener();
   if (usersListener) usersListener();
-  if (connectedListener) connectedListener();
   if (myTypingRef) remove(myTypingRef);
-  if (myPresenceTabRef) remove(myPresenceTabRef);
   if (lockListener) lockListener();
   if (muteListener) muteListener();
   if (allMutedUsersListener) allMutedUsersListener();
@@ -2058,6 +1995,7 @@ onUnmounted(() => {
   typingAreaRef.value?.removeEventListener("wheel", forwardWheelToMessages);
   inputRowRef.value?.removeEventListener("wheel", forwardWheelToMessages);
   clearTimeout(copyResetTimer);
+  stopPresence();
 });
 
 async function copyMessageText(item) {
@@ -2242,7 +2180,6 @@ async function sendMessage() {
   const text = sanitizeMessage(newMessage.value);
   if (!text.trim()) return;
   if (text.length > 10000) return;
-  syncPresence();
   newMessage.value = "";
   nextTick(resizeComposer);
   clearTimeout(typingTimeout);
@@ -2280,12 +2217,7 @@ async function logout() {
   showDropdown.value = false;
   try {
     if (myTypingRef) await remove(myTypingRef);
-    if (myLastSeenRef) {
-      await set(myLastSeenRef, serverTimestamp());
-    }
-    if (myPresenceTabRef) {
-      await remove(myPresenceTabRef);
-    }
+    await stopPresence();
     await signOut(auth);
   } catch (err) {
     console.error("Failed to sign out:", err);
