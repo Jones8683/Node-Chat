@@ -21,6 +21,8 @@ const INVITE_TTL_MS = 24 * 60 * 60 * 1000;
 const DISPLAY_NAME_MIN = 2;
 const DISPLAY_NAME_MAX = 12;
 const DISPLAY_NAME_PATTERN = /^[a-zA-Z0-9_\-. ]+$/;
+const PASSWORD_MIN = 6;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function normalizeDisplayName(raw) {
   return String(raw || "").trim();
@@ -117,11 +119,23 @@ export async function signupWithToken(rawToken, email, password, rawName) {
   const displayName = normalizeDisplayName(rawName);
   const nameKey = nameToKey(displayName);
 
+  const normalizedEmail = String(email || "").trim();
+  if (!EMAIL_PATTERN.test(normalizedEmail)) {
+    throw new Error("Please enter a valid email address.");
+  }
+  if (!password || String(password).length < PASSWORD_MIN) {
+    throw new Error(`Password must be at least ${PASSWORD_MIN} characters.`);
+  }
+
   const tokenCheck = await validateInviteToken(rawToken);
   if (!tokenCheck.valid) throw new Error(tokenCheck.error);
   const token = tokenCheck.token;
 
-  const userCred = await createUserWithEmailAndPassword(auth, email, password);
+  const userCred = await createUserWithEmailAndPassword(
+    auth,
+    normalizedEmail,
+    password,
+  );
   const uid = userCred.user.uid;
 
   let reservedName = false;
@@ -135,7 +149,7 @@ export async function signupWithToken(rawToken, email, password, rawName) {
     await updateProfile(userCred.user, { displayName });
 
     await set(dbRef(db, `users/${uid}`), {
-      email,
+      email: normalizedEmail,
       displayName,
       createdAt: Date.now(),
       preferences: { showTimestamps: true },

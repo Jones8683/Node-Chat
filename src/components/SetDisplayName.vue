@@ -32,12 +32,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, onUnmounted } from "vue";
 import DesktopDragHeader from "./DesktopDragHeader.vue";
-
-onMounted(() => {
-  document.title = "Set Up Profile • Node Chat";
-});
 import { changeDisplayName } from "../authUtils";
 import { auth } from "../firebase";
 
@@ -45,6 +41,17 @@ const emit = defineEmits(["done"]);
 const name = ref("");
 const error = ref("");
 const loading = ref(false);
+
+let previousTitle = "";
+
+onMounted(() => {
+  previousTitle = document.title;
+  document.title = "Set Up Profile • Node Chat";
+});
+
+onUnmounted(() => {
+  if (previousTitle) document.title = previousTitle;
+});
 
 async function submit() {
   const trimmed = name.value.trim();
@@ -57,8 +64,18 @@ async function submit() {
     error.value = "Display name must be at least 2 characters";
     return;
   }
+  if (trimmed.length > 12) {
+    error.value = "Display name must be at most 12 characters";
+    return;
+  }
   if (!/^[a-zA-Z0-9_\-. ]+$/.test(trimmed)) {
     error.value = "Only letters, numbers, spaces, and _ - . are allowed";
+    return;
+  }
+
+  const currentUser = auth.currentUser;
+  if (!currentUser) {
+    error.value = "Your session has expired. Please log in again.";
     return;
   }
 
@@ -66,7 +83,7 @@ async function submit() {
   error.value = "";
 
   try {
-    await changeDisplayName(auth.currentUser.uid, trimmed);
+    await changeDisplayName(currentUser.uid, trimmed);
     emit("done");
   } catch (e) {
     error.value = e?.message || "Something went wrong. Try again.";

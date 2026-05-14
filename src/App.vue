@@ -34,7 +34,14 @@
 </template>
 
 <script setup>
-import { defineAsyncComponent, ref, onMounted, computed, watch } from "vue";
+import {
+  defineAsyncComponent,
+  ref,
+  onMounted,
+  onUnmounted,
+  computed,
+  watch,
+} from "vue";
 import { auth, db } from "./firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { ref as dbRef, onValue } from "firebase/database";
@@ -65,26 +72,31 @@ const showLoadingPage = computed(
 );
 
 let userDbUnsub = null;
+let authUnsub = null;
 
 function refreshUser() {
-  if (!auth.currentUser) return;
-  const userRef = dbRef(db, `users/${auth.currentUser.uid}`);
-  onValue(
+  const currentUser = auth.currentUser;
+  if (!currentUser) return;
+  const userRef = dbRef(db, `users/${currentUser.uid}`);
+  let off = null;
+  off = onValue(
     userRef,
     (snap) => {
       const data = snap.val() || {};
       user.value = {
-        ...auth.currentUser,
-        displayName: data.displayName || auth.currentUser.displayName || "",
+        ...currentUser,
+        displayName: data.displayName || currentUser.displayName || "",
         preferences: data.preferences || {},
       };
+      if (off) off();
     },
     () => {
       user.value = {
-        ...auth.currentUser,
-        displayName: auth.currentUser.displayName || "",
+        ...currentUser,
+        displayName: currentUser.displayName || "",
         preferences: {},
       };
+      if (off) off();
     },
     { onlyOnce: true },
   );
@@ -104,7 +116,7 @@ watch(anyModalOpen, (isOpen) => {
 });
 
 onMounted(() => {
-  onAuthStateChanged(auth, (u) => {
+  authUnsub = onAuthStateChanged(auth, (u) => {
     if (userDbUnsub) {
       userDbUnsub();
       userDbUnsub = null;
@@ -146,6 +158,18 @@ onMounted(() => {
       authReady.value = true;
     }
   });
+});
+
+onUnmounted(() => {
+  if (userDbUnsub) {
+    userDbUnsub();
+    userDbUnsub = null;
+  }
+  if (authUnsub) {
+    authUnsub();
+    authUnsub = null;
+  }
+  document.documentElement.style.overflow = "";
 });
 </script>
 

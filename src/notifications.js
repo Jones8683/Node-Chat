@@ -6,6 +6,11 @@ const notificationHistory = new Map();
 const NOTIFICATION_THROTTLE_MS = 1500;
 const NOTIFICATION_HISTORY_SIZE = 50;
 
+const TAB_ID =
+  typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+
 function hashNotification({ title, body }) {
   return `${title}|${body}`;
 }
@@ -23,10 +28,12 @@ async function getTauriNotificationModule() {
 async function isWindowsTauri() {
   if (!isTauri()) return false;
   if (typeof navigator === "undefined") return false;
-  const platform = String(
-    navigator.platform || navigator.userAgent || "",
-  ).toLowerCase();
-  return platform.includes("win");
+  const uaData = navigator.userAgentData;
+  if (uaData && typeof uaData.platform === "string") {
+    return uaData.platform.toLowerCase().includes("win");
+  }
+  const ua = String(navigator.userAgent || "").toLowerCase();
+  return ua.includes("windows");
 }
 
 export function notificationsSupported() {
@@ -130,7 +137,7 @@ async function sendWebNotification({ title, body, icon }) {
     const notification = new Notification(title, {
       body,
       icon: icon || "/icon.png",
-      tag: hashNotification({ title, body }),
+      tag: `${TAB_ID}:${hashNotification({ title, body })}`,
       requireInteraction: false,
       badge: "/icon.png",
       silent: true,
@@ -142,6 +149,24 @@ async function sendWebNotification({ title, body, icon }) {
 
     notification.onclose = () => {
       clearTimeout(closeTimer);
+    };
+
+    notification.onclick = (event) => {
+      try {
+        event?.preventDefault?.();
+        if (typeof parent !== "undefined" && parent !== window) {
+          try {
+            parent.focus?.();
+          } catch {}
+        }
+        if (
+          typeof window !== "undefined" &&
+          typeof window.focus === "function"
+        ) {
+          window.focus();
+        }
+      } catch {}
+      notification.close();
     };
 
     return true;

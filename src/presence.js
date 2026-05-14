@@ -9,8 +9,9 @@ import {
   goOnline,
 } from "firebase/database";
 
-const HEARTBEAT_MS = 25000;
-const STALE_TAB_MS = 75000;
+const HEARTBEAT_MS = 20000;
+const STALE_TAB_MS = 90000;
+const MIN_WRITE_INTERVAL_MS = 2000;
 
 let currentUid = null;
 let currentProfile = null;
@@ -21,9 +22,12 @@ let isConnected = false;
 let visibilityHandler = null;
 let focusHandler = null;
 let onlineHandler = null;
+let offlineHandler = null;
 let pageShowHandler = null;
 let pageHideHandler = null;
 let beforeUnloadHandler = null;
+let lastWriteAt = 0;
+let pendingWrite = false;
 
 function generateTabId() {
   if (
@@ -57,9 +61,23 @@ function profilePayload() {
   };
 }
 
-async function writeTabOnline() {
+async function writeTabOnline({ force = false } = {}) {
   const tRef = tabRef();
   if (!tRef) return;
+  const now = Date.now();
+  if (!force && now - lastWriteAt < MIN_WRITE_INTERVAL_MS) {
+    if (pendingWrite) return;
+    pendingWrite = true;
+    setTimeout(
+      () => {
+        pendingWrite = false;
+        void writeTabOnline({ force: true });
+      },
+      MIN_WRITE_INTERVAL_MS - (now - lastWriteAt),
+    );
+    return;
+  }
+  lastWriteAt = now;
   try {
     await set(tRef, { online: true, seenAt: serverTimestamp() });
   } catch (e) {}
@@ -106,7 +124,7 @@ function clearHeartbeat() {
 function scheduleHeartbeat() {
   clearHeartbeat();
   heartbeatTimer = setInterval(() => {
-    if (isConnected) writeTabOnline();
+    if (isConnected) void writeTabOnline();
   }, HEARTBEAT_MS);
 }
 
@@ -114,7 +132,7 @@ async function handleConnectionChange(connected) {
   isConnected = connected;
   if (!connected || !currentUid) return;
   await armDisconnect();
-  await writeTabOnline();
+  await writeTabOnline({ force: true });
 }
 
 function reconnect() {
@@ -122,7 +140,9 @@ function reconnect() {
   try {
     goOnline(db);
   } catch (e) {}
-  if (isConnected) writeTabOnline();
+  if (isConnected) {
+    void writeTabOnline({ force: true });
+  }
 }
 
 function attachWindowListeners() {
@@ -132,8 +152,18 @@ function attachWindowListeners() {
   };
   focusHandler = () => reconnect();
   onlineHandler = () => reconnect();
-  pageShowHandler = () => reconnect();
-  pageHideHandler = () => {
+  offlineHandler = () => {
+    isConnected = false;
+  };
+  pageShowHandler = (event) => {
+    if (event?.persisted) {
+      reconnect();
+    } else {
+      reconnect();
+    }
+  };
+  pageHideHandler = (event) => {
+    if (event?.persisted) return;
     const tRef = tabRef();
     if (!tRef) return;
     try {
@@ -150,6 +180,7 @@ function attachWindowListeners() {
   document.addEventListener("visibilitychange", visibilityHandler);
   window.addEventListener("focus", focusHandler);
   window.addEventListener("online", onlineHandler);
+  window.addEventListener("offline", offlineHandler);
   window.addEventListener("pageshow", pageShowHandler);
   window.addEventListener("pagehide", pageHideHandler);
   window.addEventListener("beforeunload", beforeUnloadHandler);
@@ -161,6 +192,7 @@ function detachWindowListeners() {
     document.removeEventListener("visibilitychange", visibilityHandler);
   if (focusHandler) window.removeEventListener("focus", focusHandler);
   if (onlineHandler) window.removeEventListener("online", onlineHandler);
+  if (offlineHandler) window.removeEventListener("offline", offlineHandler);
   if (pageShowHandler) window.removeEventListener("pageshow", pageShowHandler);
   if (pageHideHandler) window.removeEventListener("pagehide", pageHideHandler);
   if (beforeUnloadHandler)
@@ -168,6 +200,7 @@ function detachWindowListeners() {
   visibilityHandler = null;
   focusHandler = null;
   onlineHandler = null;
+  offlineHandler = null;
   pageShowHandler = null;
   pageHideHandler = null;
   beforeUnloadHandler = null;
@@ -184,10 +217,12 @@ export async function startPresence(user) {
     displayName: user.displayName || null,
     avatarColor: user.preferences?.avatarColor || null,
   };
+  lastWriteAt = 0;
+  pendingWrite = false;
   attachWindowListeners();
   void writeProfileOnly();
   connectedUnsub = onValue(dbRef(db, ".info/connected"), (snap) => {
-    handleConnectionChange(snap.val() === true);
+    void handleConnectionChange(snap.val() === true);
   });
   scheduleHeartbeat();
 }
@@ -231,6 +266,8 @@ export async function stopPresence() {
   currentProfile = null;
   tabId = null;
   isConnected = false;
+  lastWriteAt = 0;
+  pendingWrite = false;
 }
 
 function isTabActive(tab) {

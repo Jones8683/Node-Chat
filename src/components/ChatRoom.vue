@@ -983,7 +983,7 @@ watch(
 
 function formatLastSeen(ts) {
   if (!ts) return null;
-  const diff = Date.now() - ts;
+  const diff = Math.max(0, Date.now() - ts);
   const mins = Math.floor(diff / 60000);
   if (mins < 1) return "Just now";
   if (mins < 60) return `${mins}m ago`;
@@ -1100,6 +1100,7 @@ function getMentionDisplayName(uid, fallback = "") {
 
 function tokenizeMentions(text) {
   if (!text) return text;
+  if (text.indexOf("@") === -1) return text;
   const candidates = mentionableUsers.value
     .filter((u) => u.displayName)
     .sort((a, b) => b.displayName.length - a.displayName.length);
@@ -1674,6 +1675,7 @@ function mentionBoundaryPattern(displayName) {
 
 function extractMentions(text) {
   if (!text?.trim()) return [];
+  if (text.indexOf("@") === -1 && text.indexOf("<@") === -1) return [];
   const mentioned = new Map();
 
   const tokenPattern = /<@([A-Za-z0-9]+)>/g;
@@ -1936,7 +1938,7 @@ function subscribeMessages() {
                   shouldNotify = notifMode === "all" || isPingNotif;
                 }
                 if (shouldNotify && msg.text) {
-                  const body = msg.text.slice(0, 100);
+                  const body = detokenizeMentions(msg.text).slice(0, 100);
                   void sendSystemNotification({
                     title: msg.displayName || "Node Chat",
                     body,
