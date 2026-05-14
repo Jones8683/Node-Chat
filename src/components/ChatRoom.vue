@@ -2849,21 +2849,6 @@ async function logout() {
   margin-top: 0;
 }
 
-.message--entering {
-  animation: msgSlideIn 0.38s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-@keyframes msgSlideIn {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 .message:hover {
   background: rgba(44, 42, 39, 0.05);
 }
@@ -2988,14 +2973,6 @@ async function logout() {
   transition:
     background 0.12s,
     color 0.12s;
-}
-
-.msg-action-btn svg {
-  transition: transform 0.1s ease;
-}
-
-.msg-action-btn:hover svg {
-  transform: scale(1.1);
 }
 
 .msg-action-btn:hover {
