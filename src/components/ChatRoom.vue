@@ -3443,8 +3443,7 @@ async function logout() {
     max-height 0.28s cubic-bezier(0.22, 1, 0.36, 1),
     margin-bottom 0.28s cubic-bezier(0.22, 1, 0.36, 1),
     padding-top 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-    padding-bottom 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-    border-width 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+    padding-bottom 0.28s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .chat-banner-leave-active {
   transition:
@@ -3453,8 +3452,7 @@ async function logout() {
     max-height 0.22s cubic-bezier(0.4, 0, 1, 1),
     margin-bottom 0.22s cubic-bezier(0.4, 0, 1, 1),
     padding-top 0.22s cubic-bezier(0.4, 0, 1, 1),
-    padding-bottom 0.22s cubic-bezier(0.4, 0, 1, 1),
-    border-width 0.22s cubic-bezier(0.4, 0, 1, 1);
+    padding-bottom 0.22s cubic-bezier(0.4, 0, 1, 1);
 }
 .chat-banner-enter-from,
 .chat-banner-leave-to {
@@ -3464,8 +3462,6 @@ async function logout() {
   margin-bottom: 0;
   padding-top: 0;
   padding-bottom: 0;
-  border-top-width: 0;
-  border-bottom-width: 0;
   overflow: hidden;
 }
 .chat-banner-enter-to,
