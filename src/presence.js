@@ -9,9 +9,8 @@ import {
   goOnline,
 } from "firebase/database";
 
-const HEARTBEAT_MS = 20000;
-const STALE_TAB_MS = 90000;
-const MIN_WRITE_INTERVAL_MS = 2000;
+const HEARTBEAT_MS = 25000;
+const STALE_TAB_MS = 5 * 60 * 1000;
 
 let currentUid = null;
 let currentProfile = null;
@@ -26,8 +25,6 @@ let offlineHandler = null;
 let pageShowHandler = null;
 let pageHideHandler = null;
 let beforeUnloadHandler = null;
-let lastWriteAt = 0;
-let pendingWrite = false;
 
 function generateTabId() {
   if (
@@ -61,23 +58,9 @@ function profilePayload() {
   };
 }
 
-async function writeTabOnline({ force = false } = {}) {
+async function writeTabOnline() {
   const tRef = tabRef();
   if (!tRef) return;
-  const now = Date.now();
-  if (!force && now - lastWriteAt < MIN_WRITE_INTERVAL_MS) {
-    if (pendingWrite) return;
-    pendingWrite = true;
-    setTimeout(
-      () => {
-        pendingWrite = false;
-        void writeTabOnline({ force: true });
-      },
-      MIN_WRITE_INTERVAL_MS - (now - lastWriteAt),
-    );
-    return;
-  }
-  lastWriteAt = now;
   try {
     await set(tRef, { online: true, seenAt: serverTimestamp() });
   } catch (e) {}
@@ -132,7 +115,7 @@ async function handleConnectionChange(connected) {
   isConnected = connected;
   if (!connected || !currentUid) return;
   await armDisconnect();
-  await writeTabOnline({ force: true });
+  await writeTabOnline();
 }
 
 function reconnect() {
@@ -141,7 +124,7 @@ function reconnect() {
     goOnline(db);
   } catch (e) {}
   if (isConnected) {
-    void writeTabOnline({ force: true });
+    void writeTabOnline();
   }
 }
 
@@ -155,13 +138,7 @@ function attachWindowListeners() {
   offlineHandler = () => {
     isConnected = false;
   };
-  pageShowHandler = (event) => {
-    if (event?.persisted) {
-      reconnect();
-    } else {
-      reconnect();
-    }
-  };
+  pageShowHandler = () => reconnect();
   pageHideHandler = (event) => {
     if (event?.persisted) return;
     const tRef = tabRef();
@@ -217,8 +194,6 @@ export async function startPresence(user) {
     displayName: user.displayName || null,
     avatarColor: user.preferences?.avatarColor || null,
   };
-  lastWriteAt = 0;
-  pendingWrite = false;
   attachWindowListeners();
   void writeProfileOnly();
   connectedUnsub = onValue(dbRef(db, ".info/connected"), (snap) => {
@@ -266,8 +241,6 @@ export async function stopPresence() {
   currentProfile = null;
   tabId = null;
   isConnected = false;
-  lastWriteAt = 0;
-  pendingWrite = false;
 }
 
 function isTabActive(tab) {
@@ -275,7 +248,9 @@ function isTabActive(tab) {
   if (tab.online !== true) return false;
   const seenAt = Number(tab.seenAt || 0);
   if (!seenAt) return true;
-  return Date.now() - seenAt < STALE_TAB_MS;
+  const age = Date.now() - seenAt;
+  if (age < 0) return true;
+  return age < STALE_TAB_MS;
 }
 
 export function userIsOnline(presenceEntry) {
