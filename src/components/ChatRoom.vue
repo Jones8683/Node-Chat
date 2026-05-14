@@ -425,26 +425,39 @@
             </div>
           </div>
 
-          <div v-if="isMuted" class="chat-locked-banner chat-muted-banner">
-            <MicOff :size="13" stroke-width="2.5" />
-            <span>You've been muted by an admin</span>
-          </div>
-          <div v-else-if="chatLocked && !isAdmin" class="chat-locked-banner">
-            <Lock :size="13" stroke-width="2.5" />
-            <span>Chat is locked by an admin</span>
-          </div>
-          <transition name="slur-banner">
-            <div
-              v-if="slurWarningVisible"
-              class="chat-locked-banner chat-slur-banner"
-            >
-              <ShieldAlert :size="13" stroke-width="2.5" />
-              <span
-                >This message contains language that isn't allowed in this
-                chat.</span
+          <div class="chat-banner-stack">
+            <transition name="chat-banner">
+              <div
+                v-if="isMuted"
+                key="muted"
+                class="chat-banner chat-banner--muted"
               >
-            </div>
-          </transition>
+                <MicOff :size="13" stroke-width="2.5" />
+                <span>You've been muted by an admin</span>
+              </div>
+              <div
+                v-else-if="chatLocked && !isAdmin"
+                key="locked"
+                class="chat-banner chat-banner--locked"
+              >
+                <Lock :size="13" stroke-width="2.5" />
+                <span>Chat is locked by an admin</span>
+              </div>
+            </transition>
+            <transition name="chat-banner">
+              <div
+                v-if="slurWarningVisible"
+                key="slur"
+                class="chat-banner chat-banner--slur"
+              >
+                <ShieldAlert :size="13" stroke-width="2.5" />
+                <span
+                  >This message contains language that isn't allowed in this
+                  chat.</span
+                >
+              </div>
+            </transition>
+          </div>
 
           <div class="input-wrap" @mousedown.prevent="focusComposer">
             <div v-if="replyingTo" class="reply-bar">
@@ -3375,28 +3388,44 @@ async function logout() {
   color: var(--text-muted);
 }
 
-.chat-locked-banner {
+.chat-banner-stack {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.chat-banner {
   display: flex;
   align-items: center;
   gap: 8px;
   margin: 0 16px 6px;
   padding: 9px 13px;
-  background: rgba(192, 57, 43, 0.06);
-  border: 1px solid rgba(192, 57, 43, 0.18);
+  border: 1px solid transparent;
   border-radius: var(--radius);
-  color: var(--danger);
   font-size: 13px;
   font-weight: 600;
   flex-shrink: 0;
+  line-height: 1.35;
+  will-change: opacity, transform, margin, padding, max-height;
 }
 
-.chat-muted-banner {
+.chat-banner svg {
+  flex-shrink: 0;
+}
+
+.chat-banner--locked {
+  background: rgba(192, 57, 43, 0.06);
+  border-color: rgba(192, 57, 43, 0.18);
+  color: var(--danger);
+}
+
+.chat-banner--muted {
   background: rgba(234, 88, 12, 0.06);
   border-color: rgba(234, 88, 12, 0.22);
   color: #c2410c;
 }
 
-.chat-slur-banner {
+.chat-banner--slur {
   background: linear-gradient(
     180deg,
     rgba(220, 38, 38, 0.09),
@@ -3407,8 +3436,7 @@ async function logout() {
   box-shadow: 0 4px 14px rgba(220, 38, 38, 0.08);
 }
 
-.chat-slur-banner svg {
-  flex-shrink: 0;
+.chat-banner--slur svg {
   animation: slurShake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97);
 }
 
@@ -3431,30 +3459,42 @@ async function logout() {
   }
 }
 
-.slur-banner-enter-active {
+.chat-banner-enter-active {
   transition:
-    opacity 0.2s ease,
-    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
-  will-change: opacity, transform;
+    opacity 0.22s ease,
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    max-height 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    margin-bottom 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    padding-top 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    padding-bottom 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    border-width 0.28s cubic-bezier(0.22, 1, 0.36, 1);
 }
-.slur-banner-leave-active {
+.chat-banner-leave-active {
   transition:
     opacity 0.16s ease,
-    transform 0.18s cubic-bezier(0.4, 0, 1, 1);
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 100%;
+    transform 0.22s cubic-bezier(0.4, 0, 1, 1),
+    max-height 0.22s cubic-bezier(0.4, 0, 1, 1),
+    margin-bottom 0.22s cubic-bezier(0.4, 0, 1, 1),
+    padding-top 0.22s cubic-bezier(0.4, 0, 1, 1),
+    padding-bottom 0.22s cubic-bezier(0.4, 0, 1, 1),
+    border-width 0.22s cubic-bezier(0.4, 0, 1, 1);
+}
+.chat-banner-enter-from,
+.chat-banner-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
+  max-height: 0;
   margin-bottom: 0;
-  will-change: opacity, transform;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-top-width: 0;
+  border-bottom-width: 0;
+  overflow: hidden;
 }
-.slur-banner-enter-from {
-  opacity: 0;
-  transform: translateY(8px);
-}
-.slur-banner-leave-to {
-  opacity: 0;
-  transform: translateY(4px);
+.chat-banner-enter-to,
+.chat-banner-leave-from {
+  opacity: 1;
+  max-height: 60px;
 }
 
 .input-wrap {
