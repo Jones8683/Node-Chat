@@ -347,9 +347,6 @@ async function batchUpdateMessageDisplayNames(uid, newDisplayName) {
     if (msg.replyTo?.uid === uid) {
       updates[`messages/${msgId}/replyTo/displayName`] = newDisplayName;
     }
-    if (msg.mentions?.[uid]) {
-      updates[`messages/${msgId}/mentions/${uid}/displayName`] = newDisplayName;
-    }
   }
   if (Object.keys(updates).length) await update(dbRef(db), updates);
 }
@@ -364,9 +361,6 @@ async function batchUpdateMessageAvatarColor(uid, avatarColor) {
     }
     if (msg.replyTo?.uid === uid) {
       updates[`messages/${msgId}/replyTo/avatarColor`] = avatarColor;
-    }
-    if (msg.mentions?.[uid]) {
-      updates[`messages/${msgId}/mentions/${uid}/avatarColor`] = avatarColor;
     }
   }
   if (Object.keys(updates).length) await update(dbRef(db), updates);

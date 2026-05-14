@@ -125,7 +125,10 @@
                       class="reply-avatar-small"
                       :style="
                         getAvatarStyle(
-                          item.replyTo.displayName,
+                          resolveDisplayName(
+                            item.replyTo.uid,
+                            item.replyTo.displayName,
+                          ),
                           item.replyTo.uid,
                           item.replyTo.avatarColor,
                         )
@@ -133,7 +136,10 @@
                     >
                       {{
                         getAvatarInitial(
-                          item.replyTo.displayName,
+                          resolveDisplayName(
+                            item.replyTo.uid,
+                            item.replyTo.displayName,
+                          ),
                           item.replyTo.uid,
                         )
                       }}
@@ -142,16 +148,24 @@
                       class="reply-name"
                       :style="{
                         color: getAvatarColor(
-                          item.replyTo.displayName,
+                          resolveDisplayName(
+                            item.replyTo.uid,
+                            item.replyTo.displayName,
+                          ),
                           item.replyTo.uid,
                           item.replyTo.avatarColor,
                         ),
                       }"
-                      >{{ item.replyTo.displayName }}</span
+                      >{{
+                        resolveDisplayName(
+                          item.replyTo.uid,
+                          item.replyTo.displayName,
+                        )
+                      }}</span
                     >
                     <span
                       class="reply-text"
-                      v-html="formatMessage(item.replyTo.text || '')"
+                      v-html="formatMessage(item.replyTo)"
                     ></span>
                   </template>
                 </div>
@@ -164,13 +178,18 @@
                     class="msg-avatar"
                     :style="
                       getAvatarStyle(
-                        item.displayName,
+                        resolveDisplayName(item.uid, item.displayName),
                         item.uid,
                         item.avatarColor,
                       )
                     "
                   >
-                    {{ getAvatarInitial(item.displayName, item.uid) }}
+                    {{
+                      getAvatarInitial(
+                        resolveDisplayName(item.uid, item.displayName),
+                        item.uid,
+                      )
+                    }}
                   </div>
                   <span v-else-if="showTimestamps" class="msg-side-time">{{
                     formatTimestampShort(item.timestamp)
@@ -183,12 +202,14 @@
                       class="msg-name"
                       :style="{
                         color: getAvatarColor(
-                          item.displayName,
+                          resolveDisplayName(item.uid, item.displayName),
                           item.uid,
                           item.avatarColor,
                         ),
                       }"
-                      >{{ item.displayName }}</span
+                      >{{
+                        resolveDisplayName(item.uid, item.displayName)
+                      }}</span
                     >
                     <span v-if="showTimestamps" class="msg-time">{{
                       formatTimestamp(item.timestamp)
@@ -420,12 +441,17 @@
                 <strong
                   :style="{
                     color: getAvatarColor(
-                      replyingTo.displayName,
+                      resolveDisplayName(
+                        replyingTo.uid,
+                        replyingTo.displayName,
+                      ),
                       replyingTo.uid,
                       replyingTo.avatarColor,
                     ),
                   }"
-                  >{{ replyingTo.displayName }}</strong
+                  >{{
+                    resolveDisplayName(replyingTo.uid, replyingTo.displayName)
+                  }}</strong
                 ></span
               >
               <button
@@ -500,11 +526,24 @@
             >
               <div
                 class="online-avatar"
-                :style="getAvatarStyle(u.displayName, u.uid, u.avatarColor)"
+                :style="
+                  getAvatarStyle(
+                    resolveDisplayName(u.uid, u.displayName),
+                    u.uid,
+                    u.avatarColor,
+                  )
+                "
               >
-                {{ getAvatarInitial(u.displayName, u.uid) }}
+                {{
+                  getAvatarInitial(
+                    resolveDisplayName(u.uid, u.displayName),
+                    u.uid,
+                  )
+                }}
               </div>
-              <span class="online-item-name">{{ u.displayName }}</span>
+              <span class="online-item-name">{{
+                resolveDisplayName(u.uid, u.displayName)
+              }}</span>
               <MicOff
                 v-if="allMutedUsers.has(u.uid)"
                 :size="12"
@@ -529,14 +568,25 @@
               >
                 <div
                   class="online-avatar offline-avatar"
-                  :style="getAvatarStyle(u.displayName, u.uid, u.avatarColor)"
+                  :style="
+                    getAvatarStyle(
+                      resolveDisplayName(u.uid, u.displayName),
+                      u.uid,
+                      u.avatarColor,
+                    )
+                  "
                 >
-                  {{ getAvatarInitial(u.displayName, u.uid) }}
+                  {{
+                    getAvatarInitial(
+                      resolveDisplayName(u.uid, u.displayName),
+                      u.uid,
+                    )
+                  }}
                 </div>
                 <div class="offline-info">
                   <div class="offline-name-row">
                     <span class="online-item-name offline-name">{{
-                      u.displayName
+                      resolveDisplayName(u.uid, u.displayName)
                     }}</span>
                     <MicOff
                       v-if="allMutedUsers.has(u.uid)"
@@ -701,6 +751,24 @@ function getAvatarStyle(name, uid = null, storedColor = null) {
 
 function getLatestUser(uid, fallback = {}) {
   return { ...fallback, ...(allUsers.value[uid] || {}) };
+}
+
+function resolveDisplayName(uid, fallback = "") {
+  if (!uid) return fallback || "Unknown";
+  const fromUsers = allUsers.value[uid]?.displayName;
+  if (fromUsers) return fromUsers;
+  const fromPresence = presenceUsers.value[uid]?.profile?.displayName;
+  if (fromPresence) return fromPresence;
+  return fallback || "Unknown";
+}
+
+function resolveAvatarColor(uid, fallback = null) {
+  if (!uid) return fallback;
+  const fromUsers = allUsers.value[uid]?.preferences?.avatarColor;
+  if (fromUsers) return fromUsers;
+  const fromPresence = presenceUsers.value[uid]?.profile?.avatarColor;
+  if (fromPresence) return fromPresence;
+  return fallback;
 }
 
 const onlineUsers = computed(() => {
@@ -1027,7 +1095,31 @@ function escapeRegExp(value) {
 }
 
 function getMentionDisplayName(uid, fallback = "") {
-  return allUsers.value[uid]?.displayName || fallback || "Unknown";
+  return resolveDisplayName(uid, fallback);
+}
+
+function tokenizeMentions(text) {
+  if (!text) return text;
+  const candidates = mentionableUsers.value
+    .filter((u) => u.displayName)
+    .sort((a, b) => b.displayName.length - a.displayName.length);
+  let result = text;
+  for (const user of candidates) {
+    const pattern = new RegExp(
+      `(^|[^A-Za-z0-9_/#])@${escapeRegExp(user.displayName)}(?=$|[^A-Za-z0-9_-])`,
+      "gi",
+    );
+    result = result.replace(pattern, (_, prefix) => `${prefix}<@${user.uid}>`);
+  }
+  return result;
+}
+
+function detokenizeMentions(text) {
+  if (!text) return text;
+  return text.replace(/<@([A-Za-z0-9]+)>/g, (_, uid) => {
+    const name = resolveDisplayName(uid, "");
+    return name ? `@${name}` : `<@${uid}>`;
+  });
 }
 
 function getMentionData(message) {
@@ -1075,31 +1167,42 @@ function renderMentionHtml(uid, fallbackName) {
 }
 
 function applyMentionPlaceholders(html, message) {
-  const mentions = getMentionData(message);
-  if (!mentions.length) return { html, replacements: [] };
-
   const replacements = [];
   let result = html;
 
-  for (const mention of mentions) {
-    const latestName = getMentionDisplayName(mention.uid, mention.displayName);
-    const names = Array.from(
-      new Set([mention.displayName, latestName].filter(Boolean)),
-    ).sort((a, b) => b.length - a.length);
+  result = result.replace(/&lt;@([A-Za-z0-9]+)&gt;/g, (_, uid) => {
+    const fallback =
+      message?.mentions?.[uid]?.displayName || getMentionDisplayName(uid, "");
+    const replacementIndex =
+      replacements.push(renderMentionHtml(uid, fallback)) - 1;
+    return `\x01${replacementIndex}\x01`;
+  });
 
-    for (const name of names) {
-      const escapedName = escapeHtml(name);
-      const pattern = new RegExp(
-        `(^|[^A-Za-z0-9_/#])@${escapeRegExp(escapedName)}(?=$|[^A-Za-z0-9_-])`,
-        "gi",
+  const mentions = getMentionData(message);
+  if (mentions.length) {
+    for (const mention of mentions) {
+      const latestName = getMentionDisplayName(
+        mention.uid,
+        mention.displayName,
       );
-      result = result.replace(pattern, (match, prefix) => {
-        const replacementIndex =
-          replacements.push(
-            renderMentionHtml(mention.uid, mention.displayName),
-          ) - 1;
-        return `${prefix}\x01${replacementIndex}\x01`;
-      });
+      const names = Array.from(
+        new Set([mention.displayName, latestName].filter(Boolean)),
+      ).sort((a, b) => b.length - a.length);
+
+      for (const name of names) {
+        const escapedName = escapeHtml(name);
+        const pattern = new RegExp(
+          `(^|[^A-Za-z0-9_/#])@${escapeRegExp(escapedName)}(?=$|[^A-Za-z0-9_-])`,
+          "gi",
+        );
+        result = result.replace(pattern, (match, prefix) => {
+          const replacementIndex =
+            replacements.push(
+              renderMentionHtml(mention.uid, mention.displayName),
+            ) - 1;
+          return `${prefix}\x01${replacementIndex}\x01`;
+        });
+      }
     }
   }
 
@@ -1572,11 +1675,29 @@ function mentionBoundaryPattern(displayName) {
 function extractMentions(text) {
   if (!text?.trim()) return [];
   const mentioned = new Map();
+
+  const tokenPattern = /<@([A-Za-z0-9]+)>/g;
+  let tokenMatch;
+  while ((tokenMatch = tokenPattern.exec(text)) !== null) {
+    const uid = tokenMatch[1];
+    if (mentioned.has(uid)) continue;
+    const user = mentionableUsers.value.find((u) => u.uid === uid);
+    mentioned.set(uid, {
+      uid,
+      displayName: user?.displayName || resolveDisplayName(uid, ""),
+      avatarColor:
+        user?.avatarColor ||
+        allUsers.value[uid]?.preferences?.avatarColor ||
+        null,
+    });
+  }
+
   const candidates = mentionableUsers.value
     .filter((u) => u.displayName)
     .sort((a, b) => b.displayName.length - a.displayName.length);
 
   for (const user of candidates) {
+    if (mentioned.has(user.uid)) continue;
     const pattern = mentionBoundaryPattern(user.displayName);
     if (!pattern.test(text)) continue;
     mentioned.set(user.uid, {
@@ -1618,7 +1739,9 @@ function messageMentionsCurrentUser(message) {
   if (!message) return false;
   if (message.mentionUids?.[props.user.uid] === true) return true;
   if (message.mentions?.[props.user.uid]) return true;
-  return extractMentions(message.text || "").some(
+  const text = message.text || "";
+  if (text.includes(`<@${props.user.uid}>`)) return true;
+  return extractMentions(text).some(
     (mention) => mention.uid === props.user.uid,
   );
 }
@@ -1999,8 +2122,9 @@ onUnmounted(() => {
 });
 
 async function copyMessageText(item) {
-  const text = item?.text || "";
-  if (!text.trim()) return;
+  const raw = item?.text || "";
+  if (!raw.trim()) return;
+  const text = detokenizeMentions(raw);
 
   try {
     await copy(text);
@@ -2018,13 +2142,16 @@ async function copyMessageText(item) {
 
 function startReply(item) {
   cancelEdit();
-  replyingTo.value = {
+  const snapshot = {
     id: item.id,
     text: item.text || "",
-    displayName: item.displayName,
+    displayName: resolveDisplayName(item.uid, item.displayName),
     uid: item.uid,
     avatarColor: item.avatarColor || null,
   };
+  if (item.mentions) snapshot.mentions = item.mentions;
+  if (item.mentionUids) snapshot.mentionUids = item.mentionUids;
+  replyingTo.value = snapshot;
   nextTick(() => composerRef.value?.focus());
 }
 
@@ -2047,7 +2174,7 @@ async function jumpToMessage(id) {
 function startEdit(msg) {
   cancelReply();
   editingId.value = msg.id;
-  editText.value = msg.text;
+  editText.value = detokenizeMentions(msg.text || "");
 
   nextTick(() => {
     nextTick(() => {
@@ -2114,9 +2241,10 @@ async function saveEdit(id) {
   editingId.value = null;
   editText.value = "";
   try {
-    const mentionFields = buildMentionFields(text);
+    const tokenizedText = tokenizeMentions(text);
+    const mentionFields = buildMentionFields(tokenizedText);
     await update(dbRef(db, `messages/${id}`), {
-      text,
+      text: tokenizedText,
       editedAt: serverTimestamp(),
       mentions: mentionFields.mentions,
       mentionUids: mentionFields.mentionUids,
@@ -2126,7 +2254,12 @@ async function saveEdit(id) {
       const msgs = snap.val();
       const updates = {};
       for (const [msgId, msg] of Object.entries(msgs)) {
-        if (msg.replyTo?.id === id) updates[`${msgId}/replyTo/text`] = text;
+        if (msg.replyTo?.id === id) {
+          updates[`${msgId}/replyTo/text`] = tokenizedText;
+          updates[`${msgId}/replyTo/mentions`] = mentionFields.mentions || null;
+          updates[`${msgId}/replyTo/mentionUids`] =
+            mentionFields.mentionUids || null;
+        }
       }
       if (Object.keys(updates).length > 0)
         await update(dbRef(db, "messages"), updates);
@@ -2158,7 +2291,7 @@ async function promptDelete(id) {
   deleteDialog.value = {
     show: true,
     id,
-    name: msg?.displayName || "this message",
+    name: resolveDisplayName(msg?.uid, msg?.displayName) || "this message",
   };
 }
 
@@ -2187,11 +2320,12 @@ async function sendMessage() {
   totalCount++;
   shouldScrollToBottom = true;
   const replySnapshot = replyingTo.value ? { ...replyingTo.value } : null;
-  const mentionFields = buildMentionFields(text);
+  const tokenizedText = tokenizeMentions(text);
+  const mentionFields = buildMentionFields(tokenizedText);
   replyingTo.value = null;
   try {
     await push(dbRef(db, "messages"), {
-      text,
+      text: tokenizedText,
       displayName: props.user.displayName,
       uid: props.user.uid,
       avatarColor: props.user.preferences?.avatarColor || null,
