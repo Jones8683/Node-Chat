@@ -1,7 +1,6 @@
 import {
   RegExpMatcher,
   pattern,
-  collapseDuplicatesTransformer,
   resolveConfusablesTransformer,
   resolveLeetSpeakTransformer,
   skipNonAlphabeticTransformer,
@@ -83,7 +82,6 @@ const matcher = new RegExpMatcher({
     resolveLeetSpeakTransformer(),
     toAsciiLowerCaseTransformer(),
     skipNonAlphabeticTransformer(),
-    collapseDuplicatesTransformer(),
   ],
 });
 
