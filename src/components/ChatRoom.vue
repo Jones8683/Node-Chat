@@ -433,6 +433,18 @@
             <Lock :size="13" stroke-width="2.5" />
             <span>Chat is locked by an admin</span>
           </div>
+          <transition name="slur-banner">
+            <div
+              v-if="slurWarningVisible"
+              class="chat-locked-banner chat-slur-banner"
+            >
+              <ShieldAlert :size="13" stroke-width="2.5" />
+              <span
+                >This message contains language that isn't allowed in this
+                chat.</span
+              >
+            </div>
+          </transition>
 
           <div class="input-wrap" @mousedown.prevent="focusComposer">
             <div v-if="replyingTo" class="reply-bar">
@@ -657,6 +669,7 @@ import {
   MicOff,
   CornerUpLeft,
   X,
+  ShieldAlert,
 } from "lucide-vue-next";
 import {
   ref as dbRef,
@@ -683,6 +696,7 @@ import {
   userIsOnline,
 } from "../presence";
 import WindowControls from "./WindowControls.vue";
+import { containsSlur } from "../slurFilter";
 
 const props = defineProps(["user"]);
 const emit = defineEmits(["ready", "open-settings", "open-admin"]);
@@ -923,6 +937,8 @@ let copyResetTimer = null;
 const chatLocked = ref(false);
 const isMuted = ref(false);
 const allMutedUsers = ref(new Set());
+const slurWarningVisible = ref(false);
+let slurWarningTimer = null;
 const replyingTo = ref(null);
 const highlightedMessageId = ref(null);
 let pendingScrollAnchor = null;
@@ -2308,6 +2324,22 @@ async function confirmDelete() {
   await remove(dbRef(db, `messages/${id}`));
 }
 
+function flashSlurWarning() {
+  slurWarningVisible.value = true;
+  clearTimeout(slurWarningTimer);
+  slurWarningTimer = setTimeout(() => {
+    slurWarningVisible.value = false;
+  }, 4000);
+}
+
+watch(newMessage, (value) => {
+  if (!slurWarningVisible.value) return;
+  if (!containsSlur(value)) {
+    slurWarningVisible.value = false;
+    clearTimeout(slurWarningTimer);
+  }
+});
+
 async function sendMessage() {
   if (emojiVisible.value || mentionVisible.value) return;
   if (chatLocked.value && !isAdmin.value) return;
@@ -2315,6 +2347,10 @@ async function sendMessage() {
   const text = sanitizeMessage(newMessage.value);
   if (!text.trim()) return;
   if (text.length > 10000) return;
+  if (containsSlur(text)) {
+    flashSlurWarning();
+    return;
+  }
   newMessage.value = "";
   nextTick(resizeComposer);
   clearTimeout(typingTimeout);
@@ -2648,7 +2684,7 @@ async function logout() {
   overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
-  padding: 16px 18px;
+  padding: 16px 18px 4px;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -3343,8 +3379,8 @@ async function logout() {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 0 16px 8px;
-  padding: 10px 14px;
+  margin: 0 16px 6px;
+  padding: 9px 13px;
   background: rgba(192, 57, 43, 0.06);
   border: 1px solid rgba(192, 57, 43, 0.18);
   border-radius: var(--radius);
@@ -3360,8 +3396,69 @@ async function logout() {
   color: #c2410c;
 }
 
+.chat-slur-banner {
+  background: linear-gradient(
+    180deg,
+    rgba(220, 38, 38, 0.09),
+    rgba(220, 38, 38, 0.05)
+  );
+  border-color: rgba(220, 38, 38, 0.28);
+  color: #b91c1c;
+  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.08);
+}
+
+.chat-slur-banner svg {
+  flex-shrink: 0;
+  animation: slurShake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+@keyframes slurShake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-2px) rotate(-3deg);
+  }
+  40% {
+    transform: translateX(2px) rotate(3deg);
+  }
+  60% {
+    transform: translateX(-1px) rotate(-2deg);
+  }
+  80% {
+    transform: translateX(1px) rotate(2deg);
+  }
+}
+
+.slur-banner-enter-active {
+  transition:
+    opacity 0.2s ease,
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+.slur-banner-leave-active {
+  transition:
+    opacity 0.16s ease,
+    transform 0.18s cubic-bezier(0.4, 0, 1, 1);
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  margin-bottom: 0;
+  will-change: opacity, transform;
+}
+.slur-banner-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+.slur-banner-leave-to {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
 .input-wrap {
-  margin: 0 16px 14px;
+  margin: 0 16px 10px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 14px;
