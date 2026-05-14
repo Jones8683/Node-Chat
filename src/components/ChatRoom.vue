@@ -450,7 +450,11 @@
                 key="slur"
                 class="chat-banner chat-banner--slur"
               >
-                <ShieldAlert :size="13" stroke-width="2.5" />
+                <ShieldAlert
+                  :key="slurShakeKey"
+                  :size="13"
+                  stroke-width="2.5"
+                />
                 <span
                   >This message contains language that isn't allowed in this
                   chat.</span
@@ -952,6 +956,7 @@ const isMuted = ref(false);
 const allMutedUsers = ref(new Set());
 const slurWarningVisible = ref(false);
 let slurWarningTimer = null;
+const slurShakeKey = ref(0);
 const replyingTo = ref(null);
 const highlightedMessageId = ref(null);
 let pendingScrollAnchor = null;
@@ -2338,6 +2343,7 @@ async function confirmDelete() {
 }
 
 function flashSlurWarning() {
+  slurShakeKey.value++;
   slurWarningVisible.value = true;
   clearTimeout(slurWarningTimer);
   slurWarningTimer = setTimeout(() => {
