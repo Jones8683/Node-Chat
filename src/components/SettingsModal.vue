@@ -624,6 +624,8 @@ async function changePassword() {
   z-index: 200;
   padding: 20px;
   overflow-y: auto;
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
 }
 
 .modal-container {
@@ -638,16 +640,20 @@ async function changePassword() {
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
 }
 
-.modal-fade-enter-active,
+.modal-fade-enter-active {
+  transition:
+    opacity 220ms ease,
+    transform 260ms var(--ease-out-quint);
+}
 .modal-fade-leave-active {
   transition:
-    opacity 200ms ease,
-    transform 200ms ease;
+    opacity 160ms ease,
+    transform 200ms cubic-bezier(0.4, 0, 1, 1);
 }
 .modal-fade-enter-from,
 .modal-fade-leave-to {
   opacity: 0;
-  transform: translateY(-8px) scale(0.995);
+  transform: translateY(-6px) scale(0.985);
 }
 .modal-fade-enter-to,
 .modal-fade-leave-from {

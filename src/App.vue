@@ -183,13 +183,14 @@ onUnmounted(() => {
   padding: 24px;
   background: var(--bg);
   z-index: 20;
+  animation: loadingFadeIn 280ms ease-out both;
 }
 
 .loading-stack {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .loading-spinner {
@@ -204,25 +205,45 @@ onUnmounted(() => {
   width: 22px;
   height: 22px;
   border-radius: 999px;
-  border: 2px solid rgba(44, 42, 39, 0.12);
-  border-top-color: rgba(44, 42, 39, 0.68);
-  animation: loadingSpin 0.95s linear infinite;
+  border: 2px solid rgba(44, 42, 39, 0.1);
+  border-top-color: rgba(44, 42, 39, 0.72);
+  animation: loadingSpin 0.85s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+  will-change: transform;
 }
 
 .loading-label {
   font-size: 12px;
   font-weight: 600;
   color: var(--text-muted);
-  letter-spacing: 0.01em;
+  letter-spacing: 0.02em;
+  animation: loadingLabelPulse 1.6s ease-in-out infinite;
 }
 
 @keyframes loadingSpin {
   from {
     transform: rotate(0deg);
   }
-
   to {
     transform: rotate(360deg);
+  }
+}
+
+@keyframes loadingFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes loadingLabelPulse {
+  0%,
+  100% {
+    opacity: 0.65;
+  }
+  50% {
+    opacity: 1;
   }
 }
 </style>

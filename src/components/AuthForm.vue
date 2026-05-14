@@ -419,6 +419,8 @@ async function submitSignup() {
   font-size: 14px;
   font-weight: 600;
   font-family: "Satoshi", sans-serif;
+  outline: none;
+  border-radius: 999px;
   transition:
     color 180ms ease,
     transform 180ms ease;
@@ -428,8 +430,16 @@ async function submitSignup() {
   color: var(--text);
 }
 
+.tab-btn:active {
+  transform: scale(0.97);
+}
+
 .tab-btn.active {
   color: var(--text);
+}
+
+.tab-btn:focus-visible {
+  box-shadow: var(--focus-ring);
 }
 
 .field {
@@ -469,7 +479,12 @@ async function submitSignup() {
 
 .field input:focus {
   border-color: var(--accent);
-  box-shadow: none;
+  box-shadow: var(--focus-ring);
+}
+
+.field input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .field input::placeholder {
@@ -519,6 +534,16 @@ async function submitSignup() {
   transform: translateY(-50%) scale(1.05);
 }
 
+.toggle-pw:active {
+  transform: translateY(-50%) scale(0.92);
+}
+
+.toggle-pw:focus-visible {
+  outline: none;
+  border-radius: 4px;
+  box-shadow: var(--focus-ring);
+}
+
 .submit-btn {
   width: 100%;
   background: var(--text);
@@ -538,9 +563,21 @@ async function submitSignup() {
 }
 
 .submit-btn:hover:not(:disabled) {
-  opacity: 0.85;
+  opacity: 0.92;
   transform: translateY(-1px);
-  box-shadow: 0 10px 18px rgba(44, 42, 39, 0.06);
+  box-shadow: 0 10px 18px rgba(44, 42, 39, 0.08);
+}
+
+.submit-btn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 4px 10px rgba(44, 42, 39, 0.06);
+}
+
+.submit-btn:focus-visible {
+  outline: none;
+  box-shadow:
+    var(--focus-ring),
+    0 10px 18px rgba(44, 42, 39, 0.06);
 }
 
 .submit-btn:disabled {

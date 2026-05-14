@@ -3548,15 +3548,26 @@ textarea::placeholder {
   border-radius: 999px;
   padding: 0;
   transition:
-    background 0.15s,
-    transform 0.15s,
-    color 0.15s;
+    background 160ms ease,
+    transform 160ms var(--ease-out-quint),
+    color 160ms ease,
+    box-shadow 160ms ease;
   flex-shrink: 0;
 }
 
 .send-btn:hover {
   background: rgba(44, 42, 39, 0.08);
   transform: translateY(-1px);
+}
+
+.send-btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.92);
+  background: rgba(44, 42, 39, 0.12);
+}
+
+.send-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .send-btn:disabled {
@@ -3609,6 +3620,7 @@ textarea::placeholder {
   background: #3ba55c;
   flex-shrink: 0;
   box-shadow: 0 0 0 2px rgba(59, 165, 92, 0.25);
+  animation: presencePulse 2.4s ease-in-out infinite;
 }
 
 .online-btn-count {
