@@ -1149,28 +1149,24 @@ function formatAuditText(ev) {
       return `${actor} purged messages${details}`;
     case "invite_create":
       return ev.details
-        ? `${actor} created an invite code - ${escapeHtml(ev.details)}`
+        ? `${actor} created invite code ${escapeHtml(ev.details)}`
         : `${actor} created an invite code`;
     case "invite_delete":
       return ev.details
-        ? `${actor} deleted an invite code - ${escapeHtml(ev.details)}`
+        ? `${actor} deleted invite code ${escapeHtml(ev.details)}`
         : `${actor} deleted an invite code`;
     case "name_renamed":
       return ev.details
-        ? `${actor} renamed ${escapeHtml(ev.details)} to ${target}`
-        : `${actor} renamed ${target}`;
+        ? `${actor} renamed ${escapeHtml(ev.details)} to ${escapeHtml(resolveDisplayName(ev.targetUid, ev.targetName))}`
+        : `${actor} renamed ${escapeHtml(resolveDisplayName(ev.targetUid, ev.targetName))}`;
     case "display_name_changed":
       return ev.details
-        ? `${actor} changed their display name to ${escapeHtml(ev.details)}`
+        ? `${actor} changed their display name from ${escapeHtml(ev.details)} to ${escapeHtml(actorRaw)}`
         : `${actor} changed their display name`;
     case "signup":
       return ev.details
-        ? `${actor} signed up ${escapeHtml(ev.details)}`
+        ? `${actor} signed up with invite code ${escapeHtml(ev.details)}`
         : `${actor} signed up`;
-    case "login":
-      return `${actor} logged in${details}`;
-    case "logout":
-      return `${actor} logged out${details}`;
     default:
       return `${actor} performed ${escapeHtml(ev.action || "an action")}${target}${details}`;
   }
@@ -1187,12 +1183,10 @@ function formatAuditAction(action) {
     unlock_chat: "Chat unlocked",
     purge_messages: "Messages purged",
     promote: "User promoted",
-    demote: "Admin demoted",
+    demote: "User demoted",
     mute: "User muted",
     unmute: "User unmuted",
     signup: "Account created",
-    login: "Login",
-    logout: "Logout",
   };
   if (labels[action]) return labels[action];
   const s = String(action).replace(/[_-]+/g, " ").toLowerCase();

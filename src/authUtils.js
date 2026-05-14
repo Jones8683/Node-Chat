@@ -149,7 +149,7 @@ export async function signupWithToken(rawToken, email, password, rawName) {
       action: "signup",
       actorUid: uid,
       actorName: displayName,
-      details: `with invite code ${token}`,
+      details: token,
     });
 
     return userCred.user;
@@ -175,25 +175,10 @@ export async function signupWithToken(rawToken, email, password, rawName) {
 
 export async function loginWithPassword(email, password) {
   const cred = await signInWithEmailAndPassword(auth, email, password);
-  recordAuditEvent({
-    action: "login",
-    actorUid: cred.user.uid,
-    actorName: cred.user.displayName || null,
-  });
   return cred.user;
 }
 
 export async function logoutCurrentUser() {
-  const user = auth.currentUser;
-  if (user) {
-    try {
-      await recordAuditEvent({
-        action: "logout",
-        actorUid: user.uid,
-        actorName: user.displayName || null,
-      });
-    } catch (e) {}
-  }
   await signOut(auth);
 }
 
@@ -252,12 +237,14 @@ export async function changeDisplayName(uid, rawName) {
     } catch (e) {}
     if (oldKey && oldKey !== newKey) await releaseUsername(oldKey, uid);
     await batchUpdateMessageDisplayNames(uid, newName);
-    recordAuditEvent({
-      action: oldName ? "display_name_changed" : "signup",
-      actorUid: uid,
-      actorName: newName,
-      details: oldName || null,
-    });
+    if (oldName) {
+      recordAuditEvent({
+        action: "display_name_changed",
+        actorUid: uid,
+        actorName: newName,
+        details: oldName,
+      });
+    }
   } catch (error) {
     await releaseUsername(newKey, uid);
     throw error;
