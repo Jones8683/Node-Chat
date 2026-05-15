@@ -107,19 +107,13 @@
             </div>
 
             <button type="submit" class="submit-btn" :disabled="loading">
-              <span
-                class="btn-label-track"
-                :class="{ 'btn-label-track--signup': !isLogin }"
-              >
-                <span class="btn-label-item btn-label-signin">
-                  {{ loading && isLogin ? "Logging in..." : "Log in" }}
-                </span>
-                <span class="btn-label-item btn-label-createacc">
-                  {{
-                    loading && !isLogin
-                      ? "Creating account..."
-                      : "Create account"
-                  }}
+              <span class="btn-label-viewport">
+                <span
+                  class="btn-label-track"
+                  :class="{ 'btn-label-track--signup': !isLogin }"
+                >
+                  <span class="btn-label-item">{{ loginLabel }}</span>
+                  <span class="btn-label-item">{{ signupLabel }}</span>
                 </span>
               </span>
             </button>
@@ -133,7 +127,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from "vue";
+import { ref, computed, watch, onMounted } from "vue";
 import { loginWithPassword, signupWithToken } from "../authUtils";
 import { Eye, EyeOff } from "lucide-vue-next";
 import DesktopDragHeader from "./DesktopDragHeader.vue";
@@ -145,6 +139,13 @@ const signupToken = ref("");
 const showPassword = ref(false);
 const error = ref("");
 const loading = ref(false);
+
+const loginLabel = computed(() =>
+  loading.value && isLogin.value ? "Logging in..." : "Log in",
+);
+const signupLabel = computed(() =>
+  loading.value && !isLogin.value ? "Creating account..." : "Create account",
+);
 
 onMounted(() => {
   document.title = "Log In • Node Chat";
@@ -293,43 +294,31 @@ async function submitSignup() {
   overflow: hidden;
 }
 
-.btn-label-track {
+.btn-label-viewport {
   display: block;
-  position: relative;
-  height: 1.2em;
+  height: 1.5em;
+  overflow: hidden;
+}
+
+.btn-label-track {
+  display: flex;
+  flex-direction: column;
+  transform: translateY(0);
+  transition: transform 240ms cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+}
+
+.btn-label-track--signup {
+  transform: translateY(-1.5em);
 }
 
 .btn-label-item {
   display: flex;
-  position: absolute;
-  inset: 0;
   align-items: center;
   justify-content: center;
-  text-align: center;
-  will-change: transform, opacity;
-  transition:
-    transform 240ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
-    opacity 200ms ease;
-}
-
-.btn-label-signin {
-  transform: translateY(0);
-  opacity: 1;
-}
-
-.btn-label-createacc {
-  transform: translateY(6px);
-  opacity: 0;
-}
-
-.btn-label-track--signup .btn-label-signin {
-  transform: translateY(-6px);
-  opacity: 0;
-}
-
-.btn-label-track--signup .btn-label-createacc {
-  transform: translateY(0);
-  opacity: 1;
+  height: 1.5em;
+  line-height: 1.5em;
+  white-space: nowrap;
 }
 
 .auth-fields {

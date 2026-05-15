@@ -80,9 +80,6 @@ export async function validateInviteToken(token) {
 async function consumeInviteToken(token, uid) {
   const path = `invites/${token}`;
   const now = Date.now();
-  // First mark the invite as used (matches the security rule's
-  // used:false -> used:true transition) so that the subsequent remove
-  // is permitted by the !newData.exists() branch of the rule.
   const snap = await get(dbRef(db, path));
   if (!snap.exists()) throw new Error("Invite not found.");
   const current = snap.val();
@@ -150,9 +147,6 @@ export async function signupWithToken(rawToken, email, password) {
 
     return userCred.user;
   } catch (error) {
-    // Best-effort cleanup, but never sign the user out — they're already
-    // authenticated, and we want them to land on the Set Display Name
-    // screen rather than being kicked back to login.
     try {
       await remove(dbRef(db, `users/${uid}`));
     } catch (e) {}
