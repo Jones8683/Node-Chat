@@ -1245,9 +1245,14 @@ function formatDateTime(ts) {
 }
 
 function showOwnerBlock(displayName, action) {
+  const titles = {
+    demoted: "Cannot Demote Owner",
+    renamed: "Cannot Rename Owner",
+    modified: "Cannot Modify Owner",
+  };
   confirmAction.value = {
     show: true,
-    title: "Cannot Edit Owner",
+    title: titles[action] || "Cannot Edit Owner",
     message: `${displayName} is the owner and cannot be ${action}.`,
     action: "",
     confirm: null,
@@ -2200,7 +2205,7 @@ async function saveUsername(uid) {
 }
 
 .confirmation-actions--single {
-  justify-content: flex-end;
+  justify-content: center;
 }
 
 .cancel-btn,
@@ -2255,8 +2260,8 @@ async function saveUsername(uid) {
 }
 
 .ok-btn {
-  flex: 0 0 auto;
-  min-width: 96px;
+  flex: 1 1 100%;
+  width: 100%;
   background: var(--text);
   color: var(--bg);
 }
