@@ -107,7 +107,11 @@ function clearHeartbeat() {
 function scheduleHeartbeat() {
   clearHeartbeat();
   heartbeatTimer = setInterval(() => {
-    if (isConnected) void writeTabOnline();
+    if (isConnected) {
+      void writeTabOnline();
+      return;
+    }
+    reconnect();
   }, HEARTBEAT_MS);
 }
 
@@ -123,9 +127,7 @@ function reconnect() {
   try {
     goOnline(db);
   } catch (e) {}
-  if (isConnected) {
-    void writeTabOnline();
-  }
+  void writeTabOnline();
 }
 
 function attachWindowListeners() {

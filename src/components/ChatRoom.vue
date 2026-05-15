@@ -1789,12 +1789,15 @@ function isMessagePing(message) {
   );
 }
 
+function handleAppForeground() {
+  if (document.hidden) return;
+  unreadCount = 0;
+  document.title = "Node Chat";
+  clearBadge();
+}
+
 function handleVisibilityChange() {
-  if (!document.hidden) {
-    unreadCount = 0;
-    document.title = "Node Chat";
-    clearBadge();
-  }
+  handleAppForeground();
 }
 
 function handleClickOutside(e) {
@@ -2060,6 +2063,7 @@ onMounted(async () => {
     } catch {}
   }
   document.addEventListener("visibilitychange", handleVisibilityChange);
+  window.addEventListener("focus", handleAppForeground);
   document.addEventListener("click", handleClickOutside);
   document.addEventListener("keydown", handleGlobalKeydown);
   messageContainer.value?.addEventListener("scroll", handleMessageScroll, {
@@ -2136,6 +2140,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   document.removeEventListener("visibilitychange", handleVisibilityChange);
+  window.removeEventListener("focus", handleAppForeground);
   document.removeEventListener("click", handleClickOutside);
   document.removeEventListener("keydown", handleGlobalKeydown);
   messageContainer.value?.removeEventListener("scroll", handleMessageScroll);
