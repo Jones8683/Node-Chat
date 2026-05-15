@@ -113,12 +113,7 @@ async function releaseUsername(nameKey, uid) {
   } catch (e) {}
 }
 
-export async function signupWithToken(rawToken, email, password, rawName) {
-  const nameError = validateDisplayName(rawName);
-  if (nameError) throw new Error(nameError);
-  const displayName = normalizeDisplayName(rawName);
-  const nameKey = nameToKey(displayName);
-
+export async function signupWithToken(rawToken, email, password) {
   const normalizedEmail = String(email || "").trim();
   if (!EMAIL_PATTERN.test(normalizedEmail)) {
     throw new Error("Please enter a valid email address.");
@@ -138,51 +133,24 @@ export async function signupWithToken(rawToken, email, password, rawName) {
   );
   const uid = userCred.user.uid;
 
-  let reservedName = false;
-  let createdRow = false;
-  let consumedInvite = false;
-
   try {
-    reservedName = await reserveUsername(nameKey, uid);
-    if (!reservedName) throw new Error("Display name already taken.");
-
-    await updateProfile(userCred.user, { displayName });
-
     await set(dbRef(db, `users/${uid}`), {
       email: normalizedEmail,
-      displayName,
       createdAt: Date.now(),
       preferences: { showTimestamps: true },
+      pendingInviteToken: token,
     });
-    createdRow = true;
 
     await consumeInviteToken(token, uid);
-    consumedInvite = true;
-
-    recordAuditEvent({
-      action: "signup",
-      actorUid: uid,
-      actorName: displayName,
-      details: token,
-    });
 
     return userCred.user;
   } catch (error) {
-    if (createdRow) {
-      try {
-        await remove(dbRef(db, `users/${uid}`));
-      } catch (e) {}
-    }
-    if (reservedName) await releaseUsername(nameKey, uid);
-    if (!consumedInvite) {
-      try {
-        await userCred.user.delete();
-      } catch (e) {
-        try {
-          await signOut(auth);
-        } catch (e2) {}
-      }
-    }
+    // Best-effort cleanup, but never sign the user out — they're already
+    // authenticated, and we want them to land on the Set Display Name
+    // screen rather than being kicked back to login.
+    try {
+      await remove(dbRef(db, `users/${uid}`));
+    } catch (e) {}
     throw error;
   }
 }
@@ -232,9 +200,12 @@ export async function changeDisplayName(uid, rawName) {
   const newKey = nameToKey(newName);
 
   const userSnap = await get(dbRef(db, `users/${uid}`));
-  const oldName =
-    (userSnap.exists() && userSnap.val().displayName) || user.displayName || "";
+  const userData = userSnap.exists() ? userSnap.val() : {};
+  const oldName = userData.displayName || user.displayName || "";
   const oldKey = oldName ? nameToKey(oldName) : null;
+  const isFirstTimeSet = !oldName;
+  const inviteToken =
+    userData.pendingInviteToken || userData.inviteToken || null;
 
   if (oldKey === newKey && oldName === newName) return;
 
@@ -243,7 +214,12 @@ export async function changeDisplayName(uid, rawName) {
 
   try {
     await updateProfile(user, { displayName: newName });
-    await update(dbRef(db, `users/${uid}`), { displayName: newName });
+    const userUpdate = { displayName: newName };
+    if (isFirstTimeSet) {
+      userUpdate.pendingInviteToken = null;
+      userUpdate.inviteToken = null;
+    }
+    await update(dbRef(db, `users/${uid}`), userUpdate);
     try {
       await update(dbRef(db, `presence/${uid}/profile`), {
         displayName: newName,
@@ -251,7 +227,14 @@ export async function changeDisplayName(uid, rawName) {
     } catch (e) {}
     if (oldKey && oldKey !== newKey) await releaseUsername(oldKey, uid);
     await batchUpdateMessageDisplayNames(uid, newName);
-    if (oldName) {
+    if (isFirstTimeSet) {
+      recordAuditEvent({
+        action: "signup",
+        actorUid: uid,
+        actorName: newName,
+        details: inviteToken,
+      });
+    } else {
       recordAuditEvent({
         action: "display_name_changed",
         actorUid: uid,

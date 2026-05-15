@@ -64,23 +64,6 @@
                     :tabindex="isLogin ? -1 : 0"
                   />
                 </div>
-                <div class="field">
-                  <label for="display-name">
-                    Display Name
-                    <span class="char-count">{{ displayName.length }}/12</span>
-                  </label>
-                  <input
-                    v-model="displayName"
-                    id="display-name"
-                    name="display-name"
-                    type="text"
-                    placeholder="How you'll appear in chat"
-                    maxlength="12"
-                    autocomplete="off"
-                    :disabled="loading || isLogin"
-                    :tabindex="isLogin ? -1 : 0"
-                  />
-                </div>
               </div>
             </div>
 
@@ -158,7 +141,6 @@ import DesktopDragHeader from "./DesktopDragHeader.vue";
 const isLogin = ref(true);
 const email = ref("");
 const password = ref("");
-const displayName = ref("");
 const signupToken = ref("");
 const showPassword = ref(false);
 const error = ref("");
@@ -233,10 +215,6 @@ async function submitSignup() {
     error.value = "Please enter your invite code.";
     return;
   }
-  if (!displayName.value.trim()) {
-    error.value = "Please enter a display name.";
-    return;
-  }
   if (!email.value.trim() || !password.value) {
     error.value = "Please fill in all fields.";
     return;
@@ -248,7 +226,6 @@ async function submitSignup() {
       signupToken.value.trim(),
       email.value.trim(),
       password.value,
-      displayName.value,
     );
   } catch (e) {
     error.value = friendlyError(e);
@@ -396,9 +373,6 @@ async function submitSignup() {
   width: calc(50% - 5px);
   border-radius: 999px;
   background: linear-gradient(180deg, #fffdf8 0%, #f8f5ed 100%);
-  box-shadow:
-    0 6px 14px rgba(44, 42, 39, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.78);
   transform: translateX(0);
   transition: transform 220ms cubic-bezier(0.2, 0.9, 0.25, 1);
 }
@@ -439,7 +413,7 @@ async function submitSignup() {
 }
 
 .tab-btn:focus-visible {
-  box-shadow: var(--focus-ring);
+  outline: none;
 }
 
 .field {
@@ -472,14 +446,12 @@ async function submitSignup() {
   outline: none;
   transition:
     border-color 180ms ease,
-    box-shadow 180ms ease,
     transform 180ms ease,
     background-color 180ms ease;
 }
 
 .field input:focus {
   border-color: var(--accent);
-  box-shadow: var(--focus-ring);
 }
 
 .field input:disabled {
@@ -541,7 +513,6 @@ async function submitSignup() {
 .toggle-pw:focus-visible {
   outline: none;
   border-radius: 4px;
-  box-shadow: var(--focus-ring);
 }
 
 .submit-btn {
@@ -558,26 +529,20 @@ async function submitSignup() {
   margin-top: 8px;
   transition:
     opacity 180ms ease,
-    transform 180ms ease,
-    box-shadow 180ms ease;
+    transform 180ms ease;
 }
 
 .submit-btn:hover:not(:disabled) {
   opacity: 0.92;
   transform: translateY(-1px);
-  box-shadow: 0 10px 18px rgba(44, 42, 39, 0.08);
 }
 
 .submit-btn:active:not(:disabled) {
   transform: translateY(0);
-  box-shadow: 0 4px 10px rgba(44, 42, 39, 0.06);
 }
 
 .submit-btn:focus-visible {
   outline: none;
-  box-shadow:
-    var(--focus-ring),
-    0 10px 18px rgba(44, 42, 39, 0.06);
 }
 
 .submit-btn:disabled {
