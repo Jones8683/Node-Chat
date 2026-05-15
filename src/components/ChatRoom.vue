@@ -101,7 +101,6 @@
               :class="{
                 'message--editing': editingId === item.id,
                 'message--start': item.isGroupStart,
-                'message--entering': animatingIds.has(item.id),
                 'message--ping': isMessagePing(item),
                 'message--highlighted': highlightedMessageId === item.id,
               }"
@@ -1825,6 +1824,13 @@ function handleGlobalKeydown(e) {
 
   if (e.key !== "Escape") return;
 
+  if (deleteDialog.value.show) {
+    e.preventDefault();
+    e.stopPropagation();
+    cancelDelete();
+    return;
+  }
+
   if (showDropdown.value) {
     showDropdown.value = false;
   }
@@ -2677,11 +2683,19 @@ async function logout() {
   font-weight: 500;
   cursor: pointer;
   text-align: left;
-  transition: background 0.15s;
+  transition:
+    background 160ms ease,
+    color 160ms ease,
+    transform 160ms var(--ease-out-quint);
 }
 
 .dropdown-item:hover {
   background: var(--surface-2);
+}
+
+.dropdown-item:active {
+  transform: scale(0.98);
+  transition-duration: 80ms;
 }
 
 .dropdown-item.danger {
@@ -2728,9 +2742,10 @@ async function logout() {
   cursor: pointer;
   margin-bottom: 12px;
   transition:
-    background 0.15s,
-    border-color 0.15s,
-    color 0.15s;
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    transform 160ms var(--ease-out-quint);
   text-align: center;
 }
 
@@ -2738,6 +2753,11 @@ async function logout() {
   background: var(--border);
   border-color: var(--text-muted);
   color: var(--text);
+}
+
+.load-more:active:not(:disabled) {
+  transform: scale(0.99);
+  transition-duration: 80ms;
 }
 
 .load-more:disabled {
@@ -2793,6 +2813,11 @@ async function logout() {
 .jump-to-bottom:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+.jump-to-bottom:active {
+  transform: translateY(0) scale(0.94);
+  transition-duration: 80ms;
 }
 
 .jump-unread {
@@ -2981,9 +3006,6 @@ async function logout() {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition:
-    background 0.12s,
-    color 0.12s;
 }
 
 .msg-action-btn:hover {
@@ -3120,16 +3142,25 @@ async function logout() {
   border: none;
   cursor: pointer;
   color: var(--text-muted);
-  padding: 2px;
+  padding: 4px;
   border-radius: 4px;
   display: flex;
   align-items: center;
   flex-shrink: 0;
-  transition: color 0.12s;
+  transition:
+    color 140ms ease,
+    background 140ms ease,
+    transform 140ms var(--ease-out-quint);
 }
 
 .reply-bar-close:hover {
   color: var(--text);
+  background: var(--surface-2);
+}
+
+.reply-bar-close:active {
+  transform: scale(0.88);
+  transition-duration: 60ms;
 }
 
 .message--ping {
@@ -3157,6 +3188,26 @@ async function logout() {
   animation: msg-highlight-fade 2s ease forwards;
 }
 
+@keyframes overlayIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes dialogIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .delete-overlay {
   position: fixed;
   inset: 0;
@@ -3167,6 +3218,7 @@ async function logout() {
   z-index: 500;
   backdrop-filter: blur(3px);
   -webkit-backdrop-filter: blur(3px);
+  animation: overlayIn 180ms ease both;
 }
 
 .delete-box {
@@ -3177,6 +3229,7 @@ async function logout() {
   width: 100%;
   max-width: 360px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  animation: dialogIn 240ms var(--ease-out-quint) both;
 }
 
 .delete-box h3 {
@@ -3208,7 +3261,11 @@ async function logout() {
   font-weight: 600;
   font-family: "Satoshi", sans-serif;
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition:
+    background 160ms ease,
+    opacity 160ms ease,
+    transform 160ms var(--ease-out-quint),
+    box-shadow 160ms ease;
 }
 
 .del-cancel-btn {
@@ -3217,7 +3274,12 @@ async function logout() {
 }
 
 .del-cancel-btn:hover {
-  opacity: 0.8;
+  background: var(--border);
+}
+
+.del-cancel-btn:active {
+  transform: scale(0.98);
+  transition-duration: 80ms;
 }
 
 .del-confirm-btn {
@@ -3226,7 +3288,13 @@ async function logout() {
 }
 
 .del-confirm-btn:hover {
+  opacity: 0.92;
+}
+
+.del-confirm-btn:active {
   opacity: 0.85;
+  transform: scale(0.98);
+  transition-duration: 80ms;
 }
 
 .edited-label {
@@ -3255,11 +3323,14 @@ async function logout() {
   min-height: 36px;
   overflow-y: hidden;
   line-height: 1.4;
-  transition: border-color 0.15s;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
 }
 
 .edit-input:focus {
-  border-color: rgba(44, 42, 39, 0.28);
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
 }
 
 .text {

@@ -1,13 +1,16 @@
 <template>
   <div id="app">
-    <div v-if="showLoadingPage" class="loading-page">
-      <div class="loading-stack" role="status" aria-live="polite">
-        <div class="loading-spinner" aria-hidden="true">
-          <span></span>
+    <transition name="loading-fade">
+      <div v-if="showLoadingPage" class="loading-page">
+        <div class="loading-stack" role="status" aria-live="polite">
+          <div class="loading-spinner" aria-hidden="true">
+            <span></span>
+          </div>
+          <div class="loading-label">Loading Node Chat</div>
         </div>
-        <div class="loading-label">Loading Node Chat</div>
       </div>
-    </div>
+    </transition>
+
     <ChatRoom
       v-if="user && user.displayName"
       :user="user"
@@ -183,7 +186,25 @@ onUnmounted(() => {
   padding: 24px;
   background: var(--bg);
   z-index: 20;
-  animation: loadingFadeIn 280ms ease-out both;
+}
+
+.loading-fade-enter-active {
+  transition:
+    opacity 240ms ease-out,
+    transform 240ms var(--ease-out-quint);
+}
+.loading-fade-leave-active {
+  transition:
+    opacity 220ms ease-in,
+    transform 220ms var(--ease-out-quint);
+}
+.loading-fade-enter-from {
+  opacity: 0;
+  transform: scale(1.01);
+}
+.loading-fade-leave-to {
+  opacity: 0;
+  transform: scale(0.985);
 }
 
 .loading-stack {

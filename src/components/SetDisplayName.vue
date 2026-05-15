@@ -174,11 +174,19 @@ async function submit() {
   font-size: 15px;
   font-family: "Satoshi", sans-serif;
   outline: none;
-  transition: border-color 180ms ease;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    background 180ms ease;
+}
+
+.field input:hover:not(:focus) {
+  border-color: rgba(44, 42, 39, 0.22);
 }
 
 .field input:focus {
   border-color: var(--accent);
+  box-shadow: var(--focus-ring);
 }
 
 .field input::placeholder {
@@ -199,16 +207,20 @@ async function submit() {
   margin-top: 8px;
   transition:
     opacity 180ms ease,
-    transform 180ms ease;
+    transform 180ms var(--ease-out-quint),
+    box-shadow 180ms ease;
 }
 
 .submit-btn:hover:not(:disabled) {
-  opacity: 0.92;
+  opacity: 0.94;
   transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(44, 42, 39, 0.18);
 }
 
 .submit-btn:active:not(:disabled) {
-  transform: translateY(0);
+  transform: translateY(0) scale(0.99);
+  box-shadow: 0 2px 6px rgba(44, 42, 39, 0.14);
+  transition-duration: 80ms;
 }
 
 .submit-btn:focus-visible {

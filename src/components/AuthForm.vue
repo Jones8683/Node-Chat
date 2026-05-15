@@ -430,12 +430,17 @@ async function submitSignup() {
   outline: none;
   transition:
     border-color 180ms ease,
-    transform 180ms ease,
+    box-shadow 180ms ease,
     background-color 180ms ease;
+}
+
+.field input:hover:not(:focus):not(:disabled) {
+  border-color: rgba(44, 42, 39, 0.22);
 }
 
 .field input:focus {
   border-color: var(--accent);
+  box-shadow: var(--focus-ring);
 }
 
 .field input:disabled {
@@ -513,16 +518,20 @@ async function submitSignup() {
   margin-top: 8px;
   transition:
     opacity 180ms ease,
-    transform 180ms ease;
+    transform 180ms var(--ease-out-quint),
+    box-shadow 180ms ease;
 }
 
 .submit-btn:hover:not(:disabled) {
-  opacity: 0.92;
+  opacity: 0.94;
   transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(44, 42, 39, 0.18);
 }
 
 .submit-btn:active:not(:disabled) {
-  transform: translateY(0);
+  transform: translateY(0) scale(0.99);
+  box-shadow: 0 2px 6px rgba(44, 42, 39, 0.14);
+  transition-duration: 80ms;
 }
 
 .submit-btn:focus-visible {
@@ -555,10 +564,22 @@ async function submitSignup() {
   background-clip: padding-box;
 }
 
+@keyframes errorIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .error {
   color: var(--danger);
   font-size: 13px;
   margin-top: 10px;
   text-align: center;
+  animation: errorIn 240ms var(--ease-out-quint) both;
 }
 </style>

@@ -1,12 +1,7 @@
 <template>
   <transition name="modal-fade" appear>
-    <div
-      v-if="isOpen"
-      class="modal-overlay"
-      @click="closeIfClickedOutside"
-      @keydown.esc="close"
-    >
-      <div class="modal-container" @keydown.esc="close">
+    <div v-if="isOpen" class="modal-overlay" @click="closeIfClickedOutside">
+      <div class="modal-container">
         <div class="modal-header">
           <h2 class="modal-title">Admin</h2>
           <button class="modal-close" @click="close">
@@ -437,28 +432,46 @@
           </div>
         </div>
 
-        <div
-          v-if="confirmAction.show"
-          class="confirmation-overlay"
-          @click="cancelConfirm"
-        >
-          <div class="confirmation-box" @click.stop>
-            <h3>{{ confirmAction.title }}</h3>
-            <p>{{ confirmAction.message }}</p>
-            <div class="confirmation-actions">
-              <button class="cancel-btn" @click="cancelConfirm">Cancel</button>
-              <button
-                class="danger-btn"
-                @click="confirmAction.confirm"
-                :disabled="confirmAction.loading"
-              >
-                {{
-                  confirmAction.loading ? "Processing..." : confirmAction.action
-                }}
-              </button>
+        <teleport to="body">
+          <transition name="confirm-pop">
+            <div
+              v-if="confirmAction.show"
+              class="confirmation-overlay"
+              @click="cancelConfirm"
+            >
+              <div class="confirmation-box" @click.stop>
+                <h3>{{ confirmAction.title }}</h3>
+                <p>{{ confirmAction.message }}</p>
+                <div
+                  class="confirmation-actions"
+                  :class="{
+                    'confirmation-actions--single': confirmAction.infoOnly,
+                  }"
+                >
+                  <template v-if="confirmAction.infoOnly">
+                    <button class="ok-btn" @click="cancelConfirm">OK</button>
+                  </template>
+                  <template v-else>
+                    <button class="cancel-btn" @click="cancelConfirm">
+                      Cancel
+                    </button>
+                    <button
+                      class="danger-btn"
+                      @click="confirmAction.confirm"
+                      :disabled="confirmAction.loading"
+                    >
+                      {{
+                        confirmAction.loading
+                          ? "Processing..."
+                          : confirmAction.action
+                      }}
+                    </button>
+                  </template>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+          </transition>
+        </teleport>
 
         <div v-if="copyFeedback" class="copy-feedback">Copied!</div>
       </div>
@@ -757,13 +770,34 @@ function queueAuditEvent(payload) {
 }
 
 function onKeyDown(e) {
-  if (e.key === "Escape") {
-    if (purgeDropdownOpen.value) {
-      purgeDropdownOpen.value = false;
-      return;
-    }
-    close();
+  if (e.key !== "Escape") return;
+  if (!props.isOpen) return;
+
+  // Priority order: dropdown -> confirm dialog -> editing username -> close panel.
+  if (purgeDropdownOpen.value) {
+    e.preventDefault();
+    e.stopPropagation();
+    purgeDropdownOpen.value = false;
+    return;
   }
+
+  if (confirmAction.value.show) {
+    e.preventDefault();
+    e.stopPropagation();
+    cancelConfirm();
+    return;
+  }
+
+  if (editingUserId.value !== null) {
+    e.preventDefault();
+    e.stopPropagation();
+    cancelEditUsername();
+    return;
+  }
+
+  e.preventDefault();
+  e.stopPropagation();
+  close();
 }
 
 function onOutsideClick(e) {
@@ -1615,11 +1649,21 @@ async function saveUsername(uid) {
   padding: 4px;
   display: flex;
   align-items: center;
-  transition: color 0.2s;
+  border-radius: 8px;
+  transition:
+    color 160ms ease,
+    background 160ms ease,
+    transform 160ms var(--ease-out-quint);
 }
 
 .modal-close:hover {
   color: var(--text);
+  background: var(--surface-2);
+}
+
+.modal-close:active {
+  transform: scale(0.9);
+  transition-duration: 80ms;
 }
 
 .modal-tabs {
@@ -1713,8 +1757,14 @@ async function saveUsername(uid) {
 }
 
 .action-btn:hover:not(:disabled) {
-  opacity: 0.85;
+  opacity: 0.92;
   transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+}
+.action-btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  transition-duration: 80ms;
 }
 .action-btn:disabled {
   opacity: 0.5;
@@ -2110,11 +2160,13 @@ async function saveUsername(uid) {
 .confirmation-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.45);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 300;
+  z-index: 500;
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
 }
 
 .confirmation-box {
@@ -2122,9 +2174,10 @@ async function saveUsername(uid) {
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 24px;
+  width: 100%;
   max-width: 360px;
-  width: calc(100% - 40px);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  margin: 0 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
 }
 
 .confirmation-box h3 {
@@ -2146,8 +2199,13 @@ async function saveUsername(uid) {
   gap: 10px;
 }
 
+.confirmation-actions--single {
+  justify-content: flex-end;
+}
+
 .cancel-btn,
-.danger-btn {
+.danger-btn,
+.ok-btn {
   flex: 1;
   border: none;
   border-radius: var(--radius);
@@ -2157,8 +2215,9 @@ async function saveUsername(uid) {
   font-family: "Satoshi", sans-serif;
   cursor: pointer;
   transition:
-    opacity 0.2s,
-    transform 180ms ease;
+    background 160ms ease,
+    opacity 160ms ease,
+    transform 160ms var(--ease-out-quint);
 }
 
 .cancel-btn {
@@ -2167,22 +2226,94 @@ async function saveUsername(uid) {
 }
 
 .cancel-btn:hover {
-  opacity: 0.8;
-  transform: translateY(-1px);
+  background: var(--border);
+}
+
+.cancel-btn:active {
+  transform: scale(0.98);
+  transition-duration: 80ms;
 }
 
 .danger-btn {
   background: var(--danger);
-  color: white;
+  color: #fff;
 }
 
 .danger-btn:hover:not(:disabled) {
-  opacity: 0.85;
-  transform: translateY(-1px);
+  opacity: 0.92;
 }
+
+.danger-btn:active:not(:disabled) {
+  opacity: 0.85;
+  transform: scale(0.98);
+  transition-duration: 80ms;
+}
+
 .danger-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.ok-btn {
+  flex: 0 0 auto;
+  min-width: 96px;
+  background: var(--text);
+  color: var(--bg);
+}
+
+.ok-btn:hover {
+  opacity: 0.92;
+}
+
+.ok-btn:active {
+  opacity: 0.85;
+  transform: scale(0.98);
+  transition-duration: 80ms;
+}
+
+.confirm-pop-enter-active {
+  transition:
+    opacity 180ms ease,
+    transform 220ms var(--ease-out-quint);
+}
+.confirm-pop-leave-active {
+  transition:
+    opacity 140ms ease,
+    transform 140ms ease;
+}
+.confirm-pop-enter-from {
+  opacity: 0;
+}
+.confirm-pop-leave-to {
+  opacity: 0;
+}
+.confirm-pop-enter-active .confirmation-box {
+  animation: confirmBoxIn 240ms var(--ease-out-quint) both;
+}
+.confirm-pop-leave-active .confirmation-box {
+  animation: confirmBoxOut 140ms ease both;
+}
+
+@keyframes confirmBoxIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes confirmBoxOut {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.98);
+  }
 }
 
 .copy-feedback {
@@ -2679,8 +2810,11 @@ async function saveUsername(uid) {
 }
 
 .purge-btn:hover:not(:disabled) {
-  opacity: 0.85;
-  transform: translateY(-1px);
+  opacity: 0.88;
+}
+
+.purge-btn:active:not(:disabled) {
+  opacity: 0.78;
 }
 
 .purge-btn:disabled {
