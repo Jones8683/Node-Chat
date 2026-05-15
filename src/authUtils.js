@@ -80,15 +80,20 @@ export async function validateInviteToken(token) {
 async function consumeInviteToken(token, uid) {
   const path = `invites/${token}`;
   const now = Date.now();
-  const result = await runTransaction(dbRef(db, path), (current) => {
-    if (!current) return;
-    if (current.used) return;
-    if ((current.expiresAt || 0) < now) return;
-    return { ...current, used: true, usedAt: now, usedByUid: uid };
+  // First mark the invite as used (matches the security rule's
+  // used:false -> used:true transition) so that the subsequent remove
+  // is permitted by the !newData.exists() branch of the rule.
+  const snap = await get(dbRef(db, path));
+  if (!snap.exists()) throw new Error("Invite not found.");
+  const current = snap.val();
+  if (current.used) throw new Error("Invite already used.");
+  if ((current.expiresAt || 0) < now) throw new Error("Invite expired.");
+  await set(dbRef(db, path), {
+    ...current,
+    used: true,
+    usedAt: now,
+    usedByUid: uid,
   });
-  if (!result.committed) {
-    throw new Error("Invite already used or expired.");
-  }
   try {
     await remove(dbRef(db, path));
   } catch (e) {}

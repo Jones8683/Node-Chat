@@ -429,11 +429,6 @@ async function submitSignup() {
   margin-bottom: 5px;
 }
 
-.char-count {
-  font-weight: 400;
-  color: var(--text-muted);
-}
-
 .field input {
   width: 100%;
   background: var(--bg);
