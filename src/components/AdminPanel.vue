@@ -773,7 +773,7 @@ function onKeyDown(e) {
   if (e.key !== "Escape") return;
   if (!props.isOpen) return;
 
-  // Priority order: dropdown -> confirm dialog -> editing username -> close panel.
+  
   if (purgeDropdownOpen.value) {
     e.preventDefault();
     e.stopPropagation();

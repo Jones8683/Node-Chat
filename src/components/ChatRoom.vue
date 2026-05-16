@@ -553,17 +553,6 @@
               <span class="char-warning" v-if="newMessage.length > 9000">{{
                 10000 - newMessage.length
               }}</span>
-              <button
-                @mousedown.prevent
-                @click="sendMessage"
-                class="send-btn"
-                :disabled="
-                  !newMessage.trim() || isMuted || (chatLocked && !isAdmin)
-                "
-                aria-label="Send message"
-              >
-                <Send :size="15" stroke-width="2" />
-              </button>
             </div>
           </div>
         </div>
@@ -706,7 +695,6 @@ import {
   ShieldCheck,
   Settings2,
   LogOut,
-  Send,
   Crown,
   Copy,
   Check,
@@ -1026,7 +1014,6 @@ function closeAttachMenu() {
 
 function handleCreatePoll() {
   closeAttachMenu();
-  // Coming soon — poll creation will be implemented in a future update.
 }
 
 async function ensureEmojiReady() {
@@ -3643,7 +3630,7 @@ async function logout() {
 
 .input-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   padding: 10px 12px;
   gap: 8px;
 }
@@ -3657,7 +3644,7 @@ textarea {
   font-family: "Satoshi", sans-serif;
   background: transparent;
   color: var(--text);
-  padding: 0;
+  padding: 4px 0 0;
   line-height: 1.4;
   resize: none;
   min-height: 22px;
@@ -3677,39 +3664,6 @@ textarea::placeholder {
   flex-shrink: 0;
   align-self: flex-end;
   padding-bottom: 2px;
-}
-
-.send-btn {
-  background: var(--surface-2);
-  border: none;
-  cursor: pointer;
-  color: var(--text);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 999px;
-  padding: 0;
-  transition:
-    background 120ms ease,
-    color 120ms ease;
-  flex-shrink: 0;
-}
-
-.send-btn:hover:not(:disabled) {
-  background: rgba(44, 42, 39, 0.08);
-}
-
-.send-btn:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
-}
-
-.send-btn:disabled {
-  cursor: default;
-  color: var(--text-muted);
-  opacity: 0.6;
 }
 
 .attach-wrap {

@@ -23,7 +23,7 @@
   --dur-fast: 120ms;
   --dur-base: 180ms;
   --dur-slow: 280ms;
-  --focus-ring: 0 0 0 3px rgba(90, 90, 240, 0.22);
+  --focus-ring: none;
 }
 
 button,
