@@ -496,6 +496,37 @@
               ref="inputRowRef"
               @mousedown.prevent="focusComposer"
             >
+              <div class="attach-wrap" ref="attachWrapRef">
+                <transition name="attach-menu">
+                  <div v-if="attachMenuVisible" class="attach-menu" role="menu">
+                    <button
+                      type="button"
+                      class="attach-menu-item"
+                      role="menuitem"
+                      @mousedown.prevent
+                      @click="handleCreatePoll"
+                    >
+                      <span class="attach-menu-icon">
+                        <ChartBarBig :size="18" stroke-width="2.2" />
+                      </span>
+
+                      <span class="attach-menu-label">Create Poll</span>
+                    </button>
+                  </div>
+                </transition>
+                <button
+                  type="button"
+                  class="attach-btn"
+                  :class="{ open: attachMenuVisible }"
+                  :disabled="isMuted || (chatLocked && !isAdmin)"
+                  aria-label="Open attachment menu"
+                  :aria-expanded="attachMenuVisible"
+                  @mousedown.prevent
+                  @click="toggleAttachMenu"
+                >
+                  <Plus :size="20" stroke-width="2.4" />
+                </button>
+              </div>
               <textarea
                 ref="composerRef"
                 v-model="newMessage"
@@ -529,6 +560,7 @@
                 :disabled="
                   !newMessage.trim() || isMuted || (chatLocked && !isAdmin)
                 "
+                aria-label="Send message"
               >
                 <Send :size="15" stroke-width="2" />
               </button>
@@ -686,7 +718,10 @@ import {
   CornerUpLeft,
   X,
   ShieldAlert,
+  Plus,
+  ChartBarBig,
 } from "lucide-vue-next";
+
 import {
   ref as dbRef,
   push,
@@ -976,6 +1011,23 @@ const mentionVisible = ref(false);
 const mentionPickerRef = ref(null);
 const activeMentionTarget = ref(null);
 let mentionQueryStart = -1;
+
+const attachMenuVisible = ref(false);
+const attachWrapRef = ref(null);
+
+function toggleAttachMenu() {
+  if (isMuted.value || (chatLocked.value && !isAdmin.value)) return;
+  attachMenuVisible.value = !attachMenuVisible.value;
+}
+
+function closeAttachMenu() {
+  attachMenuVisible.value = false;
+}
+
+function handleCreatePoll() {
+  closeAttachMenu();
+  // Coming soon — poll creation will be implemented in a future update.
+}
 
 async function ensureEmojiReady() {
   if (emojiReady && emojiSearchIndex) return true;
@@ -1803,6 +1855,13 @@ function handleClickOutside(e) {
   if (menuRef.value && !menuRef.value.contains(e.target)) {
     showDropdown.value = false;
   }
+  if (
+    attachMenuVisible.value &&
+    attachWrapRef.value &&
+    !attachWrapRef.value.contains(e.target)
+  ) {
+    attachMenuVisible.value = false;
+  }
 }
 
 function handleGlobalKeydown(e) {
@@ -1828,6 +1887,12 @@ function handleGlobalKeydown(e) {
     e.preventDefault();
     e.stopPropagation();
     cancelDelete();
+    return;
+  }
+
+  if (attachMenuVisible.value) {
+    e.preventDefault();
+    attachMenuVisible.value = false;
     return;
   }
 
@@ -3557,8 +3622,9 @@ async function logout() {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 14px;
-  overflow: hidden;
   flex-shrink: 0;
+  position: relative;
+  z-index: 1;
   box-shadow: 0 4px 12px rgba(20, 20, 20, 0.03);
   transition:
     border-color 0.15s,
@@ -3626,21 +3692,13 @@ textarea::placeholder {
   border-radius: 999px;
   padding: 0;
   transition:
-    background 160ms ease,
-    transform 160ms var(--ease-out-quint),
-    color 160ms ease,
-    box-shadow 160ms ease;
+    background 120ms ease,
+    color 120ms ease;
   flex-shrink: 0;
 }
 
-.send-btn:hover {
+.send-btn:hover:not(:disabled) {
   background: rgba(44, 42, 39, 0.08);
-  transform: translateY(-1px);
-}
-
-.send-btn:active:not(:disabled) {
-  transform: translateY(0) scale(0.92);
-  background: rgba(44, 42, 39, 0.12);
 }
 
 .send-btn:focus-visible {
@@ -3654,9 +3712,144 @@ textarea::placeholder {
   opacity: 0.6;
 }
 
-.send-btn:disabled:hover {
+.attach-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.attach-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  padding: 0;
+  flex-shrink: 0;
+  transition:
+    background 140ms ease,
+    color 140ms ease;
+}
+
+.attach-btn:hover:not(:disabled) {
   background: var(--surface-2);
-  transform: none;
+  color: var(--text);
+}
+
+.attach-btn.open {
+  color: var(--text);
+}
+
+.attach-btn :deep(svg) {
+  transition: transform 240ms var(--ease-out-quint);
+}
+
+.attach-btn.open :deep(svg) {
+  transform: rotate(45deg);
+}
+
+.attach-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.attach-btn:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.attach-menu {
+  position: absolute;
+  bottom: calc(100% - 2px);
+  left: -6px;
+  min-width: 220px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 6px;
+  box-shadow:
+    0 12px 36px rgba(0, 0, 0, 0.14),
+    0 2px 8px rgba(0, 0, 0, 0.06);
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.attach-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  padding: 9px 10px;
+  color: var(--text);
+  font-family: "Satoshi", sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background 140ms ease,
+    color 140ms ease;
+}
+
+.attach-menu-item:hover,
+.attach-menu-item:focus-visible {
+  background: var(--surface-2);
+  outline: none;
+}
+
+.attach-menu-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  transition: color 140ms ease;
+}
+
+.attach-menu-item:hover .attach-menu-icon {
+  color: var(--text);
+}
+
+.attach-menu-label {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.attach-menu-enter-active {
+  transition:
+    opacity 0.16s ease,
+    transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: bottom left;
+}
+.attach-menu-leave-active {
+  transition:
+    opacity 0.12s ease,
+    transform 0.12s ease;
+  transform-origin: bottom left;
+}
+.attach-menu-enter-from {
+  opacity: 0;
+  transform: translateY(6px) scale(0.94);
+}
+.attach-menu-leave-to {
+  opacity: 0;
+  transform: translateY(4px) scale(0.97);
 }
 
 .online-btn {

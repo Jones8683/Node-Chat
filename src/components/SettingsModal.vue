@@ -691,11 +691,21 @@ async function changePassword() {
   padding: 4px;
   display: flex;
   align-items: center;
-  transition: color 0.2s;
+  border-radius: 8px;
+  transition:
+    color 160ms ease,
+    background 160ms ease,
+    transform 160ms var(--ease-out-quint);
 }
 
 .modal-close:hover {
   color: var(--text);
+  background: var(--surface-2);
+}
+
+.modal-close:active {
+  transform: scale(0.9);
+  transition-duration: 80ms;
 }
 
 .modal-close:focus-visible,
