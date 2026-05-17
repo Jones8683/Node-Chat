@@ -2931,9 +2931,13 @@ async function copyMessageText(item) {
 
 function startReply(item) {
   cancelEdit();
+  const replyText =
+    item?.type === "poll"
+      ? item.pollQuestion || item.text || ""
+      : item.text || "";
   const snapshot = {
     id: item.id,
-    text: item.text || "",
+    text: replyText,
     displayName: resolveDisplayName(item.uid, item.displayName),
     uid: item.uid,
     avatarColor: item.avatarColor || null,
