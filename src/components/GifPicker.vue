@@ -371,7 +371,6 @@ async function fetchCategories() {
     if (!res.ok) return;
     const json = await res.json();
     const list = (json?.data || [])
-      .slice(0, 10)
       .map((c) => ({
         name: c.name,
         image:
@@ -438,6 +437,12 @@ watch(
       loadForCurrentQuery();
     } else {
       persistScroll();
+      // Reset picker back to home (trending + recents/categories) so the
+      // next time it opens it doesn't restore the previous search state.
+      clearTimeout(searchDebounce);
+      query.value = "";
+      lastCacheKey = null;
+      if (resultsRef.value) resultsRef.value.scrollTop = 0;
     }
   },
 );
