@@ -1074,7 +1074,6 @@ const emit = defineEmits(["ready", "open-settings", "open-admin"]);
 const messages = ref([]);
 const isAtBottom = ref(true);
 const showJumpButton = ref(false);
-const animatingIds = ref(new Set());
 const scrollUnread = ref(0);
 const isScrollingSmooth = ref(false);
 const SHOW_JUMP_THRESHOLD = 300;
@@ -1228,7 +1227,6 @@ const groupedMessages = computed(() => {
       !!msg.replyTo;
     result.push({
       ...msg,
-      kind: "message",
       type: msg.type || "message",
       isGroupStart,
     });
@@ -1307,7 +1305,6 @@ let usersListener = null;
 let lockListener = null;
 let muteListener = null;
 let allMutedUsersListener = null;
-let animationClearTimer = null;
 let copyResetTimer = null;
 
 const chatLocked = ref(false);
@@ -1378,30 +1375,21 @@ const viewVotesData = computed(() => {
   );
   if (!message) return null;
 
-  const options = getPollOptions(message).map((opt) => {
-    const voterUids = getPollVotersForOption(message, opt.key);
-    return {
-      key: opt.key,
-      label: opt.label,
-      votes: opt.votes,
-      percent: opt.percent,
-      iVoted: opt.iVoted,
-      isLeading: opt.isLeading,
-      voters: voterUids.map((uid) => ({
-        uid,
-        displayName: resolveDisplayName(uid, "Unknown"),
-        avatarColor: resolveAvatarColor(uid, null),
-        isMe: uid === props.user.uid,
-      })),
-    };
-  });
+  const options = getPollOptions(message).map((opt) => ({
+    key: opt.key,
+    label: opt.label,
+    votes: opt.votes,
+    percent: opt.percent,
+    voters: getPollVotersForOption(message, opt.key).map((uid) => ({
+      uid,
+      displayName: resolveDisplayName(uid, "Unknown"),
+      avatarColor: resolveAvatarColor(uid, null),
+    })),
+  }));
 
   return {
     question: message.pollQuestion,
-    multi: !!message.pollMulti,
-    closed: isPollClosed(message),
     totalVoters: pollTotalVoters(message),
-    totalVotes: pollTotalVotes(message),
     options,
   };
 });
@@ -1648,15 +1636,9 @@ function getPollOptions(message) {
   );
   const maxVotes = optionVoteCounts.length ? Math.max(...optionVoteCounts) : 0;
 
-  return optionKeys.map((key, idx) => {
-    const voters = getPollVotersForOption(message, key);
-    const votes = voters.length;
+  return optionKeys.map((key) => {
+    const votes = getPollVotersForOption(message, key).length;
     const percent = totalVotes > 0 ? Math.round((votes / totalVotes) * 100) : 0;
-    const voterPreviews = voters.slice(0, 3).map((uid) => ({
-      uid,
-      displayName: resolveDisplayName(uid, "?"),
-      avatarColor: resolveAvatarColor(uid, null),
-    }));
     return {
       key,
       label: raw[key],
@@ -1664,7 +1646,6 @@ function getPollOptions(message) {
       percent,
       iVoted: !!myVotes[key],
       isLeading: votes > 0 && votes === maxVotes,
-      voterPreviews,
     };
   });
 }
@@ -2511,6 +2492,7 @@ function messageMentionsCurrentUser(message) {
 }
 
 function isMessagePing(message) {
+  if (!message || message.uid === props.user.uid) return false;
   return (
     message.replyTo?.uid === props.user.uid ||
     messageMentionsCurrentUser(message)
@@ -2522,10 +2504,6 @@ function handleAppForeground() {
   unreadCount = 0;
   document.title = "Node Chat";
   clearBadge();
-}
-
-function handleVisibilityChange() {
-  handleAppForeground();
 }
 
 function handleClickOutside(e) {
@@ -2609,13 +2587,15 @@ function openAdmin() {
   emit("open-admin");
 }
 
-async function handleTyping() {
+function handleTyping() {
   if (!myTypingRef) return;
   if (chatLocked.value && !isAdmin.value) return;
   if (isMuted.value) return;
-  set(myTypingRef, { displayName: props.user.displayName });
+  set(myTypingRef, { displayName: props.user.displayName }).catch(() => {});
   clearTimeout(typingTimeout);
-  typingTimeout = setTimeout(() => remove(myTypingRef), 2000);
+  typingTimeout = setTimeout(() => {
+    if (myTypingRef) remove(myTypingRef).catch(() => {});
+  }, 2000);
 }
 
 function focusComposer() {
@@ -2717,13 +2697,9 @@ function subscribeMessages() {
         sorted.forEach((msg) => knownIds.add(msg.id));
         initialLoadDone = true;
       } else {
-        const newAnimIds = new Set();
         sorted.forEach((msg) => {
           if (!knownIds.has(msg.id)) {
             knownIds.add(msg.id);
-            if (!isPagingHistory && !document.hidden && wasNearBottom) {
-              newAnimIds.add(msg.id);
-            }
             if (!isPagingHistory) {
               const appBackgrounded = document.hidden || !document.hasFocus();
               if (document.hidden) {
@@ -2769,13 +2745,6 @@ function subscribeMessages() {
             }
           }
         });
-        if (newAnimIds.size > 0) {
-          clearTimeout(animationClearTimer);
-          animatingIds.value = newAnimIds;
-          animationClearTimer = setTimeout(() => {
-            animatingIds.value = new Set();
-          }, 500);
-        }
       }
 
       messages.value = sorted;
@@ -2838,7 +2807,7 @@ onMounted(async () => {
       await ensureNotificationPermission();
     } catch {}
   }
-  document.addEventListener("visibilitychange", handleVisibilityChange);
+  document.addEventListener("visibilitychange", handleAppForeground);
   window.addEventListener("focus", handleAppForeground);
   document.addEventListener("click", handleClickOutside);
   document.addEventListener("keydown", handleGlobalKeydown);
@@ -2917,26 +2886,27 @@ onMounted(async () => {
 
 onUnmounted(() => {
   stopLiveNowTicker();
-  document.removeEventListener("visibilitychange", handleVisibilityChange);
+  document.removeEventListener("visibilitychange", handleAppForeground);
   window.removeEventListener("focus", handleAppForeground);
   document.removeEventListener("click", handleClickOutside);
   document.removeEventListener("keydown", handleGlobalKeydown);
   messageContainer.value?.removeEventListener("scroll", handleMessageScroll);
+  headerRef.value?.removeEventListener("wheel", forwardWheelToMessages);
+  typingAreaRef.value?.removeEventListener("wheel", forwardWheelToMessages);
+  inputRowRef.value?.removeEventListener("wheel", forwardWheelToMessages);
   clearTimeout(typingTimeout);
+  clearTimeout(copyResetTimer);
+  clearTimeout(slurWarningTimer);
   if (messagesListener) messagesListener();
   if (typingListener) typingListener();
   if (presenceListener) presenceListener();
   if (ownerListener) ownerListener();
   if (adminsListener) adminsListener();
   if (usersListener) usersListener();
-  if (myTypingRef) remove(myTypingRef);
   if (lockListener) lockListener();
   if (muteListener) muteListener();
   if (allMutedUsersListener) allMutedUsersListener();
-  headerRef.value?.removeEventListener("wheel", forwardWheelToMessages);
-  typingAreaRef.value?.removeEventListener("wheel", forwardWheelToMessages);
-  inputRowRef.value?.removeEventListener("wheel", forwardWheelToMessages);
-  clearTimeout(copyResetTimer);
+  if (myTypingRef) remove(myTypingRef).catch(() => {});
   stopPresence();
 });
 
@@ -3156,7 +3126,7 @@ async function sendMessage() {
   newMessage.value = "";
   nextTick(resizeComposer);
   clearTimeout(typingTimeout);
-  if (myTypingRef) remove(myTypingRef);
+  if (myTypingRef) remove(myTypingRef).catch(() => {});
   totalCount++;
   shouldScrollToBottom = true;
   const replySnapshot = replyingTo.value ? { ...replyingTo.value } : null;
@@ -3264,39 +3234,6 @@ async function logout() {
   display: flex;
   align-items: center;
   gap: 4px;
-  flex-shrink: 0;
-}
-
-.online-btn {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 6px 10px;
-  border-radius: var(--radius);
-  color: var(--text-muted);
-  font-family: "Satoshi", sans-serif;
-  font-size: 13px;
-  font-weight: 500;
-  transition: all 0.15s;
-}
-
-.online-btn:hover {
-  background: var(--surface-2);
-  color: var(--text);
-}
-
-.online-btn.active {
-  background: var(--surface-2);
-}
-
-.online-btn-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #22c55e;
   flex-shrink: 0;
 }
 
@@ -4679,21 +4616,6 @@ textarea::placeholder {
   flex-shrink: 0;
   position: relative;
   letter-spacing: 0.3px;
-}
-
-.online-avatar-dot {
-  position: absolute;
-  bottom: -1px;
-  right: -1px;
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
-  background: #3ba55c;
-  border: 2px solid var(--surface);
-}
-
-.online-item--you .online-avatar-dot {
-  border-color: var(--bg);
 }
 
 .online-item-name {
