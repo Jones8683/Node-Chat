@@ -42,6 +42,14 @@
           "$uid": {
             ".write": "auth != null && (data.parent().parent().child('uid').val() === auth.uid || root.child('admins').child(auth.uid).val() === true || root.child('owner').val() === auth.uid)"
           }
+        },
+        "pollVotes": {
+          "$voterUid": {
+            ".write": "auth != null && $voterUid === auth.uid && data.parent().parent().child('type').val() === 'poll' && data.parent().parent().child('pollClosed').val() !== true && root.child('muted').child(auth.uid).val() !== true"
+          }
+        },
+        "pollClosed": {
+          ".write": "auth != null && (data.parent().child('uid').val() === auth.uid || root.child('admins').child(auth.uid).val() === true || root.child('owner').val() === auth.uid)"
         }
       }
     },

@@ -272,6 +272,101 @@
 
                   <template v-else>
                     <div
+                      v-if="item.type === 'poll'"
+                      class="msg-body msg-body--poll"
+                    >
+                      <div
+                        class="poll-card"
+                        :class="{ 'poll-card--closed': isPollClosed(item) }"
+                      >
+                        <div class="poll-card-header">
+                          <span class="poll-card-eyebrow">
+                            <ChartBarBig :size="12" stroke-width="2.4" />
+                            {{ isPollClosed(item) ? "Poll ended" : "Poll" }}
+                          </span>
+                          <span
+                            v-if="item.pollMulti"
+                            class="poll-card-tag"
+                            title="Multiple answers allowed"
+                            >Multiple choice</span
+                          >
+                        </div>
+                        <h4 class="poll-question">{{ item.pollQuestion }}</h4>
+                        <div class="poll-options">
+                          <button
+                            v-for="opt in getPollOptions(item)"
+                            :key="opt.key"
+                            type="button"
+                            class="poll-option"
+                            :class="{
+                              'poll-option--voted': opt.iVoted,
+                              'poll-option--leading':
+                                opt.isLeading && pollTotalVotes(item) > 0,
+                              'poll-option--closed': isPollClosed(item),
+                            }"
+                            :disabled="
+                              isPollClosed(item) ||
+                              isMuted ||
+                              (chatLocked && !isAdmin)
+                            "
+                            @click="togglePollVote(item, opt.key)"
+                          >
+                            <span
+                              class="poll-option-fill"
+                              :style="{ width: opt.percent + '%' }"
+                            ></span>
+                            <span class="poll-option-content">
+                              <span class="poll-option-check">
+                                <Check
+                                  v-if="opt.iVoted"
+                                  :size="11"
+                                  stroke-width="3.2"
+                                />
+                              </span>
+                              <span class="poll-option-label">{{
+                                opt.label
+                              }}</span>
+                              <span class="poll-option-stats">
+                                <span class="poll-option-votes"
+                                  >{{ opt.votes }}
+                                  {{ opt.votes === 1 ? "vote" : "votes" }}</span
+                                >
+                                <span class="poll-option-percent"
+                                  >{{ opt.percent }}%</span
+                                >
+                              </span>
+                            </span>
+                          </button>
+                        </div>
+                        <div class="poll-card-footer">
+                          <button
+                            v-if="pollTotalVoters(item) > 0"
+                            type="button"
+                            class="poll-total poll-total--btn"
+                            @click="openViewVotes(item)"
+                          >
+                            {{ pollTotalVoters(item) }}
+                            {{ pollTotalVoters(item) === 1 ? "vote" : "votes" }}
+                          </button>
+                          <span v-else class="poll-total">
+                            {{ pollTotalVoters(item) }}
+                            {{ pollTotalVoters(item) === 1 ? "vote" : "votes" }}
+                          </span>
+                          <span
+                            v-if="item.pollExpiresAt"
+                            class="poll-time-remaining"
+                            :class="{
+                              'poll-time-remaining--ended': isPollClosed(item),
+                            }"
+                          >
+                            <span class="poll-time-dot"></span>
+                            {{ formatPollTimeRemaining(item) }}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div
+                      v-else
                       class="msg-body"
                       :class="{ 'msg-body--emoji': isEmojiOnly(item.text) }"
                       @dblclick="startReply(item)"
@@ -285,6 +380,7 @@
                     </div>
                     <div class="msg-actions">
                       <button
+                        v-if="item.type !== 'poll'"
                         class="msg-action-btn"
                         :class="{ active: copiedMessageId === item.id }"
                         @click="copyMessageText(item)"
@@ -302,7 +398,7 @@
                         <Copy v-else :size="15" stroke-width="2" />
                       </button>
                       <button
-                        v-if="item.uid === user.uid"
+                        v-if="item.uid === user.uid && item.type !== 'poll'"
                         class="msg-action-btn"
                         @click="startEdit(item)"
                         title="Edit"
@@ -664,25 +760,261 @@
     </div>
 
     <teleport to="body">
-      <div
-        v-if="deleteDialog.show"
-        class="delete-overlay"
-        @click="cancelDelete"
-      >
-        <div class="delete-box" @click.stop>
-          <h3>Delete Message?</h3>
-          <p>
-            Delete <strong>{{ deleteDialog.name }}</strong
-            >'s message? This cannot be undone.
-          </p>
-          <div class="delete-actions">
-            <button class="del-cancel-btn" @click="cancelDelete">Cancel</button>
-            <button class="del-confirm-btn" @click="confirmDelete">
-              Delete
-            </button>
+      <transition name="modal-fade">
+        <div
+          v-if="deleteDialog.show"
+          class="delete-overlay"
+          @click="cancelDelete"
+        >
+          <div class="delete-box" @click.stop>
+            <h3>Delete Message?</h3>
+            <p>
+              Delete <strong>{{ deleteDialog.name }}</strong
+              >'s message? This cannot be undone.
+            </p>
+            <div class="delete-actions">
+              <button class="del-cancel-btn" @click="cancelDelete">
+                Cancel
+              </button>
+              <button class="del-confirm-btn" @click="confirmDelete">
+                Delete
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      </transition>
+
+      <transition name="modal-fade">
+        <div
+          v-if="pollDialog.show"
+          class="poll-overlay"
+          @click="cancelPollDialog"
+        >
+          <div class="poll-modal" @click.stop>
+            <div class="poll-modal-head">
+              <h3 class="poll-modal-title">Create a Poll</h3>
+              <button
+                type="button"
+                class="poll-modal-close"
+                @click="cancelPollDialog"
+                aria-label="Close"
+              >
+                <X :size="18" stroke-width="2.2" />
+              </button>
+            </div>
+
+            <div class="poll-section">
+              <label class="poll-section-label" for="poll-question-input"
+                >Question</label
+              >
+              <div class="poll-input-wrap">
+                <input
+                  id="poll-question-input"
+                  ref="pollQuestionRef"
+                  v-model="pollDialog.question"
+                  type="text"
+                  class="poll-text-input"
+                  placeholder="What question do you want to ask?"
+                  maxlength="300"
+                  @keydown.enter.prevent="submitPoll"
+                  @keydown.escape="cancelPollDialog"
+                />
+              </div>
+              <span class="poll-char-count"
+                >{{ pollDialog.question.length }} / 300</span
+              >
+            </div>
+
+            <div class="poll-section">
+              <label class="poll-section-label">Answers</label>
+              <div class="poll-answer-rows">
+                <div
+                  v-for="(opt, idx) in pollDialog.options"
+                  :key="idx"
+                  class="poll-answer-row"
+                >
+                  <input
+                    v-model="pollDialog.options[idx]"
+                    type="text"
+                    class="poll-text-input poll-text-input--answer"
+                    placeholder="Type your answer"
+                    maxlength="80"
+                    @keydown.enter.prevent="handleAnswerEnter(idx)"
+                    @keydown.escape="cancelPollDialog"
+                  />
+                  <button
+                    v-if="pollDialog.options.length > 2"
+                    type="button"
+                    class="poll-answer-remove"
+                    @click="removePollOption(idx)"
+                    aria-label="Remove answer"
+                  >
+                    <Trash2 :size="18" stroke-width="2" />
+                  </button>
+                </div>
+              </div>
+              <div class="poll-add-answer-wrap">
+                <button
+                  v-if="pollDialog.options.length < POLL_MAX_OPTIONS"
+                  type="button"
+                  class="poll-add-answer-btn"
+                  @click="addPollOption"
+                >
+                  <Plus :size="14" stroke-width="2.6" />
+                  Add another answer
+                </button>
+              </div>
+            </div>
+
+            <div class="poll-section">
+              <label class="poll-section-label">Duration</label>
+              <div class="poll-duration-wrap" ref="pollDurationRef">
+                <button
+                  type="button"
+                  class="poll-duration-btn"
+                  :class="{ open: pollDialog.durationOpen }"
+                  @click="togglePollDurationDropdown"
+                >
+                  <span>{{
+                    getPollDurationLabel(pollDialog.durationHours)
+                  }}</span>
+                  <ChevronDown
+                    :size="16"
+                    stroke-width="2.4"
+                    class="poll-duration-chevron"
+                  />
+                </button>
+                <transition name="poll-duration-menu">
+                  <div
+                    v-if="pollDialog.durationOpen"
+                    class="poll-duration-menu"
+                    role="listbox"
+                  >
+                    <button
+                      v-for="d in POLL_DURATIONS"
+                      :key="d.hours"
+                      type="button"
+                      class="poll-duration-item"
+                      :class="{
+                        active: pollDialog.durationHours === d.hours,
+                      }"
+                      role="option"
+                      @click="setPollDuration(d.hours)"
+                    >
+                      <span>{{ d.label }}</span>
+                      <Check
+                        v-if="pollDialog.durationHours === d.hours"
+                        :size="14"
+                        stroke-width="2.8"
+                      />
+                    </button>
+                  </div>
+                </transition>
+              </div>
+            </div>
+
+            <div class="poll-modal-footer">
+              <div
+                class="poll-switch-row"
+                @click="pollDialog.multi = !pollDialog.multi"
+              >
+                <span class="poll-switch-label">Allow multiple answers</span>
+                <button
+                  type="button"
+                  class="toggle-btn"
+                  :class="{ active: pollDialog.multi }"
+                  :aria-pressed="pollDialog.multi"
+                  aria-label="Allow multiple answers"
+                  @click.stop="pollDialog.multi = !pollDialog.multi"
+                >
+                  <span class="toggle-thumb"></span>
+                </button>
+              </div>
+              <button
+                type="button"
+                class="poll-post-btn"
+                :disabled="!canSubmitPoll || pollSubmitting"
+                @click="submitPoll"
+              >
+                {{ pollSubmitting ? "Posting..." : "Post" }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </transition>
+
+      <transition name="modal-fade">
+        <div
+          v-if="viewVotesDialog.show && viewVotesData"
+          class="view-votes-overlay"
+          @click="closeViewVotes"
+        >
+          <div class="view-votes-modal" @click.stop>
+            <div class="view-votes-head">
+              <div class="view-votes-head-text">
+                <h3 class="view-votes-title">{{ viewVotesData.question }}</h3>
+                <span class="view-votes-subtitle">
+                  {{ viewVotesData.totalVoters }}
+                  {{ viewVotesData.totalVoters === 1 ? "voter" : "voters" }}
+                </span>
+              </div>
+              <button
+                type="button"
+                class="poll-modal-close"
+                @click="closeViewVotes"
+                aria-label="Close"
+              >
+                <X :size="18" stroke-width="2.2" />
+              </button>
+            </div>
+
+            <div class="view-votes-list">
+              <div
+                v-for="opt in viewVotesData.options"
+                :key="opt.key"
+                class="view-votes-section"
+              >
+                <div class="view-votes-section-head">
+                  <span class="view-votes-section-label">{{ opt.label }}</span>
+                  <span class="view-votes-section-count">
+                    {{ opt.votes }}
+                    {{ opt.votes === 1 ? "vote" : "votes" }}
+                  </span>
+                </div>
+                <div class="view-votes-bar-track">
+                  <div
+                    class="view-votes-bar-fill"
+                    :style="{ width: opt.percent + '%' }"
+                  ></div>
+                </div>
+                <div v-if="opt.voters.length" class="view-votes-voters">
+                  <div
+                    v-for="voter in opt.voters"
+                    :key="voter.uid"
+                    class="view-votes-voter"
+                  >
+                    <div
+                      class="view-votes-voter-avatar"
+                      :style="
+                        getAvatarStyle(
+                          voter.displayName,
+                          voter.uid,
+                          voter.avatarColor,
+                        )
+                      "
+                    >
+                      {{ getAvatarInitial(voter.displayName, voter.uid) }}
+                    </div>
+                    <span class="view-votes-voter-name">{{
+                      voter.displayName
+                    }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </transition>
     </teleport>
   </div>
 </template>
@@ -894,7 +1226,12 @@ const groupedMessages = computed(() => {
       msg.timestamp - prev.timestamp > GROUP_TIMEOUT ||
       crossedDate ||
       !!msg.replyTo;
-    result.push({ ...msg, type: "message", isGroupStart });
+    result.push({
+      ...msg,
+      kind: "message",
+      type: msg.type || "message",
+      isGroupStart,
+    });
   });
   return result;
 });
@@ -1003,6 +1340,153 @@ let mentionQueryStart = -1;
 const attachMenuVisible = ref(false);
 const attachWrapRef = ref(null);
 
+const POLL_MAX_OPTIONS = 6;
+const POLL_MIN_OPTIONS = 2;
+const POLL_DURATIONS = [
+  { hours: 1, label: "1 hour" },
+  { hours: 4, label: "4 hours" },
+  { hours: 8, label: "8 hours" },
+  { hours: 24, label: "24 hours" },
+  { hours: 72, label: "3 days" },
+  { hours: 168, label: "1 week" },
+];
+const POLL_DEFAULT_DURATION_HOURS = 24;
+
+function makeBlankPollDialog() {
+  return {
+    show: false,
+    question: "",
+    options: ["", ""],
+    multi: false,
+    durationHours: POLL_DEFAULT_DURATION_HOURS,
+    durationOpen: false,
+  };
+}
+
+const pollDialog = ref(makeBlankPollDialog());
+const pollSubmitting = ref(false);
+const pollQuestionRef = ref(null);
+const pollDurationRef = ref(null);
+
+const viewVotesDialog = ref({ show: false, messageId: null });
+
+const viewVotesData = computed(() => {
+  if (!viewVotesDialog.value.show || !viewVotesDialog.value.messageId)
+    return null;
+  const message = messages.value.find(
+    (m) => m.id === viewVotesDialog.value.messageId,
+  );
+  if (!message) return null;
+
+  const options = getPollOptions(message).map((opt) => {
+    const voterUids = getPollVotersForOption(message, opt.key);
+    return {
+      key: opt.key,
+      label: opt.label,
+      votes: opt.votes,
+      percent: opt.percent,
+      iVoted: opt.iVoted,
+      isLeading: opt.isLeading,
+      voters: voterUids.map((uid) => ({
+        uid,
+        displayName: resolveDisplayName(uid, "Unknown"),
+        avatarColor: resolveAvatarColor(uid, null),
+        isMe: uid === props.user.uid,
+      })),
+    };
+  });
+
+  return {
+    question: message.pollQuestion,
+    multi: !!message.pollMulti,
+    closed: isPollClosed(message),
+    totalVoters: pollTotalVoters(message),
+    totalVotes: pollTotalVotes(message),
+    options,
+  };
+});
+
+function openViewVotes(message) {
+  if (!message?.id) return;
+  viewVotesDialog.value = { show: true, messageId: message.id };
+}
+
+function closeViewVotes() {
+  viewVotesDialog.value = { show: false, messageId: null };
+}
+
+const liveNow = ref(Date.now());
+let liveNowTimer = null;
+
+function startLiveNowTicker() {
+  if (liveNowTimer) return;
+  liveNowTimer = setInterval(() => {
+    liveNow.value = Date.now();
+  }, 30000);
+}
+
+function stopLiveNowTicker() {
+  if (liveNowTimer) {
+    clearInterval(liveNowTimer);
+    liveNowTimer = null;
+  }
+}
+
+function isPollClosed(message) {
+  if (!message) return false;
+  if (message.pollClosed === true) return true;
+  if (message.pollExpiresAt && liveNow.value >= message.pollExpiresAt) {
+    return true;
+  }
+  return false;
+}
+
+function formatPollTimeRemaining(message) {
+  if (!message?.pollExpiresAt) return "";
+  const ms = message.pollExpiresAt - liveNow.value;
+  if (ms <= 0) return "Poll ended";
+  const totalMin = Math.floor(ms / 60000);
+  if (totalMin < 1) return "Closes in <1m";
+  if (totalMin < 60) return `Closes in ${totalMin}m`;
+  const hours = Math.floor(totalMin / 60);
+  if (hours < 24) {
+    const min = totalMin - hours * 60;
+    return min > 0 ? `Closes in ${hours}h ${min}m` : `Closes in ${hours}h`;
+  }
+  const days = Math.floor(hours / 24);
+  const remHours = hours - days * 24;
+  return remHours > 0
+    ? `Closes in ${days}d ${remHours}h`
+    : `Closes in ${days}d`;
+}
+
+function getPollDurationLabel(hours) {
+  const found = POLL_DURATIONS.find((d) => d.hours === hours);
+  return found ? found.label : `${hours} hours`;
+}
+
+function setPollDuration(hours) {
+  pollDialog.value.durationHours = hours;
+  pollDialog.value.durationOpen = false;
+}
+
+function togglePollDurationDropdown() {
+  pollDialog.value.durationOpen = !pollDialog.value.durationOpen;
+}
+
+const canSubmitPoll = computed(() => {
+  if (!pollDialog.value.show) return false;
+  const q = pollDialog.value.question.trim();
+  if (!q) return false;
+  if (containsSlur(q)) return false;
+  const validOptions = pollDialog.value.options
+    .map((o) => o.trim())
+    .filter(Boolean);
+  if (validOptions.length < POLL_MIN_OPTIONS) return false;
+  if (validOptions.some((o) => containsSlur(o))) return false;
+  return true;
+});
+
 function toggleAttachMenu() {
   if (isMuted.value || (chatLocked.value && !isAdmin.value)) return;
   attachMenuVisible.value = !attachMenuVisible.value;
@@ -1014,6 +1498,206 @@ function closeAttachMenu() {
 
 function handleCreatePoll() {
   closeAttachMenu();
+  if (isMuted.value || (chatLocked.value && !isAdmin.value)) return;
+  pollDialog.value = { ...makeBlankPollDialog(), show: true };
+  nextTick(() => {
+    pollQuestionRef.value?.focus();
+  });
+}
+
+function cancelPollDialog() {
+  if (pollSubmitting.value) return;
+  pollDialog.value = makeBlankPollDialog();
+}
+
+function addPollOption() {
+  if (pollDialog.value.options.length >= POLL_MAX_OPTIONS) return;
+  pollDialog.value.options.push("");
+}
+
+function removePollOption(idx) {
+  if (pollDialog.value.options.length <= POLL_MIN_OPTIONS) return;
+  pollDialog.value.options.splice(idx, 1);
+}
+
+function handleAnswerEnter(idx) {
+  const isLast = idx === pollDialog.value.options.length - 1;
+  const canAddMore = pollDialog.value.options.length < POLL_MAX_OPTIONS;
+  const current = (pollDialog.value.options[idx] || "").trim();
+
+  if (isLast && current && canAddMore) {
+    pollDialog.value.options.push("");
+    nextTick(() => {
+      const inputs = document.querySelectorAll(
+        ".poll-answer-row .poll-text-input--answer",
+      );
+      const next = inputs[idx + 1];
+      if (next && typeof next.focus === "function") next.focus();
+    });
+    return;
+  }
+
+  if (canSubmitPoll.value) submitPoll();
+}
+
+async function submitPoll() {
+  if (!canSubmitPoll.value || pollSubmitting.value) return;
+  if (chatLocked.value && !isAdmin.value) return;
+  if (isMuted.value) return;
+
+  const question = pollDialog.value.question.trim().slice(0, 200);
+  const options = pollDialog.value.options
+    .map((o) => o.trim().slice(0, 80))
+    .filter(Boolean)
+    .slice(0, POLL_MAX_OPTIONS);
+
+  if (options.length < POLL_MIN_OPTIONS) return;
+  if (containsSlur(question) || options.some((o) => containsSlur(o))) {
+    flashSlurWarning();
+    return;
+  }
+
+  const pollOptions = {};
+  options.forEach((label, i) => {
+    pollOptions[String(i)] = label;
+  });
+
+  const multi = !!pollDialog.value.multi;
+  const replySnapshot = replyingTo.value ? { ...replyingTo.value } : null;
+
+  pollSubmitting.value = true;
+  totalCount++;
+  shouldScrollToBottom = true;
+  replyingTo.value = null;
+
+  const durationHours =
+    pollDialog.value.durationHours || POLL_DEFAULT_DURATION_HOURS;
+  const expiresAt = Date.now() + durationHours * 60 * 60 * 1000;
+
+  try {
+    await push(dbRef(db, "messages"), {
+      type: "poll",
+      displayName: props.user.displayName,
+      uid: props.user.uid,
+      avatarColor: props.user.preferences?.avatarColor || null,
+      timestamp: serverTimestamp(),
+      pollQuestion: question,
+      pollOptions,
+      pollMulti: multi,
+      pollDurationHours: durationHours,
+      pollExpiresAt: expiresAt,
+      ...(replySnapshot ? { replyTo: replySnapshot } : {}),
+    });
+    pollDialog.value = makeBlankPollDialog();
+  } catch (err) {
+    console.error("Failed to create poll:", err);
+    replyingTo.value = replySnapshot;
+    totalCount--;
+  } finally {
+    pollSubmitting.value = false;
+  }
+}
+
+function getPollVotersForOption(message, optionKey) {
+  const votes = message.pollVotes || {};
+  const voters = [];
+  for (const [voterUid, voteMap] of Object.entries(votes)) {
+    if (voteMap && voteMap[optionKey]) {
+      voters.push(voterUid);
+    }
+  }
+  return voters;
+}
+
+function pollTotalVotes(message) {
+  const votes = message.pollVotes || {};
+  let total = 0;
+  for (const voteMap of Object.values(votes)) {
+    if (!voteMap) continue;
+    for (const v of Object.values(voteMap)) {
+      if (v) total++;
+    }
+  }
+  return total;
+}
+
+function pollTotalVoters(message) {
+  const votes = message.pollVotes || {};
+  let count = 0;
+  for (const voteMap of Object.values(votes)) {
+    if (voteMap && Object.values(voteMap).some(Boolean)) count++;
+  }
+  return count;
+}
+
+function getPollOptions(message) {
+  const raw = message.pollOptions || {};
+  const optionKeys = Object.keys(raw).sort((a, b) => {
+    const na = Number(a);
+    const nb = Number(b);
+    if (!Number.isNaN(na) && !Number.isNaN(nb)) return na - nb;
+    return a.localeCompare(b);
+  });
+
+  const totalVotes = pollTotalVotes(message);
+  const myUid = props.user.uid;
+  const myVotes = (message.pollVotes && message.pollVotes[myUid]) || {};
+
+  const optionVoteCounts = optionKeys.map(
+    (key) => getPollVotersForOption(message, key).length,
+  );
+  const maxVotes = optionVoteCounts.length ? Math.max(...optionVoteCounts) : 0;
+
+  return optionKeys.map((key, idx) => {
+    const voters = getPollVotersForOption(message, key);
+    const votes = voters.length;
+    const percent = totalVotes > 0 ? Math.round((votes / totalVotes) * 100) : 0;
+    const voterPreviews = voters.slice(0, 3).map((uid) => ({
+      uid,
+      displayName: resolveDisplayName(uid, "?"),
+      avatarColor: resolveAvatarColor(uid, null),
+    }));
+    return {
+      key,
+      label: raw[key],
+      votes,
+      percent,
+      iVoted: !!myVotes[key],
+      isLeading: votes > 0 && votes === maxVotes,
+      voterPreviews,
+    };
+  });
+}
+
+async function togglePollVote(message, optionKey) {
+  if (!message || isPollClosed(message)) return;
+  if (chatLocked.value && !isAdmin.value) return;
+  if (isMuted.value) return;
+
+  const myUid = props.user.uid;
+  const currentVotes = (message.pollVotes && message.pollVotes[myUid]) || null;
+  const alreadyVoted = !!(currentVotes && currentVotes[optionKey]);
+  const multi = !!message.pollMulti;
+
+  let nextVotes;
+  if (alreadyVoted) {
+    nextVotes = { ...(currentVotes || {}) };
+    delete nextVotes[optionKey];
+    if (Object.keys(nextVotes).length === 0) nextVotes = null;
+  } else if (multi) {
+    nextVotes = { ...(currentVotes || {}), [optionKey]: true };
+  } else {
+    nextVotes = { [optionKey]: true };
+  }
+
+  try {
+    await set(
+      dbRef(db, `messages/${message.id}/pollVotes/${myUid}`),
+      nextVotes,
+    );
+  } catch (err) {
+    console.error("Failed to vote on poll:", err);
+  }
 }
 
 async function ensureEmojiReady() {
@@ -1292,6 +1976,12 @@ function formatMessage(messageOrText) {
     typeof messageOrText === "object" && messageOrText !== null
       ? messageOrText
       : { text: messageOrText };
+
+  if (message && message.type === "poll" && message.pollQuestion) {
+    const safeQuestion = escapeHtml(message.pollQuestion);
+    return `<span class="poll-inline"><span class="poll-inline-icon">📊</span><span class="poll-inline-label">Poll:</span> ${safeQuestion}</span>`;
+  }
+
   const text = message.text || "";
   if (!text) return "";
   const escapes = [];
@@ -1849,6 +2539,13 @@ function handleClickOutside(e) {
   ) {
     attachMenuVisible.value = false;
   }
+  if (
+    pollDialog.value.durationOpen &&
+    pollDurationRef.value &&
+    !pollDurationRef.value.contains(e.target)
+  ) {
+    pollDialog.value.durationOpen = false;
+  }
 }
 
 function handleGlobalKeydown(e) {
@@ -1869,6 +2566,20 @@ function handleGlobalKeydown(e) {
   }
 
   if (e.key !== "Escape") return;
+
+  if (viewVotesDialog.value.show) {
+    e.preventDefault();
+    e.stopPropagation();
+    closeViewVotes();
+    return;
+  }
+
+  if (pollDialog.value.show) {
+    e.preventDefault();
+    e.stopPropagation();
+    cancelPollDialog();
+    return;
+  }
 
   if (deleteDialog.value.show) {
     e.preventDefault();
@@ -2032,13 +2743,20 @@ function subscribeMessages() {
                   isPingNotif = notifMode === "ping" && isPing;
                   shouldNotify = notifMode === "all" || isPingNotif;
                 }
-                if (shouldNotify && msg.text) {
-                  const body = detokenizeMentions(msg.text).slice(0, 100);
-                  void sendSystemNotification({
-                    title: msg.displayName || "Node Chat",
-                    body,
-                    icon: "/icon.png",
-                  });
+                if (shouldNotify) {
+                  let body = null;
+                  if (msg.type === "poll" && msg.pollQuestion) {
+                    body = `📊 Poll: ${msg.pollQuestion}`.slice(0, 120);
+                  } else if (msg.text) {
+                    body = detokenizeMentions(msg.text).slice(0, 100);
+                  }
+                  if (body) {
+                    void sendSystemNotification({
+                      title: msg.displayName || "Node Chat",
+                      body,
+                      icon: "/icon.png",
+                    });
+                  }
                 }
               }
             }
@@ -2193,10 +2911,12 @@ onMounted(async () => {
   });
 
   subscribeMessages();
+  startLiveNowTicker();
   nextTick(resizeComposer);
 });
 
 onUnmounted(() => {
+  stopLiveNowTicker();
   document.removeEventListener("visibilitychange", handleVisibilityChange);
   window.removeEventListener("focus", handleAppForeground);
   document.removeEventListener("click", handleClickOutside);
@@ -3270,7 +3990,6 @@ async function logout() {
   z-index: 500;
   backdrop-filter: blur(3px);
   -webkit-backdrop-filter: blur(3px);
-  animation: overlayIn 180ms ease both;
 }
 
 .delete-box {
@@ -3281,7 +4000,6 @@ async function logout() {
   width: 100%;
   max-width: 360px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
-  animation: dialogIn 240ms var(--ease-out-quint) both;
 }
 
 .delete-box h3 {
@@ -4247,5 +4965,1010 @@ textarea::placeholder {
 .mention-fade-leave-to {
   opacity: 0;
   transform: translateY(4px) scale(0.98);
+}
+
+.msg-body--poll {
+  padding: 4px 0 2px;
+  max-width: 460px;
+}
+
+.poll-card {
+  background: var(--surface);
+  border: 1px solid rgba(44, 42, 39, 0.14);
+  border-radius: 14px;
+  padding: 14px 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 4px 14px rgba(20, 20, 20, 0.05);
+  transition: border-color 160ms ease;
+}
+
+.poll-card--closed {
+  background: var(--bg);
+}
+
+.poll-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.poll-card-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+
+.poll-card--closed .poll-card-eyebrow {
+  color: var(--text-muted);
+}
+
+.poll-card-eyebrow :deep(svg) {
+  width: 12px;
+  height: 12px;
+}
+
+.poll-card-tag {
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+.poll-question {
+  margin: -2px 0 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.poll-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.poll-option {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 42px;
+  background: var(--bg);
+  border: 1px solid rgba(44, 42, 39, 0.1);
+  border-radius: 10px;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  font-family: "Satoshi", sans-serif;
+  color: var(--text);
+  overflow: hidden;
+  isolation: isolate;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    transform 140ms var(--ease-out-quint);
+}
+
+.poll-option:hover:not(:disabled) {
+  border-color: rgba(90, 90, 240, 0.4);
+  background: var(--surface-2);
+}
+
+.poll-option:disabled {
+  cursor: default;
+}
+
+.poll-option-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0%;
+  background: linear-gradient(
+    90deg,
+    rgba(90, 90, 240, 0.14),
+    rgba(90, 90, 240, 0.06)
+  );
+  z-index: -1;
+  transition: width 420ms cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+
+.poll-option--voted {
+  border-color: rgba(90, 90, 240, 0.55);
+  background: var(--surface);
+}
+
+.poll-option--voted .poll-option-fill {
+  background: linear-gradient(
+    90deg,
+    rgba(90, 90, 240, 0.26),
+    rgba(90, 90, 240, 0.12)
+  );
+}
+
+.poll-option--leading:not(.poll-option--voted) {
+  border-color: rgba(90, 90, 240, 0.3);
+}
+
+.poll-option--closed {
+  opacity: 0.9;
+  cursor: default;
+}
+
+.poll-option--closed:hover {
+  border-color: rgba(44, 42, 39, 0.1);
+  background: var(--bg);
+}
+
+.poll-option-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 100%;
+  padding: 0 12px;
+  min-width: 0;
+}
+
+.poll-option-check {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.8px solid rgba(44, 42, 39, 0.28);
+  background: var(--surface);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  flex-shrink: 0;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    transform 160ms var(--ease-out-quint);
+}
+
+.poll-option:hover:not(:disabled) .poll-option-check {
+  border-color: rgba(90, 90, 240, 0.55);
+}
+
+.poll-option--voted .poll-option-check {
+  background: var(--accent);
+  border-color: var(--accent);
+  transform: scale(1.05);
+}
+
+.poll-option-label {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.poll-option--voted .poll-option-label {
+  color: var(--text);
+}
+
+.poll-option-stats {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.poll-option-votes {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.01em;
+  min-width: 56px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.poll-option-percent {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+  min-width: 34px;
+  text-align: right;
+}
+
+.poll-option--voted .poll-option-percent,
+.poll-option--leading .poll-option-percent {
+  color: var(--accent);
+}
+
+.poll-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  margin-top: 2px;
+}
+
+.poll-total {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.poll-total--btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: "Satoshi", sans-serif;
+  cursor: pointer;
+  text-decoration: none;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1.5px;
+  transition: color 140ms ease;
+}
+
+.poll-total--btn:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.poll-total--btn:focus-visible {
+  outline: none;
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.poll-time-remaining {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+.poll-time-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #22c55e;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.18);
+  animation: presencePulse 2.4s ease-in-out infinite;
+}
+
+.poll-time-remaining--ended {
+  color: var(--danger);
+}
+
+.poll-time-remaining--ended .poll-time-dot {
+  background: var(--danger);
+  box-shadow: 0 0 0 2px rgba(192, 57, 43, 0.18);
+  animation: none;
+}
+
+.reply-text :deep(.poll-inline) {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.reply-text :deep(.poll-inline-icon) {
+  font-size: 11px;
+}
+
+.reply-text :deep(.poll-inline-label) {
+  font-weight: 700;
+}
+
+.poll-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 510;
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  padding: 20px;
+}
+
+.poll-modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 22px 24px 20px;
+  width: 100%;
+  max-width: 460px;
+  max-height: calc(100dvh - 40px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.22);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.poll-modal::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.poll-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: -4px;
+}
+
+.poll-modal-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.3px;
+  line-height: 1.2;
+}
+
+.poll-modal-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    background 140ms ease,
+    color 140ms ease,
+    transform 140ms var(--ease-out-quint);
+}
+
+.poll-modal-close:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.poll-modal-close:active {
+  transform: scale(0.92);
+}
+
+.poll-section {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.poll-section-label {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.1px;
+}
+
+.poll-input-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.poll-text-input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 11px 14px;
+  color: var(--text);
+  font-size: 14.5px;
+  font-family: "Satoshi", sans-serif;
+  font-weight: 500;
+  outline: none;
+  line-height: 1.4;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease;
+}
+
+.poll-text-input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+.poll-text-input:focus {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+
+.poll-char-count {
+  align-self: flex-end;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  margin-top: -2px;
+}
+
+.poll-answer-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.poll-answer-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 3px 4px 3px 12px;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease;
+}
+
+.poll-answer-row:focus-within {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+
+.poll-text-input--answer {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  padding: 7px 4px;
+  border-radius: 0;
+}
+
+.poll-text-input--answer:focus {
+  background: transparent;
+}
+
+.poll-answer-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    background 140ms ease,
+    color 140ms ease,
+    transform 140ms var(--ease-out-quint);
+}
+
+.poll-answer-remove :deep(svg) {
+  width: 18px;
+  height: 18px;
+}
+
+.poll-answer-remove:hover {
+  background: rgba(192, 57, 43, 0.1);
+  color: var(--danger);
+}
+
+.poll-answer-remove:active {
+  transform: scale(0.9);
+}
+
+.poll-add-answer-wrap {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 2px;
+}
+
+.poll-add-answer-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 14px 8px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  font-family: "Satoshi", sans-serif;
+  cursor: pointer;
+  transition:
+    color 140ms ease,
+    border-color 140ms ease,
+    background 140ms ease,
+    transform 140ms var(--ease-out-quint);
+}
+
+.poll-add-answer-btn:hover {
+  border-color: rgba(90, 90, 240, 0.55);
+  color: var(--accent);
+  background: rgba(90, 90, 240, 0.06);
+}
+
+.poll-add-answer-btn:active {
+  transform: scale(0.97);
+}
+
+.poll-duration-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.poll-duration-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 11px 14px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: "Satoshi", sans-serif;
+  cursor: pointer;
+  outline: none;
+  text-align: left;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease;
+}
+
+.poll-duration-btn:hover {
+  background: var(--surface);
+}
+
+.poll-duration-btn.open {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+
+.poll-duration-chevron {
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transition: transform 200ms var(--ease-out-quint);
+}
+
+.poll-duration-btn.open .poll-duration-chevron {
+  transform: rotate(180deg);
+  color: var(--accent);
+}
+
+.poll-duration-menu {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 6px;
+  box-shadow:
+    0 12px 36px rgba(0, 0, 0, 0.14),
+    0 2px 8px rgba(0, 0, 0, 0.06);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 260px;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.poll-duration-menu::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.poll-duration-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  padding: 9px 12px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+  font-family: "Satoshi", sans-serif;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background 120ms ease,
+    color 120ms ease;
+}
+
+.poll-duration-item:hover {
+  background: var(--surface-2);
+}
+
+.poll-duration-item.active {
+  color: var(--accent);
+}
+
+.poll-duration-item.active:hover {
+  background: rgba(90, 90, 240, 0.08);
+}
+
+.poll-duration-menu-enter-active {
+  transition:
+    opacity 0.14s ease,
+    transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: bottom center;
+}
+.poll-duration-menu-leave-active {
+  transition:
+    opacity 0.1s ease,
+    transform 0.1s ease;
+  transform-origin: bottom center;
+}
+.poll-duration-menu-enter-from,
+.poll-duration-menu-leave-to {
+  opacity: 0;
+  transform: translateY(4px) scale(0.97);
+}
+
+.poll-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding-top: 4px;
+  margin-top: 2px;
+}
+
+.poll-switch-row {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  user-select: none;
+  flex: 1;
+  min-width: 0;
+}
+
+.poll-switch-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.3;
+}
+
+.toggle-btn {
+  position: relative;
+  width: 48px;
+  height: 28px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(44, 42, 39, 0.18);
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  transition:
+    background 120ms ease,
+    box-shadow 120ms ease;
+  outline: none;
+}
+
+.toggle-btn:focus-visible {
+  box-shadow: 0 0 0 3px rgba(90, 90, 240, 0.22);
+}
+
+.toggle-btn.active {
+  background: var(--accent);
+  box-shadow: 0 2px 8px rgba(90, 90, 240, 0.28);
+}
+
+.toggle-thumb {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow:
+    0 1px 5px rgba(0, 0, 0, 0.22),
+    0 0 0 0.5px rgba(0, 0, 0, 0.06);
+  transition:
+    transform 160ms cubic-bezier(0.2, 0.95, 0.3, 1),
+    width 180ms ease,
+    border-radius 180ms ease;
+  will-change: transform;
+}
+
+.toggle-btn:active .toggle-thumb {
+  width: 24px;
+  border-radius: 10px;
+}
+
+.toggle-btn.active .toggle-thumb {
+  transform: translateX(20px);
+}
+
+.toggle-btn.active:active .toggle-thumb {
+  transform: translateX(16px);
+  width: 24px;
+  border-radius: 10px;
+}
+
+.poll-post-btn {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 26px;
+  font-size: 14.5px;
+  font-weight: 700;
+  font-family: "Satoshi", sans-serif;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    background 160ms ease,
+    opacity 160ms ease,
+    transform 160ms var(--ease-out-quint);
+}
+
+.poll-post-btn:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.poll-post-btn:active:not(:disabled) {
+  transform: scale(0.97);
+  transition-duration: 80ms;
+}
+
+.poll-post-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.modal-fade-enter-active {
+  transition:
+    opacity 200ms ease,
+    backdrop-filter 200ms ease;
+}
+.modal-fade-leave-active {
+  transition:
+    opacity 160ms ease,
+    backdrop-filter 160ms ease;
+}
+.modal-fade-enter-from,
+.modal-fade-leave-to {
+  opacity: 0;
+  backdrop-filter: blur(0px);
+  -webkit-backdrop-filter: blur(0px);
+}
+
+.modal-fade-enter-active .delete-box,
+.modal-fade-enter-active .poll-modal,
+.modal-fade-enter-active .view-votes-modal {
+  transition:
+    opacity 220ms ease,
+    transform 240ms var(--ease-out-quint);
+}
+.modal-fade-leave-active .delete-box,
+.modal-fade-leave-active .poll-modal,
+.modal-fade-leave-active .view-votes-modal {
+  transition:
+    opacity 140ms ease,
+    transform 160ms cubic-bezier(0.4, 0, 1, 1);
+}
+.modal-fade-enter-from .delete-box,
+.modal-fade-enter-from .poll-modal,
+.modal-fade-enter-from .view-votes-modal {
+  opacity: 0;
+  transform: translateY(10px) scale(0.96);
+}
+.modal-fade-leave-to .delete-box,
+.modal-fade-leave-to .poll-modal,
+.modal-fade-leave-to .view-votes-modal {
+  opacity: 0;
+  transform: translateY(6px) scale(0.97);
+}
+
+.view-votes-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 520;
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  padding: 20px;
+}
+
+.view-votes-modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 22px 24px 18px;
+  width: 100%;
+  max-width: 440px;
+  max-height: calc(100dvh - 40px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.22);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.view-votes-modal::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.view-votes-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.view-votes-head-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+  padding-top: 2px;
+}
+
+.view-votes-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.3;
+  letter-spacing: -0.2px;
+  word-break: break-word;
+}
+
+.view-votes-subtitle {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.01em;
+}
+
+.view-votes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.view-votes-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.view-votes-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.view-votes-section-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.3;
+  word-break: break-word;
+  flex: 1;
+  min-width: 0;
+}
+
+.view-votes-section-count {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.01em;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.view-votes-bar-track {
+  position: relative;
+  width: 100%;
+  height: 4px;
+  background: rgba(44, 42, 39, 0.08);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.view-votes-bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--accent);
+  opacity: 0.85;
+  border-radius: 999px;
+  transition: width 480ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.view-votes-voters {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding-top: 4px;
+}
+
+.view-votes-voter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  min-width: 0;
+}
+
+.view-votes-voter-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+  letter-spacing: 0;
+}
+
+.view-votes-voter-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>
