@@ -5560,11 +5560,10 @@ textarea::placeholder {
   pointer-events: none;
 }
 
-/* GIF Lightbox */
 .gif-lightbox-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.82);
+  background: rgba(0, 0, 0, 0.84);
   display: flex;
   align-items: center;
   justify-content: center;
