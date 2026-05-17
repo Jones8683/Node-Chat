@@ -366,6 +366,31 @@
                       </div>
                     </div>
                     <div
+                      v-else-if="item.type === 'gif' && item.gif"
+                      class="msg-body msg-body--gif"
+                      @dblclick="startReply(item)"
+                    >
+                      <a
+                        class="gif-message"
+                        :href="item.gif.url"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        :style="{
+                          aspectRatio: `${item.gif.width || 1} / ${item.gif.height || 1}`,
+                          maxWidth: getGifDisplayWidth(item.gif) + 'px',
+                        }"
+                        @click.prevent
+                      >
+                        <img
+                          :src="item.gif.url"
+                          :alt="item.gif.title || 'GIF'"
+                          class="gif-message-img"
+                          loading="lazy"
+                          draggable="false"
+                        />
+                      </a>
+                    </div>
+                    <div
                       v-else
                       class="msg-body"
                       :class="{ 'msg-body--emoji': isEmojiOnly(item.text) }"
@@ -380,7 +405,25 @@
                     </div>
                     <div class="msg-actions">
                       <button
-                        v-if="item.type !== 'poll'"
+                        v-if="item.type === 'gif' && item.gif?.url"
+                        class="msg-action-btn"
+                        :class="{ active: copiedMessageId === item.id }"
+                        @click="copyGifLink(item)"
+                        :title="
+                          copiedMessageId === item.id
+                            ? 'Link copied'
+                            : 'Copy GIF link'
+                        "
+                      >
+                        <Check
+                          v-if="copiedMessageId === item.id"
+                          :size="15"
+                          stroke-width="2.2"
+                        />
+                        <Copy v-else :size="15" stroke-width="2" />
+                      </button>
+                      <button
+                        v-else-if="item.type !== 'poll'"
                         class="msg-action-btn"
                         :class="{ active: copiedMessageId === item.id }"
                         @click="copyMessageText(item)"
@@ -398,7 +441,11 @@
                         <Copy v-else :size="15" stroke-width="2" />
                       </button>
                       <button
-                        v-if="item.uid === user.uid && item.type !== 'poll'"
+                        v-if="
+                          item.uid === user.uid &&
+                          item.type !== 'poll' &&
+                          item.type !== 'gif'
+                        "
                         class="msg-action-btn"
                         @click="startEdit(item)"
                         title="Edit"
@@ -442,6 +489,14 @@
         </transition>
 
         <div class="composer-wrap">
+          <GifPicker
+            v-if="gifPickerMounted"
+            ref="gifPickerRef"
+            :is-open="gifPickerVisible"
+            @close="gifPickerVisible = false"
+            @select="handleGifSelected"
+          />
+
           <transition name="emoji-fade">
             <div
               v-if="emojiVisible && emojiResults.length"
@@ -595,6 +650,18 @@
               <div class="attach-wrap" ref="attachWrapRef">
                 <transition name="attach-menu">
                   <div v-if="attachMenuVisible" class="attach-menu" role="menu">
+                    <button
+                      type="button"
+                      class="attach-menu-item"
+                      role="menuitem"
+                      @mousedown.prevent
+                      @click="handlePickGif"
+                    >
+                      <span class="attach-menu-icon">
+                        <Film :size="18" stroke-width="2.2" />
+                      </span>
+                      <span class="attach-menu-label">Send a GIF</span>
+                    </button>
                     <button
                       type="button"
                       class="attach-menu-item"
@@ -1040,7 +1107,9 @@ import {
   ShieldAlert,
   Plus,
   ChartBarBig,
+  Film,
 } from "lucide-vue-next";
+import GifPicker from "./GifPicker.vue";
 
 import {
   ref as dbRef,
@@ -1336,6 +1405,48 @@ let mentionQueryStart = -1;
 
 const attachMenuVisible = ref(false);
 const attachWrapRef = ref(null);
+const gifPickerVisible = ref(false);
+const gifPickerMounted = ref(false);
+const gifPickerRef = ref(null);
+
+const GIF_MAX_DISPLAY_WIDTH = 600;
+const GIF_MAX_DISPLAY_HEIGHT = 480;
+
+function getGifDisplayWidth(gif) {
+  if (!gif) return GIF_MAX_DISPLAY_WIDTH;
+  const w = Number(gif.width) || GIF_MAX_DISPLAY_WIDTH;
+  const h = Number(gif.height) || GIF_MAX_DISPLAY_WIDTH;
+  if (!w || !h) return GIF_MAX_DISPLAY_WIDTH;
+  const widthCap = Math.min(w, GIF_MAX_DISPLAY_WIDTH);
+  const heightCappedWidth = (GIF_MAX_DISPLAY_HEIGHT * w) / h;
+  return Math.max(120, Math.floor(Math.min(widthCap, heightCappedWidth)));
+}
+
+const GIF_URL_REGEX =
+  /^(https?:\/\/[^\s]+?\.(?:gif|gifv|webp)(?:\?[^\s]*)?|https?:\/\/(?:media\d*\.giphy\.com|tenor\.com|c\.tenor\.com|i\.giphy\.com|media\.tenor\.com)\/[^\s]+)$/i;
+
+function parseGifUrlFromText(text) {
+  const trimmed = (text || "").trim();
+  if (!trimmed) return null;
+  if (!GIF_URL_REGEX.test(trimmed)) return null;
+  return trimmed;
+}
+
+function probeGifDimensions(url) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    let settled = false;
+    const done = (w, h) => {
+      if (settled) return;
+      settled = true;
+      resolve({ width: w, height: h });
+    };
+    img.onload = () => done(img.naturalWidth || 0, img.naturalHeight || 0);
+    img.onerror = () => done(0, 0);
+    setTimeout(() => done(0, 0), 6000);
+    img.src = url;
+  });
+}
 
 const POLL_MAX_OPTIONS = 6;
 const POLL_MIN_OPTIONS = 2;
@@ -1491,6 +1602,73 @@ function handleCreatePoll() {
   nextTick(() => {
     pollQuestionRef.value?.focus();
   });
+}
+
+function handlePickGif() {
+  closeAttachMenu();
+  if (isMuted.value || (chatLocked.value && !isAdmin.value)) return;
+  gifPickerMounted.value = true;
+  gifPickerVisible.value = true;
+}
+
+function handleGifSelected(gif) {
+  if (!gif?.url) return;
+  gifPickerVisible.value = false;
+  sendGif(gif);
+}
+
+async function sendGif(gif) {
+  if (!gif?.url) return;
+  if (chatLocked.value && !isAdmin.value) return;
+  if (isMuted.value) return;
+
+  const replySnapshot = replyingTo.value ? { ...replyingTo.value } : null;
+  totalCount++;
+  shouldScrollToBottom = true;
+  replyingTo.value = null;
+
+  const safeGif = {
+    url: String(gif.url).slice(0, 1024),
+    previewUrl: gif.previewUrl ? String(gif.previewUrl).slice(0, 1024) : null,
+    width: Number(gif.width) || 0,
+    height: Number(gif.height) || 0,
+    title: gif.title ? String(gif.title).slice(0, 200) : "",
+    source: gif.source || "giphy",
+    id: gif.id ? String(gif.id).slice(0, 80) : null,
+  };
+
+  try {
+    await push(dbRef(db, "messages"), {
+      type: "gif",
+      gif: safeGif,
+      displayName: props.user.displayName,
+      uid: props.user.uid,
+      avatarColor: props.user.preferences?.avatarColor || null,
+      timestamp: serverTimestamp(),
+      ...(replySnapshot ? { replyTo: replySnapshot } : {}),
+    });
+  } catch (err) {
+    console.error("Failed to send GIF:", err);
+    replyingTo.value = replySnapshot;
+    totalCount--;
+  }
+}
+
+async function copyGifLink(item) {
+  const url = item?.gif?.url;
+  if (!url) return;
+  try {
+    await copy(url);
+    copiedMessageId.value = item.id;
+    clearTimeout(copyResetTimer);
+    copyResetTimer = setTimeout(() => {
+      if (copiedMessageId.value === item.id) {
+        copiedMessageId.value = null;
+      }
+    }, 1200);
+  } catch (err) {
+    console.error("Failed to copy GIF link:", err);
+  }
 }
 
 function cancelPollDialog() {
@@ -1961,6 +2139,10 @@ function formatMessage(messageOrText) {
   if (message && message.type === "poll" && message.pollQuestion) {
     const safeQuestion = escapeHtml(message.pollQuestion);
     return `<span class="poll-inline"><span class="poll-inline-icon">📊</span><span class="poll-inline-label">Poll:</span> ${safeQuestion}</span>`;
+  }
+
+  if (message && message.type === "gif" && message.gif) {
+    return `<span class="gif-inline"><span class="gif-inline-label">GIF</span></span>`;
   }
 
   const text = message.text || "";
@@ -2524,6 +2706,15 @@ function handleClickOutside(e) {
   ) {
     pollDialog.value.durationOpen = false;
   }
+  if (gifPickerVisible.value) {
+    const pickerEl = gifPickerRef.value?.$el;
+    const attachEl = attachWrapRef.value;
+    const clickedInsidePicker = pickerEl && pickerEl.contains(e.target);
+    const clickedInsideAttach = attachEl && attachEl.contains(e.target);
+    if (!clickedInsidePicker && !clickedInsideAttach) {
+      gifPickerVisible.value = false;
+    }
+  }
 }
 
 function handleGlobalKeydown(e) {
@@ -2563,6 +2754,13 @@ function handleGlobalKeydown(e) {
     e.preventDefault();
     e.stopPropagation();
     cancelDelete();
+    return;
+  }
+
+  if (gifPickerVisible.value) {
+    e.preventDefault();
+    e.stopPropagation();
+    gifPickerVisible.value = false;
     return;
   }
 
@@ -2723,6 +2921,10 @@ function subscribeMessages() {
                   let body = null;
                   if (msg.type === "poll" && msg.pollQuestion) {
                     body = `📊 Poll: ${msg.pollQuestion}`.slice(0, 120);
+                  } else if (msg.type === "gif") {
+                    body = msg.gif?.title
+                      ? `🎞️ GIF · ${msg.gif.title}`.slice(0, 120)
+                      : "🎞️ Sent a GIF";
                   } else if (msg.text) {
                     body = detokenizeMentions(msg.text).slice(0, 100);
                   }
@@ -2931,10 +3133,14 @@ async function copyMessageText(item) {
 
 function startReply(item) {
   cancelEdit();
-  const replyText =
-    item?.type === "poll"
-      ? item.pollQuestion || item.text || ""
-      : item.text || "";
+  let replyText = "";
+  if (item?.type === "poll") {
+    replyText = item.pollQuestion || item.text || "";
+  } else if (item?.type === "gif") {
+    replyText = "GIF";
+  } else {
+    replyText = item.text || "";
+  }
   const snapshot = {
     id: item.id,
     text: replyText,
@@ -2942,6 +3148,16 @@ function startReply(item) {
     uid: item.uid,
     avatarColor: item.avatarColor || null,
   };
+  if (item.type) snapshot.type = item.type;
+  if (item.type === "gif" && item.gif) {
+    snapshot.gif = {
+      url: item.gif.url || null,
+      previewUrl: item.gif.previewUrl || null,
+      width: item.gif.width || 0,
+      height: item.gif.height || 0,
+      title: item.gif.title || "",
+    };
+  }
   if (item.mentions) snapshot.mentions = item.mentions;
   if (item.mentionUids) snapshot.mentionUids = item.mentionUids;
   replyingTo.value = snapshot;
@@ -3127,8 +3343,34 @@ async function sendMessage() {
     flashSlurWarning();
     return;
   }
+
+  const gifUrl = parseGifUrlFromText(text);
+  if (gifUrl) {
+    newMessage.value = "";
+    nextTick(resizeComposer);
+    clearTimeout(typingTimeout);
+    if (myTypingRef) remove(myTypingRef).catch(() => {});
+    const dims = await probeGifDimensions(gifUrl);
+    if (!dims.width || !dims.height) {
+      newMessage.value = text;
+      nextTick(resizeComposer);
+      return;
+    }
+    await sendGif({
+      url: gifUrl,
+      previewUrl: gifUrl,
+      width: dims.width,
+      height: dims.height,
+      title: "",
+      source: "url",
+      id: null,
+    });
+    return;
+  }
+
   newMessage.value = "";
   nextTick(resizeComposer);
+
   clearTimeout(typingTimeout);
   if (myTypingRef) remove(myTypingRef).catch(() => {});
   totalCount++;
@@ -5207,6 +5449,51 @@ textarea::placeholder {
 
 .reply-text :deep(.poll-inline-label) {
   font-weight: 700;
+}
+
+.reply-text :deep(.gif-inline) {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.reply-text :deep(.gif-inline-icon) {
+  font-size: 11px;
+}
+
+.reply-text :deep(.gif-inline-label) {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.reply-text :deep(.gif-inline-title) {
+  color: var(--text-muted);
+}
+
+.msg-body--gif {
+  padding: 4px 0 2px;
+  max-width: 100%;
+}
+
+.gif-message {
+  position: relative;
+  display: block;
+  width: 100%;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--surface-2);
+  cursor: pointer;
+  text-decoration: none;
+  isolation: isolate;
+}
+
+.gif-message-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  background: var(--surface-2);
+  pointer-events: none;
 }
 
 .poll-overlay {
