@@ -370,16 +370,14 @@
                       class="msg-body msg-body--gif"
                       @dblclick="startReply(item)"
                     >
-                      <a
+                      <button
+                        type="button"
                         class="gif-message"
-                        :href="item.gif.url"
-                        target="_blank"
-                        rel="noopener noreferrer"
                         :style="{
                           aspectRatio: `${item.gif.width || 1} / ${item.gif.height || 1}`,
                           maxWidth: getGifDisplayWidth(item.gif) + 'px',
                         }"
-                        @click.prevent
+                        @click="openGifLightbox(item.gif)"
                       >
                         <img
                           :src="item.gif.url"
@@ -388,8 +386,9 @@
                           loading="lazy"
                           draggable="false"
                         />
-                      </a>
+                      </button>
                     </div>
+
                     <div
                       v-else
                       class="msg-body"
@@ -1010,6 +1009,35 @@
         </div>
       </transition>
 
+      <transition name="gif-lightbox-fade">
+        <div
+          v-if="gifLightbox.show && gifLightbox.gif"
+          class="gif-lightbox-overlay"
+          @click="closeGifLightbox"
+        >
+          <img
+            :src="gifLightbox.gif.url"
+            :alt="gifLightbox.gif.title || 'GIF'"
+            class="gif-lightbox-img"
+            :style="{
+              width: getGifLightboxWidth(gifLightbox.gif) + 'px',
+              aspectRatio: `${gifLightbox.gif.width || 1} / ${gifLightbox.gif.height || 1}`,
+            }"
+            draggable="false"
+            @click.stop
+          />
+
+          <button
+            type="button"
+            class="gif-lightbox-close"
+            @click="closeGifLightbox"
+            aria-label="Close"
+          >
+            <X :size="20" stroke-width="2.2" />
+          </button>
+        </div>
+      </transition>
+
       <transition name="modal-fade">
         <div
           v-if="viewVotesDialog.show && viewVotesData"
@@ -1411,6 +1439,7 @@ const gifPickerRef = ref(null);
 
 const GIF_MAX_DISPLAY_WIDTH = 600;
 const GIF_MAX_DISPLAY_HEIGHT = 480;
+const GIF_LIGHTBOX_SCALE = 1.75;
 
 function getGifDisplayWidth(gif) {
   if (!gif) return GIF_MAX_DISPLAY_WIDTH;
@@ -1420,6 +1449,21 @@ function getGifDisplayWidth(gif) {
   const widthCap = Math.min(w, GIF_MAX_DISPLAY_WIDTH);
   const heightCappedWidth = (GIF_MAX_DISPLAY_HEIGHT * w) / h;
   return Math.max(120, Math.floor(Math.min(widthCap, heightCappedWidth)));
+}
+
+function getGifLightboxWidth(gif) {
+  return Math.round(getGifDisplayWidth(gif) * GIF_LIGHTBOX_SCALE);
+}
+
+const gifLightbox = ref({ show: false, gif: null });
+
+function openGifLightbox(gif) {
+  if (!gif?.url) return;
+  gifLightbox.value = { show: true, gif };
+}
+
+function closeGifLightbox() {
+  gifLightbox.value = { show: false, gif: null };
 }
 
 const GIF_URL_REGEX =
@@ -2735,6 +2779,13 @@ function handleGlobalKeydown(e) {
   }
 
   if (e.key !== "Escape") return;
+
+  if (gifLightbox.value.show) {
+    e.preventDefault();
+    e.stopPropagation();
+    closeGifLightbox();
+    return;
+  }
 
   if (viewVotesDialog.value.show) {
     e.preventDefault();
@@ -5479,12 +5530,23 @@ textarea::placeholder {
   position: relative;
   display: block;
   width: 100%;
+  border: none;
+  outline: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
   border-radius: 10px;
   overflow: hidden;
-  background: var(--surface-2);
+  background: transparent;
   cursor: pointer;
   text-decoration: none;
   isolation: isolate;
+}
+
+.gif-message:focus,
+.gif-message:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 
 .gif-message-img {
@@ -5492,8 +5554,102 @@ textarea::placeholder {
   height: 100%;
   object-fit: cover;
   display: block;
-  background: var(--surface-2);
+  background: transparent;
+  border: none;
+  outline: none;
   pointer-events: none;
+}
+
+/* GIF Lightbox */
+.gif-lightbox-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.82);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 600;
+  padding: 32px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.gif-lightbox-img {
+  display: block;
+  max-width: min(92vw, 1100px);
+  max-height: calc(100dvh - 80px);
+  height: auto;
+  object-fit: contain;
+  border: none;
+  outline: none;
+  border-radius: 12px;
+  background: transparent;
+  box-shadow: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.gif-lightbox-close {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(30, 30, 32, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition:
+    background 140ms ease,
+    transform 140ms var(--ease-out-quint);
+}
+
+.gif-lightbox-close:hover {
+  background: rgba(50, 50, 54, 0.9);
+}
+
+.gif-lightbox-close:active {
+  transform: scale(0.92);
+}
+
+.gif-lightbox-fade-enter-active {
+  transition: opacity 200ms ease;
+}
+.gif-lightbox-fade-leave-active {
+  transition: opacity 160ms ease;
+}
+.gif-lightbox-fade-enter-from,
+.gif-lightbox-fade-leave-to {
+  opacity: 0;
+}
+
+.gif-lightbox-fade-enter-active .gif-lightbox-img,
+.gif-lightbox-fade-enter-active .gif-lightbox-close {
+  transition:
+    opacity 240ms ease,
+    transform 280ms var(--ease-out-quint);
+}
+.gif-lightbox-fade-leave-active .gif-lightbox-img,
+.gif-lightbox-fade-leave-active .gif-lightbox-close {
+  transition:
+    opacity 140ms ease,
+    transform 160ms cubic-bezier(0.4, 0, 1, 1);
+}
+.gif-lightbox-fade-enter-from .gif-lightbox-img,
+.gif-lightbox-fade-enter-from .gif-lightbox-close {
+  opacity: 0;
+  transform: scale(0.95);
+}
+.gif-lightbox-fade-leave-to .gif-lightbox-img,
+.gif-lightbox-fade-leave-to .gif-lightbox-close {
+  opacity: 0;
+  transform: scale(0.97);
 }
 
 .poll-overlay {
