@@ -5541,6 +5541,8 @@ textarea::placeholder {
   cursor: pointer;
   text-decoration: none;
   isolation: isolate;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 240px;
 }
 
 .gif-message:focus,
