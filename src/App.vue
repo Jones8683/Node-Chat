@@ -2,9 +2,9 @@
   <div id="app">
     <ChatRoom
       v-if="status === 'authenticated'"
-      :user="user"
       :key="user.uid"
-      @ready="handleChatReady"
+      :user="user"
+      @ready="onChatReady"
       @open-settings="showSettings = true"
       @open-admin="showAdmin = true"
     />
@@ -14,16 +14,18 @@
     />
     <AuthForm v-else-if="status === 'unauthenticated'" />
 
-    <transition name="loading-fade">
-      <div v-if="showLoadingPage" class="loading-page">
-        <div class="loading-stack" role="status" aria-live="polite">
-          <div class="loading-spinner" aria-hidden="true">
-            <span></span>
-          </div>
-          <div class="loading-label">Loading Node Chat</div>
+    <div
+      class="loading-page"
+      :class="{ 'loading-page--hidden': !showLoadingPage }"
+      :aria-hidden="!showLoadingPage"
+    >
+      <div class="loading-stack" role="status" aria-live="polite">
+        <div class="loading-spinner" aria-hidden="true">
+          <span></span>
         </div>
+        <div class="loading-label">Loading Node Chat</div>
       </div>
-    </transition>
+    </div>
 
     <SettingsModal
       :is-open="showSettings"
@@ -44,14 +46,14 @@
 import {
   defineAsyncComponent,
   ref,
-  onMounted,
-  onUnmounted,
   computed,
   watch,
+  onMounted,
+  onUnmounted,
 } from "vue";
-import { auth, db } from "./firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { ref as dbRef, onValue } from "firebase/database";
+import { auth, db } from "./firebase";
 
 const AuthForm = defineAsyncComponent(
   () => import("./components/AuthForm.vue"),
@@ -81,8 +83,22 @@ const showLoadingPage = computed(
     (status.value === "authenticated" && !chatReady.value),
 );
 
-let userDbUnsub = null;
+const hideAppScroll = computed(
+  () => showLoadingPage.value || showSettings.value || showAdmin.value,
+);
+
+watch(
+  hideAppScroll,
+  (hide) => {
+    document.documentElement.style.overflow = hide ? "hidden" : "";
+  },
+  { immediate: true },
+);
+
 let authUnsub = null;
+let userUnsub = null;
+let adminUnsub = null;
+let initialAdminStatus = null;
 
 function applyUser(authUser, data) {
   const displayName = (data?.displayName || authUser.displayName || "").trim();
@@ -95,67 +111,77 @@ function applyUser(authUser, data) {
 }
 
 function refreshUser() {
-  const currentUser = auth.currentUser;
-  if (!currentUser) return;
-  const userRef = dbRef(db, `users/${currentUser.uid}`);
+  const current = auth.currentUser;
+  if (!current) return;
   onValue(
-    userRef,
-    (snap) => applyUser(currentUser, snap.val() || {}),
-    () => applyUser(currentUser, {}),
+    dbRef(db, `users/${current.uid}`),
+    (snap) => applyUser(current, snap.val() || {}),
+    () => applyUser(current, {}),
     { onlyOnce: true },
   );
 }
 
-function handleChatReady() {
+function onChatReady() {
   chatReady.value = true;
 }
 
-const anyModalOpen = computed(() => showSettings.value || showAdmin.value);
-const hideAppOverflow = computed(
-  () => anyModalOpen.value || showLoadingPage.value,
-);
-watch(
-  hideAppOverflow,
-  (hide) => {
-    document.documentElement.style.overflow = hide ? "hidden" : "";
-  },
-  { immediate: true },
-);
+function subscribeToUser(authUser) {
+  userUnsub = onValue(
+    dbRef(db, `users/${authUser.uid}`),
+    (snap) => applyUser(authUser, snap.val() || {}),
+    () => applyUser(authUser, {}),
+  );
+}
+
+function subscribeToAdminStatus(uid) {
+  initialAdminStatus = null;
+  adminUnsub = onValue(dbRef(db, `admins/${uid}`), (snap) => {
+    const isAdmin = snap.exists() && snap.val() === true;
+    if (initialAdminStatus === null) {
+      initialAdminStatus = isAdmin;
+      return;
+    }
+    if (initialAdminStatus !== isAdmin) {
+      window.location.reload();
+    }
+  });
+}
+
+function teardownSubscriptions() {
+  if (userUnsub) {
+    userUnsub();
+    userUnsub = null;
+  }
+  if (adminUnsub) {
+    adminUnsub();
+    adminUnsub = null;
+  }
+  initialAdminStatus = null;
+}
 
 onMounted(() => {
-  authUnsub = onAuthStateChanged(auth, (u) => {
-    if (userDbUnsub) {
-      userDbUnsub();
-      userDbUnsub = null;
-    }
-
+  authUnsub = onAuthStateChanged(auth, (authUser) => {
+    teardownSubscriptions();
     chatReady.value = false;
 
-    if (!u) {
+    if (!authUser) {
       user.value = null;
       status.value = "unauthenticated";
       return;
     }
 
-    if (!user.value || user.value.uid !== u.uid) {
+    if (!user.value || user.value.uid !== authUser.uid) {
       user.value = null;
       status.value = "loading";
     }
 
-    const userRef = dbRef(db, `users/${u.uid}`);
-    userDbUnsub = onValue(
-      userRef,
-      (snap) => applyUser(u, snap.val() || {}),
-      () => applyUser(u, {}),
-    );
+    subscribeToUser(authUser);
+    subscribeToAdminStatus(authUser.uid);
   });
 });
 
 onUnmounted(() => {
-  if (userDbUnsub) {
-    userDbUnsub();
-    userDbUnsub = null;
-  }
+  teardownSubscriptions();
   if (authUnsub) {
     authUnsub();
     authUnsub = null;
@@ -168,24 +194,21 @@ onUnmounted(() => {
 .loading-page {
   position: fixed;
   inset: 0;
+  z-index: 1000;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 24px;
   background: var(--bg);
-  z-index: 1000;
-  will-change: opacity, transform;
+  opacity: 1;
+  transition: opacity 0s;
+  will-change: opacity;
 }
 
-.loading-fade-enter-active {
-  transition: opacity 180ms ease-out;
-}
-.loading-fade-leave-active {
-  transition: opacity 260ms ease-in;
-}
-.loading-fade-enter-from,
-.loading-fade-leave-to {
+.loading-page--hidden {
   opacity: 0;
+  pointer-events: none;
+  transition: opacity 260ms ease-in;
 }
 
 .loading-stack {
@@ -216,8 +239,8 @@ onUnmounted(() => {
 .loading-label {
   font-size: 12px;
   font-weight: 600;
-  color: var(--text-muted);
   letter-spacing: 0.02em;
+  color: var(--text-muted);
   animation: loadingLabelPulse 1.6s ease-in-out infinite;
 }
 
@@ -227,15 +250,6 @@ onUnmounted(() => {
   }
   to {
     transform: rotate(360deg);
-  }
-}
-
-@keyframes loadingFadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
   }
 }
 
