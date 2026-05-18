@@ -1158,9 +1158,10 @@ function escapeHtml(str) {
 }
 
 function formatAuditText(ev) {
-  const actorRaw = resolveDisplayName(ev.actorUid, ev.actorName);
+  const actorRaw = ev.actorName || resolveDisplayName(ev.actorUid, ev.actorUid);
   const actor = `<strong>${escapeHtml(actorRaw)}</strong>`;
-  const targetNameRaw = resolveDisplayName(ev.targetUid, ev.targetName);
+  const targetNameRaw =
+    ev.targetName || resolveDisplayName(ev.targetUid, ev.targetUid);
   const target =
     ev.targetUid || ev.targetName ? ` ${escapeHtml(targetNameRaw)}` : "";
   const details = ev.details ? ` - ${escapeHtml(ev.details)}` : "";
@@ -1190,8 +1191,8 @@ function formatAuditText(ev) {
         : `${actor} deleted an invite code`;
     case "name_renamed":
       return ev.details
-        ? `${actor} renamed ${escapeHtml(ev.details)} to ${escapeHtml(resolveDisplayName(ev.targetUid, ev.targetName))}`
-        : `${actor} renamed ${escapeHtml(resolveDisplayName(ev.targetUid, ev.targetName))}`;
+        ? `${actor} renamed ${escapeHtml(ev.details)} to ${escapeHtml(targetNameRaw)}`
+        : `${actor} renamed ${escapeHtml(targetNameRaw)}`;
     case "display_name_changed":
       return ev.details
         ? `${actor} changed their display name from ${escapeHtml(ev.details)} to ${escapeHtml(actorRaw)}`
