@@ -35,7 +35,7 @@
       </div>
 
       <div
-        v-if="!query.trim() && recents.length"
+        v-if="!committedQuery.trim() && recents.length"
         class="gif-recents"
         aria-label="Recently used GIFs"
       >
@@ -72,7 +72,7 @@
       </div>
 
       <div
-        v-else-if="!query.trim() && categories.length"
+        v-else-if="!committedQuery.trim() && categories.length"
         class="gif-categories"
       >
         <button
