@@ -27,18 +27,21 @@
       </div>
     </div>
 
-    <SettingsModal
-      :is-open="showSettings"
-      :user="user"
-      @close="showSettings = false"
-      @refreshUser="refreshUser"
-    />
+    <template v-if="user">
+      <SettingsModal
+        :is-open="showSettings"
+        :user="user"
+        @close="showSettings = false"
+        @refreshUser="refreshUser"
+      />
 
-    <AdminPanel
-      :is-open="showAdmin"
-      :current-user-uid="user?.uid"
-      @close="showAdmin = false"
-    />
+      <AdminPanel
+        :key="user.uid"
+        :is-open="showAdmin"
+        :current-user-uid="user.uid"
+        @close="showAdmin = false"
+      />
+    </template>
   </div>
 </template>
 
