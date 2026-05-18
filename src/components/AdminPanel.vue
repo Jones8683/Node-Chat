@@ -2170,8 +2170,8 @@ async function saveUsername(uid) {
   align-items: center;
   justify-content: center;
   z-index: 500;
-  backdrop-filter: blur(3px);
   -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
 }
 
 .confirmation-box {

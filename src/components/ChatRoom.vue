@@ -4222,8 +4222,8 @@ async function logout() {
   align-items: center;
   justify-content: center;
   z-index: 500;
-  backdrop-filter: blur(3px);
   -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
 }
 
 .delete-box {
@@ -5569,8 +5569,8 @@ textarea::placeholder {
   justify-content: center;
   z-index: 600;
   padding: 32px;
-  backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
 }
 
 .gif-lightbox-img {
@@ -5602,8 +5602,8 @@ textarea::placeholder {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
   transition:
     background 140ms ease,
     transform 140ms var(--ease-out-quint);
@@ -5659,8 +5659,8 @@ textarea::placeholder {
   align-items: center;
   justify-content: center;
   z-index: 510;
-  backdrop-filter: blur(3px);
   -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
   padding: 20px;
 }
 
@@ -6143,8 +6143,8 @@ textarea::placeholder {
 .modal-fade-enter-from,
 .modal-fade-leave-to {
   opacity: 0;
-  backdrop-filter: blur(0px);
-  -webkit-backdrop-filter: blur(0px);
+  -webkit-backdrop-filter: blur(0.001px);
+  backdrop-filter: blur(0.001px);
 }
 
 .modal-fade-enter-active .delete-box,
@@ -6182,8 +6182,8 @@ textarea::placeholder {
   align-items: center;
   justify-content: center;
   z-index: 520;
-  backdrop-filter: blur(3px);
   -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
   padding: 20px;
 }
 
