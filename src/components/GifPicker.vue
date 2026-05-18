@@ -15,10 +15,12 @@
             v-model="query"
             type="text"
             class="gif-search-input"
-            placeholder="Search Giphy"
+            :placeholder="
+              committedQuery ? `Search Giphy` : 'Search Giphy — press Enter'
+            "
             maxlength="80"
-            @keydown.escape.prevent="emit('close')"
-            @keydown.enter.prevent
+            @keydown.escape.prevent="handleEscape"
+            @keydown.enter.prevent="submitSearch"
           />
           <button
             v-if="query"
@@ -154,12 +156,12 @@ const GIPHY_KEY = import.meta.env.VITE_GIPHY_KEY;
 const SEARCH_LIMIT = 30;
 const TRENDING_LIMIT = 30;
 const COLUMN_COUNT = 2;
-const SEARCH_DEBOUNCE_MS = 300;
-const CACHE_TTL = 5 * 60 * 1000;
+const CACHE_TTL = 30 * 60 * 1000;
 const RECENTS_KEY = "node-chat:gif-recents";
 const RECENTS_MAX = 12;
 
 const query = ref("");
+const committedQuery = ref("");
 const gifs = ref([]);
 const isLoading = ref(false);
 const loadError = ref(false);
@@ -172,7 +174,6 @@ const inputRef = ref(null);
 const resultsRef = ref(null);
 const rootRef = ref(null);
 
-let searchDebounce = null;
 let activeRequestId = 0;
 
 const cache = new Map();
@@ -227,7 +228,7 @@ function clearRecents() {
 }
 
 function getCurrentKey() {
-  const q = query.value.trim().toLowerCase();
+  const q = committedQuery.value.trim().toLowerCase();
   return q ? `search:${q}` : "trending";
 }
 
@@ -402,11 +403,32 @@ function selectGif(gif) {
 
 function useCategory(cat) {
   query.value = cat.name;
+  committedQuery.value = cat.name;
+  loadForCurrentQuery();
 }
 
 function clearQuery() {
   query.value = "";
+  if (committedQuery.value !== "") {
+    committedQuery.value = "";
+    loadForCurrentQuery();
+  }
   inputRef.value?.focus();
+}
+
+function submitSearch() {
+  const trimmed = query.value.trim();
+  if (trimmed === committedQuery.value.trim()) return;
+  committedQuery.value = trimmed;
+  loadForCurrentQuery();
+}
+
+function handleEscape() {
+  if (query.value) {
+    query.value = "";
+    return;
+  }
+  emit("close");
 }
 
 function retry() {
@@ -437,23 +459,13 @@ watch(
       loadForCurrentQuery();
     } else {
       persistScroll();
-      // Reset picker back to home (trending + recents/categories) so the
-      // next time it opens it doesn't restore the previous search state.
-      clearTimeout(searchDebounce);
       query.value = "";
+      committedQuery.value = "";
       lastCacheKey = null;
       if (resultsRef.value) resultsRef.value.scrollTop = 0;
     }
   },
 );
-
-watch(query, () => {
-  clearTimeout(searchDebounce);
-  searchDebounce = setTimeout(() => {
-    if (!props.isOpen) return;
-    loadForCurrentQuery();
-  }, SEARCH_DEBOUNCE_MS);
-});
 
 onMounted(() => {
   if (props.isOpen) {
@@ -464,7 +476,6 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  clearTimeout(searchDebounce);
   activeRequestId++;
 });
 
