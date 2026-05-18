@@ -1135,7 +1135,15 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
+import {
+  ref,
+  computed,
+  onMounted,
+  onUnmounted,
+  nextTick,
+  watch,
+  defineAsyncComponent,
+} from "vue";
 import { db } from "../firebase";
 import { logoutCurrentUser } from "../authUtils";
 import {
@@ -1157,7 +1165,7 @@ import {
   ChartBarBig,
   Film,
 } from "lucide-vue-next";
-import GifPicker from "./GifPicker.vue";
+const GifPicker = defineAsyncComponent(() => import("./GifPicker.vue"));
 
 import {
   ref as dbRef,
@@ -1313,9 +1321,13 @@ function formatDateLabel(timestamp) {
 }
 
 const groupedMessages = computed(() => {
+  const list = messages.value;
   const result = [];
   let lastDateKey = null;
-  messages.value.forEach((msg, i) => {
+  let prev = null;
+  let prevDateKey = null;
+  for (let i = 0; i < list.length; i++) {
+    const msg = list[i];
     const dateKey = msg.timestamp
       ? new Date(msg.timestamp).toDateString()
       : null;
@@ -1327,13 +1339,8 @@ const groupedMessages = computed(() => {
         label: formatDateLabel(msg.timestamp),
       });
     }
-    const prev = i > 0 ? messages.value[i - 1] : null;
     const crossedDate =
-      prev &&
-      prev.timestamp &&
-      msg.timestamp &&
-      new Date(prev.timestamp).toDateString() !==
-        new Date(msg.timestamp).toDateString();
+      prev && prev.timestamp && msg.timestamp && prevDateKey !== dateKey;
     const isGroupStart =
       !prev ||
       prev.uid !== msg.uid ||
@@ -1347,7 +1354,9 @@ const groupedMessages = computed(() => {
       type: msg.type || "message",
       isGroupStart,
     });
-  });
+    prev = msg;
+    prevDateKey = dateKey;
+  }
   return result;
 });
 const newMessage = ref("");
@@ -3238,6 +3247,15 @@ onMounted(async () => {
   subscribeMessages();
   startLiveNowTicker();
   nextTick(resizeComposer);
+
+  const warmEmoji = () => {
+    ensureEmojiReady().catch(() => {});
+  };
+  if (typeof window.requestIdleCallback === "function") {
+    window.requestIdleCallback(warmEmoji, { timeout: 4000 });
+  } else {
+    setTimeout(warmEmoji, 2000);
+  }
 });
 
 onUnmounted(() => {

@@ -178,6 +178,12 @@ let activeRequestId = 0;
 
 const cache = new Map();
 let lastCacheKey = null;
+let columnsCache = {
+  cols: null,
+  heights: null,
+  builtFrom: null,
+  builtLength: 0,
+};
 
 function loadRecents() {
   try {
@@ -233,17 +239,45 @@ function getCurrentKey() {
 }
 
 const columns = computed(() => {
-  const cols = Array.from({ length: COLUMN_COUNT }, () => []);
-  const heights = new Array(COLUMN_COUNT).fill(0);
-  for (const g of gifs.value) {
+  const list = gifs.value;
+  const canResume =
+    columnsCache.builtFrom === list &&
+    columnsCache.cols &&
+    columnsCache.heights &&
+    columnsCache.builtLength <= list.length;
+
+  let cols;
+  let heights;
+  let startIndex;
+
+  if (canResume) {
+    cols = columnsCache.cols.map((c) => c.slice());
+    heights = columnsCache.heights.slice();
+    startIndex = columnsCache.builtLength;
+  } else {
+    cols = Array.from({ length: COLUMN_COUNT }, () => []);
+    heights = new Array(COLUMN_COUNT).fill(0);
+    startIndex = 0;
+  }
+
+  for (let i = startIndex; i < list.length; i++) {
+    const g = list[i];
     let idx = 0;
-    for (let i = 1; i < COLUMN_COUNT; i++) {
-      if (heights[i] < heights[idx]) idx = i;
+    for (let c = 1; c < COLUMN_COUNT; c++) {
+      if (heights[c] < heights[idx]) idx = c;
     }
     cols[idx].push(g);
     const ratio = g.height / Math.max(g.width, 1);
     heights[idx] += ratio;
   }
+
+  columnsCache = {
+    cols,
+    heights,
+    builtFrom: list,
+    builtLength: list.length,
+  };
+
   return cols;
 });
 
@@ -436,18 +470,23 @@ function retry() {
   loadForCurrentQuery({ force: true });
 }
 
+let scrollRafId = 0;
 function handleScroll() {
-  const el = resultsRef.value;
-  if (!el) return;
-  if (lastCacheKey) {
-    const entry = cache.get(lastCacheKey);
-    if (entry) entry.scrollTop = el.scrollTop;
-  }
-  if (isLoading.value || !hasMore.value) return;
-  const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-  if (distFromBottom < 320) {
-    fetchGifs({ key: getCurrentKey(), reset: false });
-  }
+  if (scrollRafId) return;
+  scrollRafId = requestAnimationFrame(() => {
+    scrollRafId = 0;
+    const el = resultsRef.value;
+    if (!el) return;
+    if (lastCacheKey) {
+      const entry = cache.get(lastCacheKey);
+      if (entry) entry.scrollTop = el.scrollTop;
+    }
+    if (isLoading.value || !hasMore.value) return;
+    const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    if (distFromBottom < 320) {
+      fetchGifs({ key: getCurrentKey(), reset: false });
+    }
+  });
 }
 
 watch(
