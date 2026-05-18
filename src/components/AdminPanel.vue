@@ -810,6 +810,9 @@ async function loadAuditLogs() {
   loadingAudit.value = true;
   auditEntries.value = [];
   auditError.value = "";
+  // Ensure users are loaded so audit log can resolve current display names
+  // instead of relying on the (potentially stale) names stored on each event.
+  loadUsers();
   try {
     const snap = await get(dbRef(db, "auditLogs"));
     if (!snap.exists()) {
@@ -1144,7 +1147,22 @@ function getAvatarInitial(name) {
 function resolveDisplayName(uid, fallback = "") {
   if (!uid) return fallback || "Unknown";
   const user = users.value.find((entry) => entry.uid === uid);
-  return user?.displayName || fallback || uid;
+  if (user?.displayName) return user.displayName;
+  return fallback || uid;
+}
+
+function resolveLiveActorName(ev) {
+  if (!ev?.actorUid) return ev?.actorName || "Unknown";
+  const user = users.value.find((entry) => entry.uid === ev.actorUid);
+  if (user?.displayName) return user.displayName;
+  return ev.actorName || ev.actorUid;
+}
+
+function resolveLiveTargetName(ev) {
+  if (!ev?.targetUid) return ev?.targetName || "";
+  const user = users.value.find((entry) => entry.uid === ev.targetUid);
+  if (user?.displayName) return user.displayName;
+  return ev.targetName || ev.targetUid;
 }
 
 function escapeHtml(str) {
@@ -1158,10 +1176,9 @@ function escapeHtml(str) {
 }
 
 function formatAuditText(ev) {
-  const actorRaw = ev.actorName || resolveDisplayName(ev.actorUid, ev.actorUid);
+  const actorRaw = resolveLiveActorName(ev);
   const actor = `<strong>${escapeHtml(actorRaw)}</strong>`;
-  const targetNameRaw =
-    ev.targetName || resolveDisplayName(ev.targetUid, ev.targetUid);
+  const targetNameRaw = resolveLiveTargetName(ev);
   const target =
     ev.targetUid || ev.targetName ? ` ${escapeHtml(targetNameRaw)}` : "";
   const details = ev.details ? ` - ${escapeHtml(ev.details)}` : "";

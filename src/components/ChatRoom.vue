@@ -1688,6 +1688,11 @@ const canSubmitPoll = computed(() => {
 
 function toggleAttachMenu() {
   if (isMuted.value || (chatLocked.value && !isAdmin.value)) return;
+  if (gifPickerVisible.value) {
+    gifPickerVisible.value = false;
+    attachMenuVisible.value = false;
+    return;
+  }
   attachMenuVisible.value = !attachMenuVisible.value;
 }
 

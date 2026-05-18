@@ -15,9 +15,7 @@
             v-model="query"
             type="text"
             class="gif-search-input"
-            :placeholder="
-              committedQuery ? `Search Giphy` : 'Search Giphy — press Enter'
-            "
+            :placeholder="'Search Giphy'"
             maxlength="80"
             @keydown.escape.prevent="handleEscape"
             @keydown.enter.prevent="submitSearch"
