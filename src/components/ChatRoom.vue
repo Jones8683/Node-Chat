@@ -1970,7 +1970,10 @@ async function ensureEmojiReady() {
 const offlineMembers = computed(() => {
   const onlineUids = new Set(onlineUsers.value.map((u) => u.uid));
   return Object.entries(allUsers.value)
-    .filter(([uid, data]) => !onlineUids.has(uid) && data.displayName)
+    .filter(
+      ([uid, data]) =>
+        !onlineUids.has(uid) && data.displayName && uid !== props.user.uid,
+    )
     .map(([uid, data]) => ({
       uid,
       displayName: data.displayName,
@@ -2523,11 +2526,7 @@ function checkMentionTrigger(target) {
     .map((candidate) => candidate.user);
 
   const normalizedQuery = normalizeMentionSearch(queryText);
-  if (
-    isAdmin.value &&
-    normalizedQuery.length > 0 &&
-    "everyone".startsWith(normalizedQuery)
-  ) {
+  if (normalizedQuery.length > 0 && "everyone".startsWith(normalizedQuery)) {
     candidates.unshift(EVERYONE_MENTION_ENTRY);
   }
 
@@ -2738,6 +2737,14 @@ function extractMentions(text) {
   while ((tokenMatch = tokenPattern.exec(text)) !== null) {
     const uid = tokenMatch[1];
     if (mentioned.has(uid)) continue;
+    if (uid === EVERYONE_MENTION_UID) {
+      mentioned.set(uid, {
+        uid,
+        displayName: "everyone",
+        avatarColor: null,
+      });
+      continue;
+    }
     const user = mentionableUsers.value.find((u) => u.uid === uid);
     mentioned.set(uid, {
       uid,
@@ -2812,15 +2819,9 @@ function messageMentionsCurrentUser(message) {
   );
 }
 
-function senderCanPingEveryone(message) {
-  if (!message?.uid) return false;
-  return adminUsers.value.has(message.uid) || ownerUid.value === message.uid;
-}
-
 function isMessagePing(message) {
   if (!message) return false;
-  if (messageMentionsEveryone(message) && senderCanPingEveryone(message))
-    return true;
+  if (messageMentionsEveryone(message)) return true;
   if (message.uid === props.user.uid) return false;
   if (message.replyTo?.uid === props.user.uid) return true;
   if (messageMentionsCurrentUser(message)) return true;
@@ -3051,7 +3052,7 @@ function subscribeMessages() {
         sorted.forEach((msg) => {
           if (!knownIds.has(msg.id)) {
             knownIds.add(msg.id);
-            if (!isPagingHistory) {
+            if (!isPagingHistory && msg.uid !== props.user.uid) {
               const appBackgrounded = document.hidden || !document.hasFocus();
               if (document.hidden) {
                 unreadCount++;
@@ -4278,8 +4279,7 @@ async function logout() {
 }
 
 .message--ping:hover {
-  background: rgba(90, 90, 240, 0.04);
-  border-left: 3px solid rgba(90, 90, 240, 0.9);
+  background: rgba(90, 90, 240, 0.12);
 }
 
 @keyframes msg-highlight-fade {
