@@ -29,7 +29,7 @@
             @click.stop="clearQuery"
             aria-label="Clear search"
           >
-            <X :size="12" stroke-width="2.6" />
+            <X :size="11" stroke-width="2.6" />
           </button>
         </div>
       </div>
@@ -96,7 +96,7 @@
       <div class="gif-results" ref="resultsRef" @scroll.passive="handleScroll">
         <div v-if="loadError" class="gif-empty">
           <span>Couldn't load GIFs. Try again.</span>
-          <button type="button" class="gif-retry-btn" @click="retry">
+          <button type="button" class="gif-retry-btn" @click.stop="retry">
             Retry
           </button>
         </div>
@@ -549,7 +549,8 @@ defineExpose({
   font-weight: 600;
   color: var(--text);
   min-width: 0;
-  padding: 0;
+  padding: 2px 0;
+  height: 20px;
 }
 
 .gif-search-input::placeholder {
@@ -561,8 +562,8 @@ defineExpose({
   background: rgba(44, 42, 39, 0.08);
   border: none;
   border-radius: 999px;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -570,6 +571,7 @@ defineExpose({
   cursor: pointer;
   flex-shrink: 0;
   transition: background 120ms ease;
+  padding: 0;
 }
 
 .gif-search-clear:hover {
