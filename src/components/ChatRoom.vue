@@ -164,7 +164,7 @@
                     >
                     <span
                       class="reply-text"
-                      v-html="formatMessage(item.replyTo)"
+                      v-html="formatReplyPreview(item.replyTo)"
                     ></span>
                   </template>
                 </div>
@@ -241,10 +241,20 @@
                             v-for="(mentionUser, i) in mentionResults"
                             :key="mentionUser.uid"
                             class="mention-item"
-                            :class="{ active: i === mentionActiveIndex }"
+                            :class="{
+                              active: i === mentionActiveIndex,
+                              'mention-item--everyone': mentionUser.isEveryone,
+                            }"
                             @mousedown.prevent="insertMention(mentionUser)"
                           >
                             <div
+                              v-if="mentionUser.isEveryone"
+                              class="mention-avatar mention-avatar--everyone"
+                            >
+                              @
+                            </div>
+                            <div
+                              v-else
                               class="mention-avatar"
                               :style="
                                 getAvatarStyle(
@@ -532,10 +542,20 @@
                 v-for="(mentionUser, i) in mentionResults"
                 :key="mentionUser.uid"
                 class="mention-item"
-                :class="{ active: i === mentionActiveIndex }"
+                :class="{
+                  active: i === mentionActiveIndex,
+                  'mention-item--everyone': mentionUser.isEveryone,
+                }"
                 @mousedown.prevent="insertMention(mentionUser)"
               >
                 <div
+                  v-if="mentionUser.isEveryone"
+                  class="mention-avatar mention-avatar--everyone"
+                >
+                  @
+                </div>
+                <div
+                  v-else
                   class="mention-avatar"
                   :style="
                     getAvatarStyle(
@@ -1362,6 +1382,8 @@ let initialLoadDone = false;
 let hasPositionedInitialScroll = false;
 let knownIds = new Set();
 const allUsers = ref({});
+const EVERYONE_MENTION_UID = "everyone";
+
 const mentionableUsers = computed(() => {
   const onlineUids = new Set(onlineUsers.value.map((u) => u.uid));
   const userEntries = new Map(Object.entries(allUsers.value));
@@ -1384,6 +1406,7 @@ const mentionableUsers = computed(() => {
       avatarColor: data.preferences?.avatarColor || null,
       isOnline: onlineUids.has(uid),
       isSelf: uid === props.user.uid,
+      isEveryone: false,
     }))
     .sort((a, b) => {
       if (a.isSelf !== b.isSelf) return a.isSelf ? -1 : 1;
@@ -1391,6 +1414,30 @@ const mentionableUsers = computed(() => {
       return (a.displayName || "").localeCompare(b.displayName || "");
     });
 });
+
+const EVERYONE_MENTION_ENTRY = {
+  uid: EVERYONE_MENTION_UID,
+  displayName: "everyone",
+  avatarColor: null,
+  isOnline: true,
+  isSelf: false,
+  isEveryone: true,
+};
+
+const recentParticipants = computed(() => {
+  const map = new Map();
+  const limit = 30;
+  for (let i = messages.value.length - 1; i >= 0; i--) {
+    const uid = messages.value[i]?.uid;
+    if (!uid) continue;
+    if (uid === props.user.uid) continue;
+    if (map.has(uid)) continue;
+    map.set(uid, map.size);
+    if (map.size >= limit) break;
+  }
+  return map;
+});
+
 let typingTimeout = null;
 let myTypingRef = null;
 let messagesListener = null;
@@ -2054,16 +2101,23 @@ function escapeRegExp(value) {
 }
 
 function getMentionDisplayName(uid, fallback = "") {
+  if (uid === EVERYONE_MENTION_UID) return "everyone";
   return resolveDisplayName(uid, fallback);
 }
 
 function tokenizeMentions(text) {
   if (!text) return text;
   if (text.indexOf("@") === -1) return text;
-  const candidates = mentionableUsers.value
-    .filter((u) => u.displayName)
-    .sort((a, b) => b.displayName.length - a.displayName.length);
   let result = text;
+
+  result = result.replace(
+    /(^|[^A-Za-z0-9_/#])@everyone(?=$|[^A-Za-z0-9_-])/g,
+    (_, prefix) => `${prefix}<@${EVERYONE_MENTION_UID}>`,
+  );
+
+  const candidates = mentionableUsers.value
+    .filter((u) => u.displayName && !u.isEveryone)
+    .sort((a, b) => b.displayName.length - a.displayName.length);
   for (const user of candidates) {
     const pattern = new RegExp(
       `(^|[^A-Za-z0-9_/#])@${escapeRegExp(user.displayName)}(?=$|[^A-Za-z0-9_-])`,
@@ -2077,6 +2131,7 @@ function tokenizeMentions(text) {
 function detokenizeMentions(text) {
   if (!text) return text;
   return text.replace(/<@([A-Za-z0-9]+)>/g, (_, uid) => {
+    if (uid === EVERYONE_MENTION_UID) return "@everyone";
     const name = resolveDisplayName(uid, "");
     return name ? `@${name}` : `<@${uid}>`;
   });
@@ -2120,7 +2175,8 @@ function getMentionData(message) {
 function renderMentionHtml(uid, fallbackName) {
   const label = getMentionDisplayName(uid, fallbackName);
   const isMe = uid === props.user.uid;
-  const className = `mention${isMe ? " mention--me" : ""}`;
+  let className = "mention";
+  if (isMe) className += " mention--me";
   const safeLabel = escapeHtml(`@${label}`);
   const safeTitle = escapeHtml(label).replace(/"/g, "&quot;");
   return `<span class="${className}" title="@${safeTitle}">${safeLabel}</span>`;
@@ -2174,7 +2230,7 @@ function restoreMentionPlaceholders(html, replacements) {
   return html.replace(/\x01(\d+)\x01/g, (_, idx) => replacements[Number(idx)]);
 }
 
-function formatMessage(messageOrText) {
+function formatMessageInternal(messageOrText, { linkify = true } = {}) {
   const message =
     typeof messageOrText === "object" && messageOrText !== null
       ? messageOrText
@@ -2203,24 +2259,39 @@ function formatMessage(messageOrText) {
     message,
   );
 
-  const formatted = mentionState.html
+  let formatted = mentionState.html
     .replace(/\*\*\*(.+?)\*\*\*/gs, "<strong><em>$1</em></strong>")
     .replace(/\*\*(.+?)\*\*/gs, "<strong>$1</strong>")
     .replace(/__(.+?)__/gs, "<u>$1</u>")
     .replace(/\*(.+?)\*/gs, "<em>$1</em>")
     .replace(/_([^_]+)_/gs, "<em>$1</em>")
     .replace(/~~(.+?)~~/gs, "<s>$1</s>")
-    .replace(/`([^`]+)`/g, "<code>$1</code>")
-    .replace(
+    .replace(/`([^`]+)`/g, "<code>$1</code>");
+
+  if (linkify) {
+    formatted = formatted.replace(
       /(https?:\/\/[^\s<]+?)([.,!?;:)"']*(?:\s|$))/g,
       (_, url, trail) => {
         const safeUrl = url.replace(/"/g, "&quot;");
         return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${url}</a>${trail}`;
       },
-    )
-    .replace(/\x00(\d+)\x00/g, (_, idx) => escapes[parseInt(idx)]);
+    );
+  }
+
+  formatted = formatted.replace(
+    /\x00(\d+)\x00/g,
+    (_, idx) => escapes[parseInt(idx)],
+  );
 
   return restoreMentionPlaceholders(formatted, mentionState.replacements);
+}
+
+function formatMessage(messageOrText) {
+  return formatMessageInternal(messageOrText, { linkify: true });
+}
+
+function formatReplyPreview(messageOrText) {
+  return formatMessageInternal(messageOrText, { linkify: false });
 }
 
 function isEmojiOnly(text) {
@@ -2386,9 +2457,15 @@ function getSequentialMatchScore(haystack, needle) {
 
 function getMentionSearchScore(user, query) {
   const normalizedQuery = normalizeMentionSearch(query);
-  if (!normalizedQuery) return user.isSelf ? -20 : user.isOnline ? -10 : 0;
+  if (!normalizedQuery) {
+    if (user.isSelf) return Infinity;
+    const recencyIndex = recentParticipants.value.get(user.uid);
+    if (recencyIndex !== undefined) return -1000 + recencyIndex;
+    return user.isOnline ? -10 : 0;
+  }
 
   const name = normalizeMentionSearch(user.displayName);
+
   const compactName = name.replace(/\s+/g, "");
   const compactQuery = normalizedQuery.replace(/\s+/g, "");
   if (!name || !compactQuery) return Infinity;
@@ -2444,6 +2521,15 @@ function checkMentionTrigger(target) {
       return (a.user.displayName || "").localeCompare(b.user.displayName || "");
     })
     .map((candidate) => candidate.user);
+
+  const normalizedQuery = normalizeMentionSearch(queryText);
+  if (
+    isAdmin.value &&
+    normalizedQuery.length > 0 &&
+    "everyone".startsWith(normalizedQuery)
+  ) {
+    candidates.unshift(EVERYONE_MENTION_ENTRY);
+  }
 
   if (!candidates.length) {
     closeMentionPicker();
@@ -2706,6 +2792,15 @@ function buildMentionFields(text) {
   };
 }
 
+function messageMentionsEveryone(message) {
+  if (!message) return false;
+  if (message.mentionUids?.[EVERYONE_MENTION_UID] === true) return true;
+  if (message.mentions?.[EVERYONE_MENTION_UID]) return true;
+  const text = message.text || "";
+  if (text.includes(`<@${EVERYONE_MENTION_UID}>`)) return true;
+  return false;
+}
+
 function messageMentionsCurrentUser(message) {
   if (!message) return false;
   if (message.mentionUids?.[props.user.uid] === true) return true;
@@ -2717,12 +2812,19 @@ function messageMentionsCurrentUser(message) {
   );
 }
 
+function senderCanPingEveryone(message) {
+  if (!message?.uid) return false;
+  return adminUsers.value.has(message.uid) || ownerUid.value === message.uid;
+}
+
 function isMessagePing(message) {
-  if (!message || message.uid === props.user.uid) return false;
-  return (
-    message.replyTo?.uid === props.user.uid ||
-    messageMentionsCurrentUser(message)
-  );
+  if (!message) return false;
+  if (messageMentionsEveryone(message) && senderCanPingEveryone(message))
+    return true;
+  if (message.uid === props.user.uid) return false;
+  if (message.replyTo?.uid === props.user.uid) return true;
+  if (messageMentionsCurrentUser(message)) return true;
+  return false;
 }
 
 function handleAppForeground() {
@@ -5135,6 +5237,15 @@ textarea::placeholder {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+}
+
+.mention-avatar--everyone {
+  background: #d97706;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  padding-bottom: 1px;
 }
 
 .mention-name {
