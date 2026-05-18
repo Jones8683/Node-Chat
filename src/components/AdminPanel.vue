@@ -773,7 +773,6 @@ function onKeyDown(e) {
   if (e.key !== "Escape") return;
   if (!props.isOpen) return;
 
-  
   if (purgeDropdownOpen.value) {
     e.preventDefault();
     e.stopPropagation();
