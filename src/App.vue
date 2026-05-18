@@ -1,5 +1,19 @@
 <template>
   <div id="app">
+    <ChatRoom
+      v-if="status === 'authenticated'"
+      :user="user"
+      :key="user.uid"
+      @ready="handleChatReady"
+      @open-settings="showSettings = true"
+      @open-admin="showAdmin = true"
+    />
+    <SetDisplayName
+      v-else-if="status === 'needsDisplayName'"
+      @done="refreshUser"
+    />
+    <AuthForm v-else-if="status === 'unauthenticated'" />
+
     <transition name="loading-fade">
       <div v-if="showLoadingPage" class="loading-page">
         <div class="loading-stack" role="status" aria-live="polite">
@@ -10,16 +24,6 @@
         </div>
       </div>
     </transition>
-
-    <ChatRoom
-      v-if="user && user.displayName"
-      :user="user"
-      @ready="handleChatReady"
-      @open-settings="showSettings = true"
-      @open-admin="showAdmin = true"
-    />
-    <SetDisplayName v-else-if="user && !user.displayName" @done="refreshUser" />
-    <AuthForm v-else-if="authReady" />
 
     <SettingsModal
       :is-open="showSettings"
@@ -65,42 +69,39 @@ const AdminPanel = defineAsyncComponent(
   () => import("./components/AdminPanel.vue"),
 );
 
+const status = ref("loading");
 const user = ref(null);
-const authReady = ref(false);
 const chatReady = ref(false);
 const showSettings = ref(false);
 const showAdmin = ref(false);
+
 const showLoadingPage = computed(
-  () => !authReady.value || (user.value?.displayName && !chatReady.value),
+  () =>
+    status.value === "loading" ||
+    (status.value === "authenticated" && !chatReady.value),
 );
 
 let userDbUnsub = null;
 let authUnsub = null;
 
+function applyUser(authUser, data) {
+  const displayName = (data?.displayName || authUser.displayName || "").trim();
+  user.value = {
+    ...authUser,
+    displayName,
+    preferences: data?.preferences || {},
+  };
+  status.value = displayName ? "authenticated" : "needsDisplayName";
+}
+
 function refreshUser() {
   const currentUser = auth.currentUser;
   if (!currentUser) return;
   const userRef = dbRef(db, `users/${currentUser.uid}`);
-  let off = null;
-  off = onValue(
+  onValue(
     userRef,
-    (snap) => {
-      const data = snap.val() || {};
-      user.value = {
-        ...currentUser,
-        displayName: data.displayName || currentUser.displayName || "",
-        preferences: data.preferences || {},
-      };
-      if (off) off();
-    },
-    () => {
-      user.value = {
-        ...currentUser,
-        displayName: currentUser.displayName || "",
-        preferences: {},
-      };
-      if (off) off();
-    },
+    (snap) => applyUser(currentUser, snap.val() || {}),
+    () => applyUser(currentUser, {}),
     { onlyOnce: true },
   );
 }
@@ -110,13 +111,16 @@ function handleChatReady() {
 }
 
 const anyModalOpen = computed(() => showSettings.value || showAdmin.value);
-watch(anyModalOpen, (isOpen) => {
-  if (isOpen) {
-    document.documentElement.style.overflow = "hidden";
-  } else {
-    document.documentElement.style.overflow = "";
-  }
-});
+const hideAppOverflow = computed(
+  () => anyModalOpen.value || showLoadingPage.value,
+);
+watch(
+  hideAppOverflow,
+  (hide) => {
+    document.documentElement.style.overflow = hide ? "hidden" : "";
+  },
+  { immediate: true },
+);
 
 onMounted(() => {
   authUnsub = onAuthStateChanged(auth, (u) => {
@@ -127,39 +131,23 @@ onMounted(() => {
 
     chatReady.value = false;
 
-    if (u) {
-      let isFirst = true;
-      const userRef = dbRef(db, `users/${u.uid}`);
-      userDbUnsub = onValue(
-        userRef,
-        (snap) => {
-          const data = snap.val() || {};
-          user.value = {
-            ...u,
-            displayName: data.displayName || u.displayName || "",
-            preferences: data.preferences || {},
-          };
-          if (isFirst) {
-            isFirst = false;
-            authReady.value = true;
-          }
-        },
-        () => {
-          user.value = {
-            ...u,
-            displayName: u.displayName || "",
-            preferences: {},
-          };
-          if (isFirst) {
-            isFirst = false;
-            authReady.value = true;
-          }
-        },
-      );
-    } else {
+    if (!u) {
       user.value = null;
-      authReady.value = true;
+      status.value = "unauthenticated";
+      return;
     }
+
+    if (!user.value || user.value.uid !== u.uid) {
+      user.value = null;
+      status.value = "loading";
+    }
+
+    const userRef = dbRef(db, `users/${u.uid}`);
+    userDbUnsub = onValue(
+      userRef,
+      (snap) => applyUser(u, snap.val() || {}),
+      () => applyUser(u, {}),
+    );
   });
 });
 
@@ -178,33 +166,26 @@ onUnmounted(() => {
 
 <style scoped>
 .loading-page {
-  position: absolute;
+  position: fixed;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 24px;
   background: var(--bg);
-  z-index: 20;
+  z-index: 1000;
+  will-change: opacity, transform;
 }
 
 .loading-fade-enter-active {
-  transition:
-    opacity 240ms ease-out,
-    transform 240ms var(--ease-out-quint);
+  transition: opacity 180ms ease-out;
 }
 .loading-fade-leave-active {
-  transition:
-    opacity 220ms ease-in,
-    transform 220ms var(--ease-out-quint);
+  transition: opacity 260ms ease-in;
 }
-.loading-fade-enter-from {
-  opacity: 0;
-  transform: scale(1.01);
-}
+.loading-fade-enter-from,
 .loading-fade-leave-to {
   opacity: 0;
-  transform: scale(0.985);
 }
 
 .loading-stack {
