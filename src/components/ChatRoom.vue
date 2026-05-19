@@ -632,7 +632,7 @@
             </transition>
           </div>
 
-          <div class="input-wrap" @mousedown.prevent="focusComposer">
+          <div class="input-wrap" @mousedown="handleComposerAreaMousedown">
             <div v-if="replyingTo" class="reply-bar">
               <span class="reply-bar-to"
                 >Replying to
@@ -664,7 +664,7 @@
             <div
               class="input-row"
               ref="inputRowRef"
-              @mousedown.prevent="focusComposer"
+              @mousedown="handleComposerAreaMousedown"
             >
               <div class="attach-wrap" ref="attachWrapRef">
                 <transition name="attach-menu">
@@ -2977,6 +2977,24 @@ function handleTyping() {
 
 function focusComposer() {
   composerRef.value?.focus();
+}
+
+// Only steal mousedown for "empty" areas around the textarea (padding/border).
+// If the user clicks the textarea itself, or any interactive control (button,
+// input, link, etc.), let the native behaviour run so the caret can be placed
+// and text can be selected with the mouse.
+function handleComposerAreaMousedown(e) {
+  const target = e.target;
+  if (!(target instanceof Element)) return;
+  if (
+    target.closest(
+      "textarea, input, button, a, [contenteditable=''], [contenteditable='true'], .reply-bar, .gif-picker, .emoji-picker, .mention-picker, .attach-menu",
+    )
+  ) {
+    return;
+  }
+  e.preventDefault();
+  focusComposer();
 }
 
 function handleComposerInput() {
