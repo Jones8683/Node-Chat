@@ -22,6 +22,8 @@ on:
         required: true
       VITE_FIREBASE_APP_ID:
         required: true
+      VITE_GIPHY_KEY:
+        required: true
 
 concurrency:
   group: tauri-installer-${{ github.ref }}
@@ -42,6 +44,7 @@ jobs:
       VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
       VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
       VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+      VITE_GIPHY_KEY: ${{ secrets.VITE_GIPHY_KEY }}
 
     steps:
       - name: Checkout
@@ -74,7 +77,8 @@ jobs:
             "VITE_FIREBASE_PROJECT_ID=${{ secrets.VITE_FIREBASE_PROJECT_ID }}",
             "VITE_FIREBASE_STORAGE_BUCKET=${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}",
             "VITE_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}",
-            "VITE_FIREBASE_APP_ID=${{ secrets.VITE_FIREBASE_APP_ID }}"
+            "VITE_FIREBASE_APP_ID=${{ secrets.VITE_FIREBASE_APP_ID }}",
+            "VITE_GIPHY_KEY=${{ secrets.VITE_GIPHY_KEY }}"
           )
           $lines | Set-Content -Path .env.production -Encoding UTF8
 
