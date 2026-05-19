@@ -331,12 +331,23 @@ export async function adminRenameUser(uid, rawName) {
 
   await batchUpdateMessageDisplayNames(uid, newName);
 
-  recordAuditEvent({
-    action: "name_renamed",
-    targetUid: uid,
-    targetName: newName,
-    details: oldName || null,
-  });
+  const actingUid = auth.currentUser?.uid || null;
+  const isSelfRename = actingUid && actingUid === uid;
+  if (isSelfRename) {
+    recordAuditEvent({
+      action: "display_name_changed",
+      actorUid: uid,
+      actorName: newName,
+      details: oldName || null,
+    });
+  } else {
+    recordAuditEvent({
+      action: "name_renamed",
+      targetUid: uid,
+      targetName: newName,
+      details: oldName || null,
+    });
+  }
 }
 
 async function batchUpdateMessageDisplayNames(uid, newDisplayName) {

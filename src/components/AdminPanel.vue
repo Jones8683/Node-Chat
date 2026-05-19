@@ -1206,14 +1206,27 @@ function formatAuditText(ev) {
       return ev.details
         ? `${actor} deleted invite code ${escapeHtml(ev.details)}`
         : `${actor} deleted an invite code`;
-    case "name_renamed":
-      return ev.details
-        ? `${actor} renamed ${escapeHtml(ev.details)} to ${escapeHtml(targetNameRaw)}`
-        : `${actor} renamed ${escapeHtml(targetNameRaw)}`;
-    case "display_name_changed":
-      return ev.details
-        ? `${actor} changed their display name from ${escapeHtml(ev.details)} to ${escapeHtml(actorRaw)}`
+    case "name_renamed": {
+      const oldName = ev.details;
+      const newName = ev.targetName || targetNameRaw;
+      const isSelf = ev.actorUid && ev.actorUid === ev.targetUid;
+      if (isSelf) {
+        return oldName && newName
+          ? `${actor} changed their display name from ${escapeHtml(oldName)} to ${escapeHtml(newName)}`
+          : `${actor} changed their display name`;
+      }
+      const targetLabel = escapeHtml(newName || ev.targetUid || "a user");
+      return oldName
+        ? `${actor} renamed ${escapeHtml(oldName)} to ${targetLabel}`
+        : `${actor} renamed ${targetLabel}`;
+    }
+    case "display_name_changed": {
+      const oldName = ev.details;
+      const newName = ev.actorName;
+      return oldName && newName
+        ? `${actor} changed their display name from ${escapeHtml(oldName)} to ${escapeHtml(newName)}`
         : `${actor} changed their display name`;
+    }
     case "signup":
       return ev.details
         ? `${actor} signed up with invite code ${escapeHtml(ev.details)}`
