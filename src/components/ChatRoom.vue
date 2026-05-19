@@ -653,9 +653,11 @@
                 ></span
               >
               <button
+                type="button"
                 class="reply-bar-close"
                 @click="cancelReply"
                 title="Cancel reply"
+                aria-label="Cancel reply"
               >
                 <X :size="13" stroke-width="2.5" />
               </button>
