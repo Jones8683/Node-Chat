@@ -31,6 +31,7 @@ const SLUR_WORDS = [
   "slag",
   "slut",
   "spic",
+  "thot",
   "towelhead",
   "tranny",
   "wetback",
