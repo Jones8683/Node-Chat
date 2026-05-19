@@ -4,7 +4,7 @@
       <div class="modal-container">
         <div class="modal-header">
           <h2 class="modal-title">Admin</h2>
-          <button class="modal-close" @click="close">
+          <button type="button" class="modal-close" @click="close">
             <X :size="20" stroke-width="2" />
           </button>
         </div>
@@ -41,10 +41,8 @@
             class="tab-btn"
             :class="{ active: activeTab === 'audit' }"
             @click="
-              {
-                activeTab = 'audit';
-                loadAuditLogs();
-              }
+              activeTab = 'audit';
+              loadAuditLogs();
             "
           >
             Audit Log

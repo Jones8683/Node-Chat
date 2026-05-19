@@ -9,7 +9,6 @@ import {
 } from "obscenity";
 
 const SLUR_WORDS = [
-  "abo",
   "beaner",
   "boong",
   "chink",
