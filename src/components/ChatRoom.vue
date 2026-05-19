@@ -387,7 +387,7 @@
                           aspectRatio: `${item.gif.width || 1} / ${item.gif.height || 1}`,
                           maxWidth: getGifDisplayWidth(item.gif) + 'px',
                         }"
-                        @click="openGifLightbox(item.gif)"
+                        @click="openGifLightbox(item.gif, item.id)"
                       >
                         <img
                           :src="item.gif.url"
@@ -1511,16 +1511,27 @@ function getGifLightboxWidth(gif) {
   return Math.round(getGifDisplayWidth(gif) * GIF_LIGHTBOX_SCALE);
 }
 
-const gifLightbox = ref({ show: false, gif: null });
+const gifLightbox = ref({ show: false, gif: null, messageId: null });
 
-function openGifLightbox(gif) {
+function openGifLightbox(gif, messageId = null) {
   if (!gif?.url) return;
-  gifLightbox.value = { show: true, gif };
+  gifLightbox.value = { show: true, gif, messageId };
 }
 
 function closeGifLightbox() {
-  gifLightbox.value = { show: false, gif: null };
+  gifLightbox.value = { show: false, gif: null, messageId: null };
 }
+
+watch(
+  () => messages.value.map((m) => m.id),
+  () => {
+    if (!gifLightbox.value.show) return;
+    const id = gifLightbox.value.messageId;
+    if (!id) return;
+    const stillExists = messages.value.some((m) => m.id === id);
+    if (!stillExists) closeGifLightbox();
+  },
+);
 
 const GIF_URL_REGEX =
   /^(https?:\/\/[^\s]+?\.(?:gif|gifv|webp)(?:\?[^\s]*)?|https?:\/\/(?:media\d*\.giphy\.com|tenor\.com|c\.tenor\.com|i\.giphy\.com|media\.tenor\.com)\/[^\s]+)$/i;
