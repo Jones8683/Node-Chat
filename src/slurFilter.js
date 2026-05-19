@@ -12,7 +12,6 @@ const SLUR_WORDS = [
   "beaner",
   "boong",
   "chink",
-  "coon",
   "cunt",
   "dyke",
   "fag",
