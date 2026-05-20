@@ -338,6 +338,45 @@
                 >
                   {{ timestampError }}
                 </p>
+                <transition
+                  name="pref-reveal"
+                  @before-enter="onRevealBeforeEnter"
+                  @enter="onRevealEnter"
+                  @after-enter="onRevealAfterEnter"
+                  @before-leave="onRevealBeforeLeave"
+                  @leave="onRevealLeave"
+                >
+                  <div v-if="showTimestamps" class="pref-sub">
+                    <div class="pref-sub-title">Time format</div>
+                    <div
+                      class="order-toggle"
+                      :class="{ right: timeFormat === '24h' }"
+                      role="radiogroup"
+                    >
+                      <div class="order-pill" aria-hidden="true"></div>
+                      <button
+                        type="button"
+                        class="order-btn"
+                        :class="{ active: timeFormat === '12h' }"
+                        @click="setTimeFormat('12h')"
+                        role="radio"
+                        :aria-checked="timeFormat === '12h'"
+                      >
+                        12-hour
+                      </button>
+                      <button
+                        type="button"
+                        class="order-btn"
+                        :class="{ active: timeFormat === '24h' }"
+                        @click="setTimeFormat('24h')"
+                        role="radio"
+                        :aria-checked="timeFormat === '24h'"
+                      >
+                        24-hour
+                      </button>
+                    </div>
+                  </div>
+                </transition>
               </div>
             </div>
           </div>
@@ -464,6 +503,9 @@ const notificationMode = computed(
 const showTimestamps = computed(
   () => props.user?.preferences?.showTimestamps !== false,
 );
+const timeFormat = computed(() =>
+  props.user?.preferences?.timeFormat === "24h" ? "24h" : "12h",
+);
 
 const notifError = ref("");
 const notifBlocked = ref(false);
@@ -539,6 +581,16 @@ async function toggleShowTimestamps() {
     await writePreferences({ showTimestamps: !showTimestamps.value });
   } catch {
     timestampError.value = "Failed to save timestamp preference.";
+  }
+}
+
+async function setTimeFormat(format) {
+  if (timeFormat.value === format) return;
+  timestampError.value = "";
+  try {
+    await writePreferences({ timeFormat: format });
+  } catch {
+    timestampError.value = "Failed to save time format preference.";
   }
 }
 
@@ -897,6 +949,7 @@ async function changePassword() {
   overscroll-behavior-y: contain;
   scrollbar-width: thin;
   scrollbar-color: rgba(44, 42, 39, 0.28) transparent;
+  scrollbar-gutter: stable;
 }
 
 .modal-content::-webkit-scrollbar {

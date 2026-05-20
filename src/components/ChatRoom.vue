@@ -1365,6 +1365,9 @@ const newMessage = ref("");
 const showTimestamps = computed(
   () => props.user?.preferences?.showTimestamps !== false,
 );
+const use24HourTime = computed(
+  () => props.user?.preferences?.timeFormat === "24h",
+);
 const menuRef = ref(null);
 const messageContainer = ref(null);
 const composerRef = ref(null);
@@ -2391,7 +2394,7 @@ function formatTimestamp(timestamp) {
   return new Date(timestamp).toLocaleTimeString("en-US", {
     hour: "2-digit",
     minute: "2-digit",
-    hour12: true,
+    hour12: !use24HourTime.value,
   });
 }
 
@@ -2400,7 +2403,7 @@ function formatTimestampShort(timestamp) {
   return new Date(timestamp).toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",
-    hour12: true,
+    hour12: !use24HourTime.value,
   });
 }
 
