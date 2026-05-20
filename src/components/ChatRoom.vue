@@ -1009,13 +1009,13 @@
                 <span class="poll-switch-label">Allow multiple answers</span>
                 <button
                   type="button"
-                  class="toggle-btn"
+                  class="toggle-switch"
                   :class="{ active: pollDialog.multi }"
                   :aria-pressed="pollDialog.multi"
                   aria-label="Allow multiple answers"
                   @click.stop="pollDialog.multi = !pollDialog.multi"
                 >
-                  <span class="toggle-thumb"></span>
+                  <span class="toggle-switch__thumb"></span>
                 </button>
               </div>
               <button
@@ -6206,64 +6206,6 @@ textarea::placeholder {
   font-weight: 600;
   color: var(--text);
   line-height: 1.3;
-}
-
-.toggle-btn {
-  position: relative;
-  width: 48px;
-  height: 28px;
-  border-radius: 999px;
-  border: none;
-  background: rgba(44, 42, 39, 0.18);
-  cursor: pointer;
-  padding: 0;
-  flex-shrink: 0;
-  transition:
-    background 120ms ease,
-    box-shadow 120ms ease;
-  outline: none;
-}
-
-.toggle-btn:focus-visible {
-  box-shadow: 0 0 0 3px rgba(90, 90, 240, 0.22);
-}
-
-.toggle-btn.active {
-  background: var(--accent);
-  box-shadow: 0 2px 8px rgba(90, 90, 240, 0.28);
-}
-
-.toggle-thumb {
-  position: absolute;
-  top: 4px;
-  left: 4px;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow:
-    0 1px 5px rgba(0, 0, 0, 0.22),
-    0 0 0 0.5px rgba(0, 0, 0, 0.06);
-  transition:
-    transform 160ms cubic-bezier(0.2, 0.95, 0.3, 1),
-    width 180ms ease,
-    border-radius 180ms ease;
-  will-change: transform;
-}
-
-.toggle-btn:active .toggle-thumb {
-  width: 24px;
-  border-radius: 10px;
-}
-
-.toggle-btn.active .toggle-thumb {
-  transform: translateX(20px);
-}
-
-.toggle-btn.active:active .toggle-thumb {
-  transform: translateX(16px);
-  width: 24px;
-  border-radius: 10px;
 }
 
 .poll-post-btn {

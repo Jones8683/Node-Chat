@@ -57,14 +57,17 @@
                     v-for="c in AVATAR_PALETTE"
                     :key="c"
                     class="color-swatch"
-                    :class="{ selected: avatarColor === c }"
+                    :class="{ selected: currentAvatarColor === c }"
                     :style="{ background: c }"
-                    :disabled="savingColor"
                     @click="setAvatarColor(c)"
                     :aria-label="`Set avatar color to ${c}`"
+                    :aria-pressed="currentAvatarColor === c"
                   ></button>
                 </div>
               </div>
+              <p v-if="colorError" class="error color-error">
+                {{ colorError }}
+              </p>
             </div>
 
             <div class="divider"></div>
@@ -236,71 +239,105 @@
             </form>
           </div>
 
-          <div v-if="activeTab === 'preferences'" class="section">
-            <h3 class="section-title">NOTIFICATIONS</h3>
-            <div class="pref-card">
-              <div class="pref-row">
-                <div class="pref-info">
-                  <div class="pref-label">Notifications</div>
-                  <div class="pref-desc">
-                    Get notified for new messages when the tab isn't active
+          <div v-if="activeTab === 'preferences'">
+            <div class="section">
+              <h3 class="section-title">NOTIFICATIONS</h3>
+              <div class="pref-card">
+                <div class="pref-row">
+                  <div class="pref-info">
+                    <div class="pref-label">Desktop notifications</div>
+                    <div class="pref-desc">
+                      Get notified for new messages when the window isn't
+                      focused.
+                    </div>
                   </div>
+                  <button
+                    class="toggle-switch"
+                    :class="{ active: notificationsEnabled }"
+                    @click="toggleNotifications"
+                    :aria-pressed="notificationsEnabled"
+                    aria-label="Toggle desktop notifications"
+                  >
+                    <span class="toggle-switch__thumb"></span>
+                  </button>
                 </div>
-                <button
-                  class="toggle-btn"
-                  :class="{ active: notificationsEnabled, saving: savingNotif }"
-                  @click="toggleNotifications"
-                  :aria-pressed="notificationsEnabled"
+                <p v-if="notifError" class="pref-message pref-message--error">
+                  {{ notifError }}
+                </p>
+                <p v-if="notifBlocked" class="pref-message pref-message--hint">
+                  Notifications are blocked. Allow them in your app or browser
+                  settings, then try again.
+                </p>
+                <transition
+                  name="pref-reveal"
+                  @before-enter="onRevealBeforeEnter"
+                  @enter="onRevealEnter"
+                  @after-enter="onRevealAfterEnter"
+                  @before-leave="onRevealBeforeLeave"
+                  @leave="onRevealLeave"
                 >
-                  <span class="toggle-thumb"></span>
-                </button>
-              </div>
-              <p v-if="notifError" class="error notif-error">
-                {{ notifError }}
-              </p>
-              <p v-if="notifBlocked" class="notif-hint">
-                Notifications are blocked. Allow them in your app or browser
-                settings, then try again.
-              </p>
-              <div v-if="notificationsEnabled" class="pref-sub">
-                <div class="pref-sub-title">Notify me on</div>
-                <div class="pref-sub-options">
-                  <button
-                    class="pref-option"
-                    :class="{ active: notificationMode === 'ping' }"
-                    @click="setNotificationMode('ping')"
-                  >
-                    Mentions and replies
-                  </button>
-                  <button
-                    class="pref-option"
-                    :class="{ active: notificationMode === 'all' }"
-                    @click="setNotificationMode('all')"
-                  >
-                    All messages
-                  </button>
-                </div>
+                  <div v-if="notificationsEnabled" class="pref-sub">
+                    <div class="pref-sub-title">Notify me on</div>
+                    <div
+                      class="order-toggle"
+                      :class="{ right: notificationMode === 'all' }"
+                      role="radiogroup"
+                    >
+                      <div class="order-pill" aria-hidden="true"></div>
+                      <button
+                        type="button"
+                        class="order-btn"
+                        :class="{ active: notificationMode === 'ping' }"
+                        @click="setNotificationMode('ping')"
+                        role="radio"
+                        :aria-checked="notificationMode === 'ping'"
+                      >
+                        Mentions &amp; replies
+                      </button>
+                      <button
+                        type="button"
+                        class="order-btn"
+                        :class="{ active: notificationMode === 'all' }"
+                        @click="setNotificationMode('all')"
+                        role="radio"
+                        :aria-checked="notificationMode === 'all'"
+                      >
+                        All messages
+                      </button>
+                    </div>
+                  </div>
+                </transition>
               </div>
             </div>
+
             <div class="divider"></div>
-            <h3 class="section-title">DISPLAY</h3>
-            <div class="pref-card">
-              <div class="pref-row">
-                <div class="pref-info">
-                  <div class="pref-label">Show timestamps</div>
-                  <div class="pref-desc">
-                    Toggle message timestamps in the chat. New accounts have
-                    this enabled by default.
+
+            <div class="section">
+              <h3 class="section-title">DISPLAY</h3>
+              <div class="pref-card">
+                <div class="pref-row">
+                  <div class="pref-info">
+                    <div class="pref-label">Show timestamps</div>
+                    <div class="pref-desc">
+                      Display the time next to each message in chat.
+                    </div>
                   </div>
+                  <button
+                    class="toggle-switch"
+                    :class="{ active: showTimestamps }"
+                    @click="toggleShowTimestamps"
+                    :aria-pressed="showTimestamps"
+                    aria-label="Toggle message timestamps"
+                  >
+                    <span class="toggle-switch__thumb"></span>
+                  </button>
                 </div>
-                <button
-                  class="toggle-btn"
-                  :class="{ active: showTimestamps, saving: savingTimestamps }"
-                  @click="toggleShowTimestamps"
-                  :aria-pressed="showTimestamps"
+                <p
+                  v-if="timestampError"
+                  class="pref-message pref-message--error"
                 >
-                  <span class="toggle-thumb"></span>
-                </button>
+                  {{ timestampError }}
+                </p>
               </div>
             </div>
           </div>
@@ -329,23 +366,6 @@ import {
 const props = defineProps({ isOpen: Boolean, user: Object });
 const emit = defineEmits(["close", "refreshUser"]);
 
-const activeTab = ref("account");
-const newUsername = ref("");
-const loadingUsername = ref(false);
-const errorUsername = ref("");
-const successUsername = ref("");
-
-const currentPassword = ref("");
-const newPassword = ref("");
-const confirmPassword = ref("");
-const loadingPassword = ref(false);
-const errorPassword = ref("");
-const successPassword = ref("");
-
-const showCurrentPassword = ref(false);
-const showNewPassword = ref(false);
-const showConfirmPassword = ref(false);
-
 const AVATAR_PALETTE = [
   "#f43f5e",
   "#ef4444",
@@ -364,7 +384,6 @@ const AVATAR_PALETTE = [
   "#d946ef",
   "#ec4899",
   "#ff66b2",
-
   "#64748b",
 ];
 
@@ -378,6 +397,7 @@ const FALLBACK_COLORS = [
   "#14b8a6",
   "#3b82f6",
 ];
+
 function hashColor(name) {
   let hash = 0;
   for (let i = 0; i < (name || "").length; i++) {
@@ -387,21 +407,51 @@ function hashColor(name) {
   return FALLBACK_COLORS[Math.abs(hash) % FALLBACK_COLORS.length];
 }
 
+const activeTab = ref("account");
+
+const newUsername = ref("");
+const loadingUsername = ref(false);
+const errorUsername = ref("");
+const successUsername = ref("");
+
+const currentPassword = ref("");
+const newPassword = ref("");
+const confirmPassword = ref("");
+const loadingPassword = ref(false);
+const errorPassword = ref("");
+const successPassword = ref("");
+
+const showCurrentPassword = ref(false);
+const showNewPassword = ref(false);
+const showConfirmPassword = ref(false);
+
+const colorError = ref("");
+const optimisticAvatarColor = ref(null);
+
 const avatarColor = computed(
   () => props.user?.preferences?.avatarColor || null,
 );
 const currentAvatarColor = computed(
-  () => avatarColor.value || hashColor(props.user?.displayName || "?"),
+  () =>
+    optimisticAvatarColor.value ||
+    avatarColor.value ||
+    hashColor(props.user?.displayName || "?"),
 );
-const savingColor = ref(false);
+
+watch(avatarColor, () => {
+  optimisticAvatarColor.value = null;
+});
 
 async function setAvatarColor(color) {
-  if (savingColor.value) return;
-  savingColor.value = true;
+  if (currentAvatarColor.value === color) return;
+  colorError.value = "";
+  const previous = optimisticAvatarColor.value;
+  optimisticAvatarColor.value = color;
   try {
     await changeAvatarColor(props.user.uid, color);
-  } finally {
-    savingColor.value = false;
+  } catch {
+    optimisticAvatarColor.value = previous;
+    colorError.value = "Failed to update color. Try again.";
   }
 }
 
@@ -411,14 +461,13 @@ const notificationsEnabled = computed(
 const notificationMode = computed(
   () => props.user?.preferences?.notificationMode || "ping",
 );
-const savingNotif = ref(false);
-const notifError = ref("");
-const notifBlocked = ref(false);
-const savingTimestamps = ref(false);
-
 const showTimestamps = computed(
   () => props.user?.preferences?.showTimestamps !== false,
 );
+
+const notifError = ref("");
+const notifBlocked = ref(false);
+const timestampError = ref("");
 
 watch(
   () => props.isOpen,
@@ -439,14 +488,20 @@ watch(
       showConfirmPassword.value = false;
       notifError.value = "";
       notifBlocked.value = false;
+      timestampError.value = "";
+      colorError.value = "";
+      optimisticAvatarColor.value = null;
     }
   },
 );
 
+async function writePreferences(patch) {
+  await update(dbRef(db, `users/${props.user.uid}/preferences`), patch);
+}
+
 async function toggleNotifications() {
   notifError.value = "";
   notifBlocked.value = false;
-
   const enabling = !notificationsEnabled.value;
 
   if (enabling) {
@@ -461,42 +516,124 @@ async function toggleNotifications() {
     }
   }
 
-  savingNotif.value = true;
   try {
-    await update(dbRef(db, `users/${props.user.uid}/preferences`), {
-      notificationsEnabled: enabling,
-    });
+    await writePreferences({ notificationsEnabled: enabling });
   } catch {
     notifError.value = "Failed to save preference. Try again.";
-  } finally {
-    savingNotif.value = false;
   }
 }
 
 async function setNotificationMode(mode) {
+  if (notificationMode.value === mode) return;
+  notifError.value = "";
   try {
-    await update(dbRef(db, `users/${props.user.uid}/preferences`), {
-      notificationMode: mode,
-    });
-  } catch (e) {
+    await writePreferences({ notificationMode: mode });
+  } catch {
     notifError.value = "Failed to save notification preference.";
   }
 }
 
 async function toggleShowTimestamps() {
-  if (savingTimestamps.value) return;
-  savingTimestamps.value = true;
-  notifError.value = "";
+  timestampError.value = "";
   try {
-    const next = !showTimestamps.value;
-    await update(dbRef(db, `users/${props.user.uid}/preferences`), {
-      showTimestamps: next,
-    });
-  } catch (e) {
-    notifError.value = "Failed to save timestamp preference.";
-  } finally {
-    savingTimestamps.value = false;
+    await writePreferences({ showTimestamps: !showTimestamps.value });
+  } catch {
+    timestampError.value = "Failed to save timestamp preference.";
   }
+}
+
+function onRevealBeforeEnter(el) {
+  el.style.overflow = "hidden";
+  el.style.height = "0px";
+  el.style.opacity = "0";
+  el.style.marginTop = "0px";
+  el.style.paddingTop = "0px";
+  el.style.borderTopColor = "transparent";
+}
+function onRevealEnter(el, done) {
+  const targetMarginTop = "14px";
+  const targetPaddingTop = "14px";
+  el.style.height = "auto";
+  el.style.marginTop = targetMarginTop;
+  el.style.paddingTop = targetPaddingTop;
+  const targetHeight = el.scrollHeight;
+  el.style.height = "0px";
+  el.style.marginTop = "0px";
+  el.style.paddingTop = "0px";
+  void el.offsetHeight;
+  const dur = 260;
+  const ease = "cubic-bezier(0.4, 0, 0.2, 1)";
+  el.style.transition =
+    `height ${dur}ms ${ease}, ` +
+    `opacity ${dur}ms ${ease}, ` +
+    `margin-top ${dur}ms ${ease}, ` +
+    `padding-top ${dur}ms ${ease}, ` +
+    `border-top-color ${dur}ms ${ease}`;
+  el.style.height = targetHeight + "px";
+  el.style.opacity = "1";
+  el.style.marginTop = targetMarginTop;
+  el.style.paddingTop = targetPaddingTop;
+  el.style.borderTopColor = "";
+
+  let finished = false;
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+    el.removeEventListener("transitionend", onEnd);
+    done();
+  };
+  const onEnd = (e) => {
+    if (e.target !== el || e.propertyName !== "height") return;
+    finish();
+  };
+  el.addEventListener("transitionend", onEnd);
+  setTimeout(finish, dur + 60);
+}
+function onRevealAfterEnter(el) {
+  el.style.transition = "";
+  el.style.height = "";
+  el.style.overflow = "";
+  el.style.opacity = "";
+  el.style.marginTop = "";
+  el.style.paddingTop = "";
+  el.style.borderTopColor = "";
+}
+function onRevealBeforeLeave(el) {
+  el.style.overflow = "hidden";
+  el.style.height = el.scrollHeight + "px";
+  el.style.opacity = "1";
+  el.style.marginTop = "14px";
+  el.style.paddingTop = "14px";
+}
+function onRevealLeave(el, done) {
+  void el.offsetHeight;
+  const dur = 220;
+  const ease = "cubic-bezier(0.4, 0, 0.2, 1)";
+  el.style.transition =
+    `height ${dur}ms ${ease}, ` +
+    `opacity ${dur}ms ${ease}, ` +
+    `margin-top ${dur}ms ${ease}, ` +
+    `padding-top ${dur}ms ${ease}, ` +
+    `border-top-color ${dur}ms ${ease}`;
+  el.style.height = "0px";
+  el.style.opacity = "0";
+  el.style.marginTop = "0px";
+  el.style.paddingTop = "0px";
+  el.style.borderTopColor = "transparent";
+
+  let finished = false;
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+    el.removeEventListener("transitionend", onEnd);
+    done();
+  };
+  const onEnd = (e) => {
+    if (e.target !== el || e.propertyName !== "height") return;
+    finish();
+  };
+  el.addEventListener("transitionend", onEnd);
+  setTimeout(finish, dur + 60);
 }
 
 function closeIfClickedOutside(e) {
@@ -788,7 +925,7 @@ async function changePassword() {
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 1px;
-  margin: 0 0 24px 0;
+  margin: 0 0 20px 0;
 }
 
 .profile-header {
@@ -809,7 +946,7 @@ async function changePassword() {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: background 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: background 260ms var(--ease-spring);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.13);
 }
 
@@ -848,6 +985,56 @@ async function changePassword() {
   color: var(--text-muted);
   white-space: nowrap;
   flex-shrink: 0;
+}
+
+.color-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  flex: 1;
+  min-width: 0;
+}
+
+.color-swatch {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  padding: 0;
+  flex-shrink: 0;
+  transition:
+    transform 160ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 160ms ease;
+  outline: none;
+}
+
+.color-swatch:hover {
+  transform: scale(1.22);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
+}
+
+.color-swatch:disabled {
+  pointer-events: none;
+}
+
+.color-swatch:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(90, 90, 240, 0.32);
+}
+
+.color-swatch.selected::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E")
+    center/12px no-repeat;
+}
+
+.color-error {
+  margin-top: 12px;
 }
 
 .divider {
@@ -998,59 +1185,23 @@ async function changePassword() {
   margin: 12px 0 0 0;
 }
 
-.color-swatches {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-  flex: 1;
-  min-width: 0;
-}
-
-.color-swatch {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  border: none;
-  cursor: pointer;
-  position: relative;
-  padding: 0;
-  flex-shrink: 0;
-  transition:
-    transform 160ms cubic-bezier(0.34, 1.56, 0.64, 1),
-    box-shadow 160ms ease;
-  outline: none;
-}
-
-.color-swatch:hover {
-  transform: scale(1.22);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
-}
-
-.color-swatch:disabled {
-  pointer-events: none;
-}
-
-.color-swatch.selected::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E")
-    center/12px no-repeat;
+.pref-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 18px;
 }
 
 .pref-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 16px 0;
-  border-bottom: 1px solid var(--border);
+  gap: 18px;
 }
 
 .pref-info {
-  flex: 1;
   min-width: 0;
+  flex: 1;
 }
 
 .pref-label {
@@ -1061,124 +1212,29 @@ async function changePassword() {
 }
 
 .pref-desc {
-  font-size: 12px;
+  font-size: 12.5px;
   color: var(--text-muted);
-  line-height: 1.4;
+  line-height: 1.45;
 }
 
-.toggle-btn {
-  position: relative;
-  width: 48px;
-  height: 28px;
-  border-radius: 999px;
-  border: none;
-  background: rgba(44, 42, 39, 0.18);
-  cursor: pointer;
-  padding: 0;
-  flex-shrink: 0;
-  transition:
-    background 120ms ease,
-    box-shadow 120ms ease;
-  outline: none;
+.pref-message {
+  margin: 12px 0 0 0;
+  font-size: 12.5px;
+  line-height: 1.45;
 }
 
-.toggle-btn:focus-visible {
-  box-shadow: 0 0 0 3px rgba(90, 90, 240, 0.22);
+.pref-message--error {
+  color: var(--danger);
 }
 
-.toggle-btn.active {
-  background: var(--accent);
-  box-shadow: 0 2px 8px rgba(90, 90, 240, 0.28);
-}
-
-.toggle-btn.saving {
-  pointer-events: none;
-}
-
-.toggle-thumb {
-  position: absolute;
-  top: 4px;
-  left: 4px;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow:
-    0 1px 5px rgba(0, 0, 0, 0.22),
-    0 0 0 0.5px rgba(0, 0, 0, 0.06);
-  transition:
-    transform 160ms cubic-bezier(0.2, 0.95, 0.3, 1),
-    width 180ms ease,
-    border-radius 180ms ease;
-  will-change: transform;
-}
-
-.toggle-btn:active .toggle-thumb {
-  width: 24px;
-  border-radius: 10px;
-}
-
-.toggle-btn.active .toggle-thumb {
-  transform: translateX(20px);
-}
-
-.toggle-btn.active:active .toggle-thumb {
-  transform: translateX(16px);
-  width: 24px;
-  border-radius: 10px;
-}
-
-.notif-error {
-  margin-top: 10px;
-}
-
-.notif-hint {
-  font-size: 12px;
+.pref-message--hint {
   color: var(--text-muted);
-  margin-top: 10px;
-  line-height: 1.5;
-  background: rgba(44, 42, 39, 0.04);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 10px 12px;
-}
-
-.pref-card {
-  background: rgba(90, 90, 240, 0.04);
-  border: 1px solid rgba(90, 90, 240, 0.14);
-  border-radius: 10px;
-  padding: 20px;
-  margin-bottom: 16px;
-  transition:
-    background 160ms ease,
-    border-color 160ms ease,
-    box-shadow 160ms ease;
-}
-
-.pref-card:hover {
-  background: rgba(90, 90, 240, 0.07);
-  border-color: rgba(90, 90, 240, 0.22);
-}
-
-.pref-card .pref-row {
-  padding: 2px 0;
-  border-bottom: none;
-  margin-bottom: 0;
-}
-
-.section > .divider {
-  margin: 8px 0;
-}
-
-.section > .divider + .section-title {
-  margin-top: 24px;
 }
 
 .pref-sub {
   margin-top: 14px;
   padding-top: 14px;
-  border-top: 1px solid rgba(90, 90, 240, 0.18);
-  overflow: hidden;
+  border-top: 1px solid var(--border);
 }
 
 .pref-sub-title {
@@ -1187,53 +1243,77 @@ async function changePassword() {
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.8px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
-.pref-sub-options {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.pref-option {
+.order-toggle {
+  position: relative;
+  display: inline-grid;
+  grid-template-columns: 1fr 1fr;
+  width: max-content;
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 10px 12px;
-  font-size: 13px;
-  font-weight: 500;
+  border-radius: 999px;
+  padding: 3px;
+  overflow: hidden;
+}
+
+.order-pill {
+  position: absolute;
+  inset: 3px auto 3px 3px;
+  width: calc(50% - 3px);
+  border-radius: 999px;
+  background: #f7f2e6;
+  box-shadow:
+    0 1px 4px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 #f7f2e6;
+  transform: translateX(0);
+  transition: transform 220ms cubic-bezier(0.2, 0.9, 0.25, 1);
+  pointer-events: none;
+}
+
+.order-toggle.right .order-pill {
+  transform: translateX(100%);
+}
+
+.order-btn {
+  position: relative;
+  z-index: 1;
+  background: transparent;
+  border: none;
+  border-radius: 999px;
   color: var(--text-muted);
-  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
   font-family: "Satoshi", sans-serif;
-  transition: all 180ms ease;
-  outline: none;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: color 180ms ease;
+  white-space: nowrap;
 }
 
-.pref-option:hover {
-  border-color: rgba(90, 90, 240, 0.28);
+.order-btn:hover:not(:disabled) {
   color: var(--text);
-  transform: translateY(-1px);
 }
 
-.pref-option.active {
-  background: var(--accent);
-  color: #fff;
-  border-color: var(--accent);
-  box-shadow: 0 4px 12px rgba(90, 90, 240, 0.22);
+.order-btn.active {
+  color: var(--text);
+}
+
+.order-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(90, 90, 240, 0.22);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .modal-container,
-  .modal-overlay,
-  .modal-fade-enter-active,
-  .modal-fade-leave-active,
+  .modal-close,
   .tab-btn,
   .submit-btn,
   .toggle-pw,
-  .toggle-btn,
-  .toggle-thumb,
-  .field input {
+  .color-swatch,
+  .field input,
+  .order-btn,
+  .order-pill {
     transition: none !important;
   }
 }

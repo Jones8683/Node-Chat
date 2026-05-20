@@ -20,30 +20,21 @@
           <button
             class="tab-btn"
             :class="{ active: activeTab === 'users' }"
-            @click="
-              activeTab = 'users';
-              loadUsers();
-            "
+            @click="activeTab = 'users'"
           >
             Users
           </button>
           <button
             class="tab-btn"
             :class="{ active: activeTab === 'controls' }"
-            @click="
-              activeTab = 'controls';
-              loadMessagesCount();
-            "
+            @click="activeTab = 'controls'"
           >
             Controls
           </button>
           <button
             class="tab-btn"
             :class="{ active: activeTab === 'audit' }"
-            @click="
-              activeTab = 'audit';
-              loadAuditLogs();
-            "
+            @click="activeTab = 'audit'"
           >
             Audit Log
           </button>
@@ -728,29 +719,114 @@ onUnmounted(() => {
   if (inviteInterval) clearInterval(inviteInterval);
 });
 
+function stopUsersListener() {
+  if (usersListener) {
+    usersListener();
+    usersListener = null;
+  }
+}
+
+function ensureAuditListener() {
+  if (auditListener || !canUseAdminPanel.value) return;
+  loadingAudit.value = true;
+  auditError.value = "";
+  loadUsers();
+  auditListener = onValue(
+    dbRef(db, "auditLogs"),
+    (snap) => {
+      const all = snap.exists() ? snap.val() : {};
+      const flat = [];
+      for (const [actorUid, items] of Object.entries(all)) {
+        for (const [id, ev] of Object.entries(items || {})) {
+          flat.push({ id, actorUid, ...ev });
+        }
+      }
+      flat.sort((a, b) => {
+        const diff = (b.ts || 0) - (a.ts || 0);
+        if (diff !== 0) return diff;
+        return String(b.id || "").localeCompare(String(a.id || ""));
+      });
+      auditEntries.value = flat.slice(0, 500);
+      loadingAudit.value = false;
+      auditError.value = "";
+    },
+    (error) => {
+      auditEntries.value = [];
+      loadingAudit.value = false;
+      auditError.value =
+        error?.code === "PERMISSION_DENIED" ||
+        String(error?.message || "")
+          .toLowerCase()
+          .includes("permission")
+          ? "Database rules are blocking audit logs. Make sure your uid is listed in /admins or /owner and the rules are published."
+          : "Failed to load audit logs.";
+    },
+  );
+}
+
+function stopAuditListener() {
+  if (auditListener) {
+    auditListener();
+    auditListener = null;
+  }
+}
+
+function ensureMessagesCountListener() {
+  if (messagesListener || !canUseAdminPanel.value) return;
+  loadingMessagesCount.value = true;
+  messagesCountError.value = "";
+  messagesListener = onValue(
+    dbRef(db, "messages"),
+    (snap) => {
+      messagesCountError.value = "";
+      totalMessagesCount.value = snap.exists()
+        ? Object.keys(snap.val() || {}).length
+        : 0;
+      loadingMessagesCount.value = false;
+    },
+    (error) => {
+      totalMessagesCount.value = null;
+      loadingMessagesCount.value = false;
+      messagesCountError.value =
+        error?.code === "PERMISSION_DENIED" ||
+        String(error?.message || "")
+          .toLowerCase()
+          .includes("permission")
+          ? "Database rules are blocking the message count. Verify your admin access and publish the rules."
+          : "Failed to load the current message count.";
+    },
+  );
+}
+
+function stopMessagesCountListener() {
+  if (messagesListener) {
+    messagesListener();
+    messagesListener = null;
+  }
+}
+
 watch(
   [() => props.isOpen, () => activeTab.value, canUseAdminPanel],
   ([isOpen, tab, canUsePanel]) => {
     if (!isOpen || !canUsePanel) {
       stopInvitesListener();
+      stopUsersListener();
+      stopAuditListener();
+      stopMessagesCountListener();
       return;
     }
 
-    if (tab === "invites") {
-      ensureInvitesListener();
-    } else {
-      stopInvitesListener();
-    }
+    if (tab === "invites") ensureInvitesListener();
+    else stopInvitesListener();
 
-    if (tab === "users") {
-      loadUsers();
-    }
-    if (tab === "audit") {
-      loadAuditLogs();
-    }
-    if (tab === "controls") {
-      loadMessagesCount();
-    }
+    if (tab === "users") loadUsers();
+    else stopUsersListener();
+
+    if (tab === "audit") ensureAuditListener();
+    else stopAuditListener();
+
+    if (tab === "controls") ensureMessagesCountListener();
+    else stopMessagesCountListener();
   },
   { immediate: true },
 );
@@ -800,46 +876,6 @@ function onKeyDown(e) {
 function onOutsideClick(e) {
   if (purgeDropdownRef.value && !purgeDropdownRef.value.contains(e.target)) {
     purgeDropdownOpen.value = false;
-  }
-}
-
-async function loadAuditLogs() {
-  if (!canUseAdminPanel.value) return;
-  loadingAudit.value = true;
-  auditEntries.value = [];
-  auditError.value = "";
-  // Ensure users are loaded so audit log can resolve current display names
-  // instead of relying on the (potentially stale) names stored on each event.
-  loadUsers();
-  try {
-    const snap = await get(dbRef(db, "auditLogs"));
-    if (!snap.exists()) {
-      loadingAudit.value = false;
-      return;
-    }
-    const all = snap.val();
-    const flat = [];
-    for (const [actorUid, items] of Object.entries(all)) {
-      for (const [id, ev] of Object.entries(items || {})) {
-        flat.push({ id, actorUid, ...ev });
-      }
-    }
-    flat.sort((a, b) => {
-      const diff = (b.ts || 0) - (a.ts || 0);
-      if (diff !== 0) return diff;
-      return String(b.id || "").localeCompare(String(a.id || ""));
-    });
-    auditEntries.value = flat.slice(0, 500);
-  } catch (e) {
-    auditError.value =
-      e?.code === "PERMISSION_DENIED" ||
-      String(e?.message || "")
-        .toLowerCase()
-        .includes("permission")
-        ? "Database rules are blocking audit logs. Make sure your uid is listed in /admins or /owner and the rules are published."
-        : "Failed to load audit logs.";
-  } finally {
-    loadingAudit.value = false;
   }
 }
 
@@ -949,136 +985,6 @@ async function loadUsers() {
       totalUsersCount.value = 1;
     }
     loadingUsers.value = false;
-  }
-}
-
-watch(
-  () => activeTab.value,
-  (val) => {
-    if (!canUseAdminPanel.value) {
-      stopInvitesListener();
-      if (usersListener) {
-        usersListener();
-        usersListener = null;
-      }
-      if (auditListener) {
-        auditListener();
-        auditListener = null;
-      }
-      if (messagesListener) {
-        messagesListener();
-        messagesListener = null;
-      }
-      return;
-    }
-
-    if (val === "invites") {
-      ensureInvitesListener();
-    } else {
-      stopInvitesListener();
-    }
-
-    if (val === "users") {
-      loadUsers();
-    } else {
-      if (usersListener) {
-        usersListener();
-        usersListener = null;
-      }
-    }
-    if (val === "audit") {
-      if (!auditListener) {
-        auditListener = onValue(
-          dbRef(db, "auditLogs"),
-          (snap) => {
-            const all = snap.exists() ? snap.val() : {};
-            const flat = [];
-            for (const [actorUid, items] of Object.entries(all)) {
-              for (const [id, ev] of Object.entries(items || {})) {
-                flat.push({ id, actorUid, ...ev });
-              }
-            }
-            flat.sort((a, b) => {
-              const diff = (b.ts || 0) - (a.ts || 0);
-              if (diff !== 0) return diff;
-              return String(b.id || "").localeCompare(String(a.id || ""));
-            });
-            auditEntries.value = flat.slice(0, 500);
-            loadingAudit.value = false;
-            auditError.value = "";
-          },
-          (error) => {
-            auditEntries.value = [];
-            loadingAudit.value = false;
-            auditError.value =
-              error?.code === "PERMISSION_DENIED" ||
-              String(error?.message || "")
-                .toLowerCase()
-                .includes("permission")
-                ? "Database rules are blocking audit logs. Make sure your uid is listed in /admins or /owner and the rules are published."
-                : "Failed to load audit logs.";
-          },
-        );
-      }
-    } else {
-      if (auditListener) {
-        auditListener();
-        auditListener = null;
-      }
-    }
-    if (val === "controls") {
-      if (!messagesListener) {
-        messagesListener = onValue(
-          dbRef(db, "messages"),
-          (snap) => {
-            messagesCountError.value = "";
-            totalMessagesCount.value = snap.exists()
-              ? Object.keys(snap.val() || {}).length
-              : 0;
-            loadingMessagesCount.value = false;
-          },
-          (error) => {
-            totalMessagesCount.value = null;
-            loadingMessagesCount.value = false;
-            messagesCountError.value =
-              error?.code === "PERMISSION_DENIED" ||
-              String(error?.message || "")
-                .toLowerCase()
-                .includes("permission")
-                ? "Database rules are blocking the message count. Verify your admin access and publish the rules."
-                : "Failed to load the current message count.";
-          },
-        );
-      }
-    } else {
-      if (messagesListener) {
-        messagesListener();
-        messagesListener = null;
-      }
-    }
-  },
-);
-
-async function loadMessagesCount() {
-  if (!canUseAdminPanel.value) return;
-  loadingMessagesCount.value = true;
-  messagesCountError.value = "";
-  try {
-    const snap = await get(dbRef(db, "messages"));
-    totalMessagesCount.value = snap.exists()
-      ? Object.keys(snap.val() || {}).length
-      : 0;
-  } catch (e) {
-    totalMessagesCount.value = null;
-    messagesCountError.value =
-      e?.code === "PERMISSION_DENIED" ||
-      String(e?.message || "")
-        .toLowerCase()
-        .includes("permission")
-        ? "Database rules are blocking the message count. Verify your admin access and publish the rules."
-        : "Failed to load the current message count.";
-  } finally {
-    loadingMessagesCount.value = false;
   }
 }
 
@@ -1548,14 +1454,14 @@ async function executePurge() {
         );
       }
     }
+    const purgedLabel =
+      purgeAmount.value === "all"
+        ? "all messages"
+        : `the ${purgeOrder.value} ${purgeAmount.value} messages`;
     queueAuditEvent({
       action: "purge_messages",
-      details:
-        purgeAmount.value === "all"
-          ? "all messages"
-          : `${purgeAmount.value} messages - ${purgeOrder.value}`,
+      details: purgedLabel,
     });
-    await loadMessagesCount();
     confirmAction.value.show = false;
   } catch (e) {
     const msg = String(e?.message || "");
