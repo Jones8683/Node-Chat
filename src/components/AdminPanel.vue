@@ -46,7 +46,6 @@
           </p>
           <div v-if="activeTab === 'invites'">
             <div class="section">
-              <h3 class="section-title">Generate New Invite Code</h3>
               <button
                 class="action-btn"
                 @click="generateInvite"
@@ -106,159 +105,147 @@
           </div>
 
           <div v-if="activeTab === 'controls'">
-            <div class="controls-section">
-              <div class="controls-section-title">Moderation</div>
-              <div class="control-card-flat">
-                <div class="lock-row">
-                  <div class="control-card-top" style="flex: 1; min-width: 0">
-                    <div class="control-title">Lock Chat</div>
-                    <div class="control-desc">
-                      Prevent non-admins from sending messages.
-                    </div>
+            <div class="control-card-flat">
+              <div class="lock-row">
+                <div class="control-card-top" style="flex: 1; min-width: 0">
+                  <div class="control-title">Lock Chat</div>
+                  <div class="control-desc">
+                    Prevent non-admins from sending messages.
                   </div>
-                  <button
-                    class="lock-toggle-btn"
-                    :class="{ 'lock-toggle-btn--locked': chatLocked }"
-                    @click="toggleChatLock"
-                    :disabled="lockLoading"
-                  >
-                    <Lock v-if="!chatLocked" :size="12" stroke-width="2.5" />
-                    <Unlock v-else :size="12" stroke-width="2.5" />
-                    {{
-                      lockLoading
-                        ? "..."
-                        : chatLocked
-                          ? "Unlock Chat"
-                          : "Lock Chat"
-                    }}
-                  </button>
                 </div>
-                <div
-                  class="lock-status"
-                  :class="{ 'lock-status--locked': chatLocked }"
+                <button
+                  class="lock-toggle-btn"
+                  :class="{ 'lock-toggle-btn--locked': chatLocked }"
+                  @click="toggleChatLock"
+                  :disabled="lockLoading"
                 >
-                  <span class="lock-status-dot"></span>
-                  <span>{{
-                    chatLocked
-                      ? "Chat is locked — only admins can send messages"
-                      : "Chat is open — all users can send messages"
-                  }}</span>
-                </div>
+                  <Lock v-if="!chatLocked" :size="12" stroke-width="2.5" />
+                  <Unlock v-else :size="12" stroke-width="2.5" />
+                  {{
+                    lockLoading
+                      ? "..."
+                      : chatLocked
+                        ? "Unlock Chat"
+                        : "Lock Chat"
+                  }}
+                </button>
+              </div>
+              <div
+                class="lock-status"
+                :class="{ 'lock-status--locked': chatLocked }"
+              >
+                <span class="lock-status-dot"></span>
+                <span>{{
+                  chatLocked
+                    ? "Chat is locked — only admins can send messages"
+                    : "Chat is open — all users can send messages"
+                }}</span>
               </div>
             </div>
 
-            <div class="controls-section">
-              <div class="controls-section-title">Danger Zone</div>
-              <div class="danger-zone">
-                <div class="control-card">
-                  <div class="control-card-top">
-                    <div class="control-title-row">
-                      <div class="control-title">Purge Messages</div>
-                      <div class="purge-count-badge">
-                        <span class="purge-count-label">Current</span>
-                        <strong class="purge-count-value">
-                          {{
-                            loadingMessagesCount
-                              ? "..."
-                              : totalMessagesCount === null
-                                ? "-"
-                                : totalMessagesCount
-                          }}
-                        </strong>
-                      </div>
-                    </div>
-                    <div class="control-desc">
-                      Permanently delete messages from the database. This cannot
-                      be undone.
-                    </div>
-                  </div>
-                  <div class="purge-row">
-                    <div class="order-toggle">
-                      <div
-                        class="order-pill"
-                        :class="{ right: purgeOrder === 'oldest' }"
-                      ></div>
-                      <button
-                        type="button"
-                        class="order-btn"
-                        :class="{ active: purgeOrder === 'newest' }"
-                        :disabled="purging"
-                        @click="purgeOrder = 'newest'"
-                      >
-                        Newest
-                      </button>
-                      <button
-                        type="button"
-                        class="order-btn"
-                        :class="{ active: purgeOrder === 'oldest' }"
-                        :disabled="purging"
-                        @click="purgeOrder = 'oldest'"
-                      >
-                        Oldest
-                      </button>
-                    </div>
-                    <div
-                      class="custom-select"
-                      :class="{ open: purgeDropdownOpen }"
-                      ref="purgeDropdownRef"
-                    >
-                      <button
-                        class="custom-select-btn"
-                        type="button"
-                        :disabled="purging"
-                        @click="purgeDropdownOpen = !purgeDropdownOpen"
-                      >
-                        <span>{{
-                          purgeOptions.find((o) => o.value === purgeAmount)
-                            ?.label
-                        }}</span>
-                        <ChevronDown
-                          :size="12"
-                          stroke-width="2.5"
-                          class="custom-select-chevron"
-                        />
-                      </button>
-                      <transition name="dropdown-pop">
-                        <div
-                          v-if="purgeDropdownOpen"
-                          class="custom-select-menu"
-                        >
-                          <button
-                            v-for="opt in purgeOptions"
-                            :key="opt.value"
-                            type="button"
-                            class="custom-select-option"
-                            :class="{ selected: purgeAmount === opt.value }"
-                            @click="
-                              purgeAmount = opt.value;
-                              purgeDropdownOpen = false;
-                            "
-                          >
-                            <span>{{ opt.label }}</span>
-                            <Check
-                              v-if="purgeAmount === opt.value"
-                              :size="12"
-                              stroke-width="3"
-                              class="option-check"
-                            />
-                          </button>
-                        </div>
-                      </transition>
-                    </div>
-                    <button
-                      class="purge-btn"
-                      @click="promptPurge"
-                      :disabled="purging"
-                    >
-                      <Trash2 :size="13" stroke-width="2.5" />
-                      {{ purging ? "Purging..." : "Purge" }}
-                    </button>
-                  </div>
-                  <div v-if="purgeError" class="purge-error-msg">
-                    <AlertTriangle :size="12" stroke-width="2.5" />
-                    <span>{{ purgeError }}</span>
+            <div class="control-card-flat purge-card">
+              <div class="control-card-top">
+                <div class="control-title-row">
+                  <div class="control-title">Purge Messages</div>
+                  <div class="purge-count-badge">
+                    <span class="purge-count-label">Current</span>
+                    <strong class="purge-count-value">
+                      {{
+                        loadingMessagesCount
+                          ? "..."
+                          : totalMessagesCount === null
+                            ? "-"
+                            : totalMessagesCount
+                      }}
+                    </strong>
                   </div>
                 </div>
+                <div class="control-desc">
+                  Permanently delete messages from the database. This cannot be
+                  undone.
+                </div>
+              </div>
+              <div class="purge-row">
+                <div class="order-toggle">
+                  <div
+                    class="order-pill"
+                    :class="{ right: purgeOrder === 'oldest' }"
+                  ></div>
+                  <button
+                    type="button"
+                    class="order-btn"
+                    :class="{ active: purgeOrder === 'newest' }"
+                    :disabled="purging"
+                    @click="purgeOrder = 'newest'"
+                  >
+                    Newest
+                  </button>
+                  <button
+                    type="button"
+                    class="order-btn"
+                    :class="{ active: purgeOrder === 'oldest' }"
+                    :disabled="purging"
+                    @click="purgeOrder = 'oldest'"
+                  >
+                    Oldest
+                  </button>
+                </div>
+                <div
+                  class="custom-select"
+                  :class="{ open: purgeDropdownOpen }"
+                  ref="purgeDropdownRef"
+                >
+                  <button
+                    class="custom-select-btn"
+                    type="button"
+                    :disabled="purging"
+                    @click="purgeDropdownOpen = !purgeDropdownOpen"
+                  >
+                    <span>{{
+                      purgeOptions.find((o) => o.value === purgeAmount)?.label
+                    }}</span>
+                    <ChevronDown
+                      :size="12"
+                      stroke-width="2.5"
+                      class="custom-select-chevron"
+                    />
+                  </button>
+                  <transition name="dropdown-pop">
+                    <div v-if="purgeDropdownOpen" class="custom-select-menu">
+                      <button
+                        v-for="opt in purgeOptions"
+                        :key="opt.value"
+                        type="button"
+                        class="custom-select-option"
+                        :class="{ selected: purgeAmount === opt.value }"
+                        @click="
+                          purgeAmount = opt.value;
+                          purgeDropdownOpen = false;
+                        "
+                      >
+                        <span>{{ opt.label }}</span>
+                        <Check
+                          v-if="purgeAmount === opt.value"
+                          :size="12"
+                          stroke-width="3"
+                          class="option-check"
+                        />
+                      </button>
+                    </div>
+                  </transition>
+                </div>
+                <button
+                  class="purge-btn"
+                  @click="promptPurge"
+                  :disabled="purging"
+                >
+                  <Trash2 :size="13" stroke-width="2.5" />
+                  {{ purging ? "Purging..." : "Purge" }}
+                </button>
+              </div>
+              <div v-if="purgeError" class="purge-error-msg">
+                <AlertTriangle :size="12" stroke-width="2.5" />
+                <span>{{ purgeError }}</span>
               </div>
             </div>
           </div>
@@ -279,11 +266,44 @@
               <div v-if="usersError" class="error users-error">
                 {{ usersError }}
               </div>
+              <div v-if="!usersError && users.length > 0" class="user-search">
+                <Search
+                  :size="14"
+                  stroke-width="2.25"
+                  class="user-search-icon"
+                />
+                <input
+                  ref="userSearchInputRef"
+                  type="text"
+                  class="user-search-input"
+                  placeholder="Search users"
+                  v-model="userSearchQuery"
+                  @keydown.esc.stop.prevent="onUserSearchEscape"
+                  spellcheck="false"
+                  autocomplete="off"
+                />
+                <button
+                  v-if="userSearchQuery"
+                  type="button"
+                  class="user-search-clear"
+                  @click="clearUserSearch"
+                  title="Clear search"
+                  aria-label="Clear search"
+                >
+                  <X :size="12" stroke-width="2.5" />
+                </button>
+              </div>
               <div v-if="users.length === 0" class="empty-state">
                 No users found
               </div>
+              <div
+                v-else-if="filteredUsers.length === 0"
+                class="empty-state user-search-empty"
+              >
+                No users match "{{ userSearchQuery }}"
+              </div>
               <div v-else class="users-list">
-                <div class="user-item" v-for="u in users" :key="u.uid">
+                <div class="user-item" v-for="u in filteredUsers" :key="u.uid">
                   <div class="user-info">
                     <div class="user-avatar">
                       {{ getAvatarInitial(u.displayName) }}
@@ -393,29 +413,24 @@
             </div>
           </div>
           <div v-if="activeTab === 'audit'">
-            <div class="section">
-              <h3 class="section-title">Logs</h3>
-              <div v-if="loadingAudit" class="loading">Loading audit...</div>
-              <div v-else-if="auditError" class="error users-error">
-                {{ auditError }}
-              </div>
-              <div v-else-if="auditEntries.length === 0" class="empty-state">
-                No audit events yet.
-              </div>
-              <div v-else class="audit-list">
-                <div
-                  class="audit-row"
-                  v-for="ev in auditEntries"
-                  :key="ev.id + ev.actorUid"
-                >
-                  <div class="audit-left">
-                    <span class="invite-state audit-action">{{
-                      formatAuditAction(ev.action)
-                    }}</span>
-                    <div class="audit-main" v-html="formatAuditText(ev)"></div>
-                  </div>
-                  <div class="audit-ts">{{ formatDateTime(ev.ts) }}</div>
-                </div>
+            <div v-if="loadingAudit" class="loading">Loading audit...</div>
+            <div v-else-if="auditError" class="error users-error">
+              {{ auditError }}
+            </div>
+            <div v-else-if="auditEntries.length === 0" class="empty-state">
+              No audit events yet.
+            </div>
+            <div v-else class="audit-list">
+              <div
+                class="audit-row"
+                v-for="ev in auditEntries"
+                :key="ev.id + ev.actorUid"
+              >
+                <span class="audit-action-pill">{{
+                  formatAuditAction(ev.action)
+                }}</span>
+                <div class="audit-main" v-html="formatAuditText(ev)"></div>
+                <div class="audit-ts">{{ formatDateTime(ev.ts) }}</div>
               </div>
             </div>
           </div>
@@ -485,6 +500,7 @@ import {
   Unlock,
   MicOff,
   Mic,
+  Search,
 } from "lucide-vue-next";
 import {
   ref as dbRef,
@@ -495,12 +511,10 @@ import {
   get,
   set,
   remove,
-  update,
   onValue,
 } from "firebase/database";
 import {
   createInviteToken,
-  getAllUsers,
   promoteToAdmin,
   demoteFromAdmin,
   deleteInviteToken,
@@ -536,13 +550,15 @@ const totalUsersCount = ref(0);
 const adminCount = ref(0);
 const totalMessagesCount = ref(null);
 const loadingMessagesCount = ref(false);
-const messagesCountError = ref("");
 const adminActionError = ref("");
 
 const copyFeedback = ref(false);
 
 const editingUserId = ref(null);
 const editingUserName = ref("");
+
+const userSearchQuery = ref("");
+const userSearchInputRef = ref(null);
 
 const purgeAmount = ref("100");
 const purgeOrder = ref("newest");
@@ -596,6 +612,59 @@ const hasAdminAccess = computed(() => {
 const canUseAdminPanel = computed(
   () => adminRoleResolved.value && hasAdminAccess.value,
 );
+
+const filteredUsers = computed(() => {
+  const raw = userSearchQuery.value.trim().toLowerCase();
+  if (!raw) return users.value;
+
+  const tokens = raw.split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return users.value;
+
+  return users.value.filter((u) => {
+    const name = (u.displayName || "").toLowerCase();
+    const email = (u.email || "").toLowerCase();
+    const uid = (u.uid || "").toLowerCase();
+    const isAdmin = adminUsers.value.has(u.uid);
+    const isOwner = ownerUsers.value.has(u.uid);
+    const isMuted = mutedUsers.value.has(u.uid);
+
+    const roleTags = [];
+    if (isOwner) roleTags.push("owner");
+    if (isAdmin) roleTags.push("admin");
+    if (!isAdmin && !isOwner) roleTags.push("member", "user");
+    if (isMuted) roleTags.push("muted");
+
+    return tokens.every((token) => {
+      if (
+        name.includes(token) ||
+        email.includes(token) ||
+        uid.includes(token)
+      ) {
+        return true;
+      }
+      return roleTags.some((tag) => tag.includes(token));
+    });
+  });
+});
+
+function clearUserSearch() {
+  userSearchQuery.value = "";
+  const el = userSearchInputRef.value;
+  if (el && typeof el.focus === "function") {
+    el.focus();
+  }
+}
+
+function onUserSearchEscape() {
+  if (userSearchQuery.value) {
+    clearUserSearch();
+    return;
+  }
+  const el = userSearchInputRef.value;
+  if (el && typeof el.blur === "function") {
+    el.blur();
+  }
+}
 
 function syncAdminRoleResolved() {
   adminRoleResolved.value = adminsLoaded && ownerLoaded;
@@ -774,26 +843,17 @@ function stopAuditListener() {
 function ensureMessagesCountListener() {
   if (messagesListener || !canUseAdminPanel.value) return;
   loadingMessagesCount.value = true;
-  messagesCountError.value = "";
   messagesListener = onValue(
     dbRef(db, "messages"),
     (snap) => {
-      messagesCountError.value = "";
       totalMessagesCount.value = snap.exists()
         ? Object.keys(snap.val() || {}).length
         : 0;
       loadingMessagesCount.value = false;
     },
-    (error) => {
+    () => {
       totalMessagesCount.value = null;
       loadingMessagesCount.value = false;
-      messagesCountError.value =
-        error?.code === "PERMISSION_DENIED" ||
-        String(error?.message || "")
-          .toLowerCase()
-          .includes("permission")
-          ? "Database rules are blocking the message count. Verify your admin access and publish the rules."
-          : "Failed to load the current message count.";
     },
   );
 }
@@ -807,7 +867,15 @@ function stopMessagesCountListener() {
 
 watch(
   [() => props.isOpen, () => activeTab.value, canUseAdminPanel],
-  ([isOpen, tab, canUsePanel]) => {
+  ([isOpen, tab, canUsePanel], prev) => {
+    const prevIsOpen = prev ? prev[0] : null;
+    const prevTab = prev ? prev[1] : null;
+    if (
+      prevIsOpen !== isOpen ||
+      (prevTab !== tab && (prevTab === "users" || tab !== "users"))
+    ) {
+      userSearchQuery.value = "";
+    }
     if (!isOpen || !canUsePanel) {
       stopInvitesListener();
       stopUsersListener();
@@ -1048,13 +1116,6 @@ function getAvatarInitial(name) {
   return (name && name[0]?.toUpperCase()) || "?";
 }
 
-function resolveDisplayName(uid, fallback = "") {
-  if (!uid) return fallback || "Unknown";
-  const user = users.value.find((entry) => entry.uid === uid);
-  if (user?.displayName) return user.displayName;
-  return fallback || uid;
-}
-
 function resolveLiveActorName(ev) {
   if (!ev?.actorUid) return ev?.actorName || "Unknown";
   const user = users.value.find((entry) => entry.uid === ev.actorUid);
@@ -1077,6 +1138,26 @@ function escapeHtml(str) {
     .replace(/>/g, "&gt;")
     .replace(/\"/g, "&quot;")
     .replace(/'/g, "&#039;");
+}
+
+function formatAuditAction(action) {
+  const map = {
+    mute: "User muted",
+    unmute: "User unmuted",
+    promote: "User promoted",
+    demote: "User demoted",
+    lock_chat: "Chat locked",
+    unlock_chat: "Chat unlocked",
+    purge_messages: "Messages purged",
+    invite_create: "Invite created",
+    invite_delete: "Invite deleted",
+    name_renamed: "User renamed",
+    display_name_changed: "Name changed",
+    signup: "User signed up",
+  };
+  if (map[action]) return map[action];
+  if (!action) return "Action";
+  return action.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function formatAuditText(ev) {
@@ -1138,27 +1219,6 @@ function formatAuditText(ev) {
     default:
       return `${actor} performed ${escapeHtml(ev.action || "an action")}${target}${details}`;
   }
-}
-
-function formatAuditAction(action) {
-  if (!action) return "Action";
-  const labels = {
-    invite_create: "Invite created",
-    invite_delete: "Invite deleted",
-    name_renamed: "User renamed",
-    display_name_changed: "Display name changed",
-    lock_chat: "Chat locked",
-    unlock_chat: "Chat unlocked",
-    purge_messages: "Messages purged",
-    promote: "User promoted",
-    demote: "User demoted",
-    mute: "User muted",
-    unmute: "User unmuted",
-    signup: "Account created",
-  };
-  if (labels[action]) return labels[action];
-  const s = String(action).replace(/[_-]+/g, " ").toLowerCase();
-  return s.replace(/\b\w/g, (ch) => ch.toUpperCase());
 }
 
 function formatDateTime(ts) {
@@ -1608,7 +1668,7 @@ async function saveUsername(uid) {
 .modal-tabs {
   display: flex;
   gap: 8px;
-  padding: 14px 14px 0 14px;
+  padding: 14px 14px 2px 14px;
   flex-shrink: 0;
 }
 
@@ -1647,6 +1707,7 @@ async function saveUsername(uid) {
   overscroll-behavior-y: contain;
   scrollbar-width: thin;
   scrollbar-color: rgba(44, 42, 39, 0.28) transparent;
+  scrollbar-gutter: stable;
 }
 
 .modal-content::-webkit-scrollbar {
@@ -1698,11 +1759,9 @@ async function saveUsername(uid) {
 .action-btn:hover:not(:disabled) {
   opacity: 0.92;
   transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
 }
 .action-btn:active:not(:disabled) {
   transform: translateY(0) scale(0.98);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
   transition-duration: 80ms;
 }
 .action-btn:disabled {
@@ -1738,24 +1797,19 @@ async function saveUsername(uid) {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.92) 0%,
-    rgba(248, 247, 245, 0.96) 100%
-  );
+  background: rgba(255, 255, 255, 0.88);
   border: 1px solid rgba(44, 42, 39, 0.08);
   border-radius: 12px;
   padding: 12px 14px;
   gap: 14px;
-  box-shadow: 0 4px 12px rgba(20, 20, 20, 0.03);
   transition:
     transform 180ms ease,
-    box-shadow 180ms ease;
+    border-color 180ms ease;
 }
 
 .invite-item:hover {
   transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(20, 20, 20, 0.05);
+  border-color: rgba(44, 42, 39, 0.16);
 }
 
 .invite-info {
@@ -1879,6 +1933,72 @@ async function saveUsername(uid) {
   letter-spacing: 0.5px;
 }
 
+.user-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(44, 42, 39, 0.1);
+  border-radius: 999px;
+  padding: 8px 12px 8px 14px;
+  margin: 0 0 14px 0;
+}
+
+.user-search-icon {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.user-search-input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-size: 13.5px;
+  font-weight: 500;
+  font-family: "Satoshi", sans-serif;
+  padding: 4px 0;
+}
+
+.user-search-input::placeholder {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.user-search-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(44, 42, 39, 0.1);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.user-search-clear:hover {
+  background: rgba(44, 42, 39, 0.18);
+  color: var(--text);
+}
+
+.user-search-clear:active {
+  transform: scale(0.88);
+}
+
+.user-search-empty {
+  padding: 28px 20px;
+  font-style: italic;
+}
+
 .users-list {
   display: flex;
   flex-direction: column;
@@ -1896,12 +2016,14 @@ async function saveUsername(uid) {
   gap: 12px;
   transition:
     transform 180ms ease,
-    box-shadow 180ms ease;
+    border-color 180ms ease,
+    background 180ms ease;
 }
 
 .user-item:hover {
   transform: translateY(-1px);
-  box-shadow: 0 8px 20px rgba(20, 20, 20, 0.06);
+  border-color: rgba(44, 42, 39, 0.13);
+  background: rgba(255, 255, 255, 0.96);
 }
 
 .user-info {
@@ -1962,10 +2084,8 @@ async function saveUsername(uid) {
 .user-email {
   font-size: 12px;
   color: var(--text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 200px;
+  word-break: break-all;
+  overflow-wrap: anywhere;
 }
 
 .user-meta-sep {
@@ -2270,10 +2390,6 @@ async function saveUsername(uid) {
   pointer-events: none;
 }
 
-.controls-section {
-  margin-bottom: 20px;
-}
-
 .audit-list {
   display: flex;
   flex-direction: column;
@@ -2281,53 +2397,59 @@ async function saveUsername(uid) {
 }
 .audit-row {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   align-items: center;
-  padding: 8px 10px;
+  padding: 10px 12px;
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.96);
   border: 1px solid rgba(44, 42, 39, 0.06);
-  justify-content: space-between;
 }
-.audit-desc {
-  display: flex;
-  flex-direction: column;
+.audit-action-pill {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: rgba(90, 90, 240, 0.09);
+  border: 1px solid rgba(90, 90, 240, 0.18);
+  border-radius: 999px;
+  padding: 4px 9px;
+  white-space: nowrap;
 }
 .audit-main {
+  flex: 1;
+  min-width: 0;
   font-size: 13px;
   color: var(--text);
+  line-height: 1.45;
 }
 .audit-ts {
   font-size: 12px;
   color: var(--text-muted);
   white-space: nowrap;
-  margin-left: 12px;
-}
-.audit-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-.audit-action {
-  text-transform: none;
-  letter-spacing: 0.2px;
-  font-size: 11px;
-}
-
-.controls-section-title {
-  font-size: 10px;
-  font-weight: 800;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 1.1px;
-  margin-bottom: 10px;
+  flex-shrink: 0;
 }
 
 .control-card-flat {
   border: 1px solid var(--border);
   border-radius: 12px;
   overflow: hidden;
+}
+
+.control-card-flat + .control-card-flat {
+  margin-top: 14px;
+}
+
+.purge-card {
+  border-color: rgba(192, 57, 43, 0.18);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow: visible;
 }
 
 .lock-row {
@@ -2439,41 +2561,6 @@ async function saveUsername(uid) {
 .mute-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-.danger-zone {
-  border: 1px solid rgba(192, 57, 43, 0.18);
-  border-radius: 12px;
-}
-
-.danger-zone-header {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 10px 16px;
-  background: rgba(192, 57, 43, 0.06);
-  border-bottom: 1px solid rgba(192, 57, 43, 0.12);
-  border-radius: 11px 11px 0 0;
-}
-
-.danger-zone-icon {
-  color: var(--danger);
-  flex-shrink: 0;
-}
-
-.danger-zone-label {
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 1.2px;
-  color: var(--danger);
-}
-
-.control-card {
-  padding: 18px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
 }
 
 .control-card-top {
@@ -2643,7 +2730,6 @@ async function saveUsername(uid) {
 
 .custom-select.open .custom-select-btn {
   border-color: rgba(44, 42, 39, 0.28);
-  box-shadow: 0 0 0 3px rgba(44, 42, 39, 0.06);
 }
 
 .custom-select-btn:disabled {
