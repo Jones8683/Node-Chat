@@ -3,13 +3,13 @@
     "users": {
       ".read": "auth != null",
       "$uid": {
-        ".write": "auth != null && ($uid === auth.uid || root.child('admins').child(auth.uid).val() === true || root.child('owner').val() === auth.uid)"
+        ".write": "auth != null && ($uid === auth.uid || root.child('owner').val() === auth.uid || (root.child('admins').child(auth.uid).val() === true && root.child('owner').val() !== $uid))"
       }
     },
     "usernames": {
       ".read": true,
       "$key": {
-        ".write": "auth != null && ((newData.exists() && newData.val() === auth.uid && (!data.exists() || data.val() === auth.uid)) || root.child('admins').child(auth.uid).val() === true || root.child('owner').val() === auth.uid)"
+        ".write": "auth != null && ((newData.exists() && newData.val() === auth.uid && (!data.exists() || data.val() === auth.uid)) || root.child('owner').val() === auth.uid || (root.child('admins').child(auth.uid).val() === true && (!data.exists() || root.child('owner').val() !== data.val()) && (!newData.exists() || root.child('owner').val() !== newData.val())))"
       }
     },
     "messages": {
@@ -17,29 +17,29 @@
       ".write": "auth != null && (root.child('admins').child(auth.uid).val() === true || root.child('owner').val() === auth.uid)",
       ".indexOn": ["timestamp"],
       "$id": {
-        ".write": "auth != null && ((!data.exists() && newData.exists() && newData.child('uid').val() === auth.uid) || (data.exists() && newData.exists() && ((data.child('uid').val() === auth.uid && newData.child('uid').val() === data.child('uid').val()) || root.child('admins').child(auth.uid).val() === true || root.child('owner').val() === auth.uid)) || (data.exists() && !newData.exists() && (data.child('uid').val() === auth.uid || root.child('admins').child(auth.uid).val() === true || root.child('owner').val() === auth.uid)))",
+        ".write": "auth != null && ((!data.exists() && newData.exists() && newData.child('uid').val() === auth.uid) || (data.exists() && newData.exists() && ((data.child('uid').val() === auth.uid && newData.child('uid').val() === data.child('uid').val()) || root.child('owner').val() === auth.uid || (root.child('admins').child(auth.uid).val() === true && root.child('owner').val() !== data.child('uid').val()))) || (data.exists() && !newData.exists() && (data.child('uid').val() === auth.uid || root.child('owner').val() === auth.uid || (root.child('admins').child(auth.uid).val() === true && root.child('owner').val() !== data.child('uid').val()))))",
         "displayName": {
-          ".write": "auth != null && (data.parent().child('uid').val() === auth.uid || root.child('admins').child(auth.uid).val() === true || root.child('owner').val() === auth.uid)"
+          ".write": "auth != null && (data.parent().child('uid').val() === auth.uid || root.child('owner').val() === auth.uid || (root.child('admins').child(auth.uid).val() === true && root.child('owner').val() !== data.parent().child('uid').val()))"
         },
         "avatarColor": {
-          ".write": "auth != null && (data.parent().child('uid').val() === auth.uid || root.child('admins').child(auth.uid).val() === true || root.child('owner').val() === auth.uid)"
+          ".write": "auth != null && (data.parent().child('uid').val() === auth.uid || root.child('owner').val() === auth.uid || (root.child('admins').child(auth.uid).val() === true && root.child('owner').val() !== data.parent().child('uid').val()))"
         },
         "replyTo": {
           "displayName": {
-            ".write": "auth != null && (data.parent().parent().child('uid').val() === auth.uid || root.child('admins').child(auth.uid).val() === true || root.child('owner').val() === auth.uid)"
+            ".write": "auth != null && (data.parent().parent().child('uid').val() === auth.uid || root.child('owner').val() === auth.uid || (root.child('admins').child(auth.uid).val() === true && root.child('owner').val() !== data.parent().child('uid').val()))"
           },
           "avatarColor": {
-            ".write": "auth != null && (data.parent().parent().child('uid').val() === auth.uid || root.child('admins').child(auth.uid).val() === true || root.child('owner').val() === auth.uid)"
+            ".write": "auth != null && (data.parent().parent().child('uid').val() === auth.uid || root.child('owner').val() === auth.uid || (root.child('admins').child(auth.uid).val() === true && root.child('owner').val() !== data.parent().child('uid').val()))"
           }
         },
         "mentions": {
           "$uid": {
-            ".write": "auth != null && ($uid === auth.uid || data.parent().parent().child('uid').val() === auth.uid || root.child('admins').child(auth.uid).val() === true || root.child('owner').val() === auth.uid)"
+            ".write": "auth != null && ($uid === auth.uid || data.parent().parent().child('uid').val() === auth.uid || root.child('owner').val() === auth.uid || (root.child('admins').child(auth.uid).val() === true && root.child('owner').val() !== data.parent().parent().child('uid').val()))"
           }
         },
         "mentionUids": {
           "$uid": {
-            ".write": "auth != null && (data.parent().parent().child('uid').val() === auth.uid || root.child('admins').child(auth.uid).val() === true || root.child('owner').val() === auth.uid)"
+            ".write": "auth != null && (data.parent().parent().child('uid').val() === auth.uid || root.child('owner').val() === auth.uid || (root.child('admins').child(auth.uid).val() === true && root.child('owner').val() !== data.parent().parent().child('uid').val()))"
           }
         },
         "pollVotes": {
@@ -48,7 +48,7 @@
           }
         },
         "pollClosed": {
-          ".write": "auth != null && (data.parent().child('uid').val() === auth.uid || root.child('admins').child(auth.uid).val() === true || root.child('owner').val() === auth.uid)"
+          ".write": "auth != null && (data.parent().child('uid').val() === auth.uid || root.child('owner').val() === auth.uid || (root.child('admins').child(auth.uid).val() === true && root.child('owner').val() !== data.parent().child('uid').val()))"
         }
       }
     },
@@ -61,7 +61,7 @@
     "admins": {
       ".read": "auth != null",
       "$uid": {
-        ".write": "auth != null && (root.child('admins').child(auth.uid).val() === true || root.child('owner').val() === auth.uid)"
+        ".write": "auth != null && (root.child('owner').val() === auth.uid || (root.child('admins').child(auth.uid).val() === true && root.child('owner').val() !== $uid))"
       }
     },
     "invites": {
@@ -90,7 +90,7 @@
     "muted": {
       ".read": "auth != null",
       "$uid": {
-        ".write": "auth != null && (root.child('admins').child(auth.uid).val() === true || root.child('owner').val() === auth.uid)"
+        ".write": "auth != null && (root.child('owner').val() === auth.uid || (root.child('admins').child(auth.uid).val() === true && root.child('owner').val() !== $uid))"
       }
     },
     "auditLogs": {

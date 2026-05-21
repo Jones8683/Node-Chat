@@ -469,7 +469,11 @@
                         <CornerUpLeft :size="17" stroke-width="2" />
                       </button>
                       <button
-                        v-if="item.uid === user.uid || isAdmin"
+                        v-if="
+                          item.uid === user.uid ||
+                          (isAdmin &&
+                            (ownerUid !== item.uid || user.uid === ownerUid))
+                        "
                         class="msg-action-btn danger"
                         @click="promptDelete(item.id)"
                         title="Delete"
