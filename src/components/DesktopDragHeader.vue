@@ -45,12 +45,19 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 8px;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .desktop-titlebar-logo {
   width: 20px;
   height: 20px;
   object-fit: contain;
+  pointer-events: none;
+  -webkit-user-drag: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .desktop-titlebar-wordmark {
@@ -59,5 +66,8 @@ onMounted(async () => {
   letter-spacing: -0.18px;
   color: var(--text);
   white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 </style>

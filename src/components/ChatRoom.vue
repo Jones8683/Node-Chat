@@ -3652,6 +3652,9 @@ async function logout() {
   align-items: center;
   gap: 9px;
   flex-shrink: 0;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .header-logo {
@@ -3659,6 +3662,10 @@ async function logout() {
   height: 24px;
   object-fit: contain;
   flex-shrink: 0;
+  pointer-events: none;
+  -webkit-user-drag: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .header-wordmark {
@@ -3667,6 +3674,9 @@ async function logout() {
   color: var(--text);
   letter-spacing: -0.2px;
   white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .header-actions {
