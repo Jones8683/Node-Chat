@@ -1199,7 +1199,6 @@ import { containsSlur } from "../slurFilter";
 const props = defineProps(["user"]);
 const emit = defineEmits(["ready", "open-settings", "open-admin"]);
 const messages = ref([]);
-const isAtBottom = ref(true);
 const showJumpButton = ref(false);
 const scrollUnread = ref(0);
 const isScrollingSmooth = ref(false);
@@ -1227,15 +1226,14 @@ function getAvatarInitial(name, uid = null) {
 }
 
 function getAvatarColor(name, uid = null, storedColor = null) {
-  const safeName = name || "?";
   if (storedColor) return storedColor;
-  if (uid && allUsers.value[uid]?.preferences?.avatarColor) {
-    return allUsers.value[uid].preferences.avatarColor;
-  }
   if (uid) {
-    const presenceUser = onlineUsers.value.find((u) => u.uid === uid);
-    if (presenceUser?.avatarColor) return presenceUser.avatarColor;
+    const stored =
+      allUsers.value[uid]?.preferences?.avatarColor ||
+      presenceUsers.value[uid]?.profile?.avatarColor;
+    if (stored) return stored;
   }
+  const safeName = name || "?";
   let hash = 0;
   for (let i = 0; i < safeName.length; i++) {
     hash = (hash << 5) - hash + safeName.charCodeAt(i);
@@ -2060,7 +2058,6 @@ function handleMessageScroll() {
   const distFromBottom = el.scrollHeight - el.clientHeight - el.scrollTop;
   const near = distFromBottom <= SCROLL_BOTTOM_THRESHOLD;
   shouldScrollToBottom = near;
-  isAtBottom.value = near;
 
   if (isScrollingSmooth.value || near) {
     showJumpButton.value = false;
@@ -2736,18 +2733,7 @@ function wrapSelection(marker) {
 }
 
 function sanitizeMessage(text) {
-  const normalized = text.replace(/\r\n/g, "\n");
-  const lines = normalized.split("\n");
-
-  while (lines.length && lines[0].trim() === "") {
-    lines.shift();
-  }
-
-  while (lines.length && lines[lines.length - 1].trim() === "") {
-    lines.pop();
-  }
-
-  return lines.join("\n");
+  return text.replace(/\r\n/g, "\n").replace(/^\s*\n+|\n+\s*$/g, "");
 }
 
 function mentionBoundaryPattern(displayName) {
@@ -2984,10 +2970,6 @@ function focusComposer() {
   composerRef.value?.focus();
 }
 
-// Only steal mousedown for "empty" areas around the textarea (padding/border).
-// If the user clicks the textarea itself, or any interactive control (button,
-// input, link, etc.), let the native behaviour run so the caret can be placed
-// and text can be selected with the mouse.
 function handleComposerAreaMousedown(e) {
   const target = e.target;
   if (!(target instanceof Element)) return;
@@ -4351,26 +4333,6 @@ async function logout() {
 
 .message--highlighted {
   animation: msg-highlight-fade 2s ease forwards;
-}
-
-@keyframes overlayIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes dialogIn {
-  from {
-    opacity: 0;
-    transform: translateY(8px) scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
 }
 
 .delete-overlay {
