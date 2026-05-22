@@ -412,7 +412,39 @@
                         ></span
                       >
                     </div>
+                    <div
+                      v-if="getReactionList(item).length"
+                      class="reactions-row"
+                    >
+                      <button
+                        v-for="r in getReactionList(item)"
+                        :key="r.emoji"
+                        type="button"
+                        class="reaction-badge"
+                        :class="{ 'reaction-badge--me': r.iReacted }"
+                        @click="toggleReaction(item.id, r.emoji)"
+                      >
+                        <span class="reaction-emoji">{{ r.emoji }}</span>
+                        <span class="reaction-count">{{ r.count }}</span>
+                        <span class="reaction-tooltip">{{ r.tooltip }}</span>
+                      </button>
+                      <button
+                        type="button"
+                        class="reaction-badge reaction-badge--add"
+                        title="Add reaction"
+                        @click.stop="openReactionPicker(item.id, $event)"
+                      >
+                        <Smile :size="14" stroke-width="2" />
+                      </button>
+                    </div>
                     <div class="msg-actions">
+                      <button
+                        class="msg-action-btn"
+                        title="Add Reaction"
+                        @click.stop="openReactionPicker(item.id, $event)"
+                      >
+                        <Smile :size="18" stroke-width="2" />
+                      </button>
                       <button
                         v-if="item.type === 'gif' && item.gif?.url"
                         class="msg-action-btn"
@@ -426,10 +458,10 @@
                       >
                         <Check
                           v-if="copiedMessageId === item.id"
-                          :size="15"
+                          :size="16"
                           stroke-width="2.2"
                         />
-                        <Copy v-else :size="15" stroke-width="2" />
+                        <Copy v-else :size="16" stroke-width="2" />
                       </button>
                       <button
                         v-else-if="item.type !== 'poll'"
@@ -444,10 +476,10 @@
                       >
                         <Check
                           v-if="copiedMessageId === item.id"
-                          :size="15"
+                          :size="16"
                           stroke-width="2.2"
                         />
-                        <Copy v-else :size="15" stroke-width="2" />
+                        <Copy v-else :size="16" stroke-width="2" />
                       </button>
                       <button
                         v-if="
@@ -466,7 +498,7 @@
                         @click="startReply(item)"
                         title="Reply"
                       >
-                        <CornerUpLeft :size="17" stroke-width="2" />
+                        <CornerUpLeft :size="16" stroke-width="2.2" />
                       </button>
                       <button
                         v-if="
@@ -1064,6 +1096,28 @@
         </div>
       </transition>
 
+      <transition name="reaction-picker-fade">
+        <div
+          v-if="reactionPickerVisible"
+          class="reaction-picker"
+          :style="{
+            top: reactionPickerPos.top + 'px',
+            left: reactionPickerPos.left + 'px',
+          }"
+          ref="reactionPickerEl"
+        >
+          <button
+            v-for="emoji in QUICK_REACTIONS"
+            :key="emoji"
+            type="button"
+            class="reaction-picker-btn"
+            @click="handleQuickReaction(emoji)"
+          >
+            {{ emoji }}
+          </button>
+        </div>
+      </transition>
+
       <transition name="modal-fade">
         <div
           v-if="viewVotesDialog.show && viewVotesData"
@@ -1170,6 +1224,7 @@ import {
   Plus,
   ChartBarBig,
   Film,
+  Smile,
 } from "lucide-vue-next";
 const GifPicker = defineAsyncComponent(() => import("./GifPicker.vue"));
 
@@ -2857,6 +2912,12 @@ function handleAppForeground() {
 }
 
 function handleClickOutside(e) {
+  if (reactionPickerVisible.value) {
+    const pickerDom = reactionPickerEl.value;
+    if (!pickerDom || !pickerDom.contains(e.target)) {
+      closeReactionPicker();
+    }
+  }
   if (menuRef.value && !menuRef.value.contains(e.target)) {
     showDropdown.value = false;
   }
@@ -2903,6 +2964,13 @@ function handleGlobalKeydown(e) {
   }
 
   if (e.key !== "Escape") return;
+
+  if (reactionPickerVisible.value) {
+    e.preventDefault();
+    e.stopPropagation();
+    closeReactionPicker();
+    return;
+  }
 
   if (gifLightbox.value.show) {
     e.preventDefault();
@@ -3635,6 +3703,101 @@ async function sendMessage() {
   }
 }
 
+const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥", "🎉", "👀"];
+const reactionPickerMessageId = ref(null);
+const reactionPickerPos = ref({ top: 0, left: 0 });
+const reactionPickerVisible = ref(false);
+const reactionPickerEl = ref(null);
+
+function getReactionList(message) {
+  const reactions = message.reactions;
+  if (!reactions || typeof reactions !== "object") return [];
+  const myUid = props.user.uid;
+  return Object.entries(reactions)
+    .map(([emoji, reactors]) => {
+      if (!reactors || typeof reactors !== "object") return null;
+      const uids = Object.keys(reactors).filter(
+        (uid) => reactors[uid] === true,
+      );
+      if (uids.length === 0) return null;
+      const names = uids.map((uid) => resolveDisplayName(uid, "Someone"));
+      const iReacted = uids.includes(myUid);
+      const tooltip =
+        names.length <= 3
+          ? names.join(", ")
+          : `${names.slice(0, 3).join(", ")} +${names.length - 3} more`;
+      return { emoji, count: uids.length, iReacted, tooltip };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.count - a.count);
+}
+
+async function toggleReaction(messageId, emoji) {
+  if (!messageId || !emoji) return;
+  if (isMuted.value) return;
+  const myUid = props.user.uid;
+  const msg = messages.value.find((m) => m.id === messageId);
+  const currentVal = msg?.reactions?.[emoji]?.[myUid] === true;
+  try {
+    if (currentVal) {
+      await remove(
+        dbRef(db, `messages/${messageId}/reactions/${emoji}/${myUid}`),
+      );
+    } else {
+      await set(
+        dbRef(db, `messages/${messageId}/reactions/${emoji}/${myUid}`),
+        true,
+      );
+    }
+  } catch (err) {
+    console.error("Failed to toggle reaction:", err);
+  }
+  closeReactionPicker();
+}
+
+function openReactionPicker(messageId, event) {
+  if (isMuted.value) return;
+  reactionPickerMessageId.value = messageId;
+  reactionPickerVisible.value = true;
+
+  const btn = event?.currentTarget || event?.target;
+  if (btn) {
+    const actionsEl = btn.closest(".msg-actions");
+    const rect = actionsEl
+      ? actionsEl.getBoundingClientRect()
+      : btn.getBoundingClientRect();
+    const pickerH = 48;
+    let left = rect.right - 340;
+    let top = rect.top - pickerH - 4;
+
+    left = Math.max(8, Math.min(left, window.innerWidth - 360));
+    if (top < 8) top = rect.bottom + 4;
+
+    reactionPickerPos.value = { top, left };
+  }
+}
+
+function closeReactionPicker() {
+  reactionPickerVisible.value = false;
+  reactionPickerMessageId.value = null;
+}
+
+function handleQuickReaction(emoji) {
+  if (!reactionPickerMessageId.value) return;
+  toggleReaction(reactionPickerMessageId.value, emoji);
+}
+
+async function searchAndReact(query) {
+  if (!reactionPickerMessageId.value) return;
+  const ready = await ensureEmojiReady();
+  if (!ready || !emojiSearchIndex) return;
+  const results = await emojiSearchIndex.search(query);
+  if (results && results.length > 0) {
+    const native = results[0].skins[0].native;
+    toggleReaction(reactionPickerMessageId.value, native);
+  }
+}
+
 async function logout() {
   showDropdown.value = false;
   try {
@@ -4195,8 +4358,8 @@ async function logout() {
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  width: 25px;
-  height: 25px;
+  width: 28px;
+  height: 28px;
   padding: 0;
   border-radius: 4px;
   display: flex;
@@ -4208,6 +4371,15 @@ async function logout() {
 .msg-action-btn:hover {
   background: var(--surface-2);
   color: var(--text);
+}
+
+.msg-action-btn:hover :deep(svg) {
+  transform: scale(1.15);
+  transition: transform 180ms var(--ease-out-quint);
+}
+
+.msg-action-btn :deep(svg) {
+  transition: transform 180ms var(--ease-out-quint);
 }
 
 .msg-action-btn.active {
@@ -6461,5 +6633,190 @@ textarea::placeholder {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.reactions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 3px 0 2px;
+}
+
+.reaction-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  cursor: pointer;
+  font-family: "Satoshi", sans-serif;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    transform 140ms var(--ease-out-quint);
+}
+
+.reaction-badge:hover {
+  background: var(--border);
+  border-color: var(--text-muted);
+}
+
+.reaction-badge:active {
+  transform: scale(0.95);
+  transition-duration: 60ms;
+}
+
+.reaction-badge--me {
+  background: rgba(90, 90, 240, 0.12);
+  border-color: rgba(90, 90, 240, 0.5);
+}
+
+.reaction-badge--me:hover {
+  background: rgba(90, 90, 240, 0.18);
+  border-color: rgba(90, 90, 240, 0.65);
+}
+
+.reaction-badge--add {
+  color: var(--text-muted);
+  padding: 0 8px;
+  gap: 0;
+}
+
+.reaction-badge--add:hover {
+  color: var(--text);
+  background: var(--border);
+}
+
+.reaction-emoji {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.reaction-count {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+  line-height: 1;
+}
+
+.reaction-badge--me .reaction-count {
+  color: var(--accent);
+}
+
+.reaction-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--text);
+  color: var(--bg);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition:
+    opacity 140ms ease,
+    transform 140ms ease;
+  transform: translateX(-50%) translateY(4px);
+  z-index: 100;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.reaction-badge {
+  position: relative;
+}
+
+.reaction-badge:hover .reaction-tooltip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.reaction-picker-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 550;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+
+.reaction-picker {
+  position: fixed;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.18),
+    0 2px 8px rgba(0, 0, 0, 0.08);
+  z-index: 551;
+}
+
+.reaction-picker-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  transition:
+    background 120ms ease,
+    transform 120ms var(--ease-out-quint);
+  line-height: 1;
+}
+
+.reaction-picker-btn:hover {
+  background: var(--surface-2);
+  transform: scale(1.2);
+}
+
+.reaction-picker-btn:active {
+  transform: scale(0.9);
+  transition-duration: 60ms;
+}
+
+.reaction-picker-fade-enter-active {
+  transition: opacity 140ms ease;
+}
+.reaction-picker-fade-leave-active {
+  transition: opacity 100ms ease;
+}
+.reaction-picker-fade-enter-from,
+.reaction-picker-fade-leave-to {
+  opacity: 0;
+}
+
+.reaction-picker-fade-enter-active .reaction-picker {
+  transition:
+    opacity 160ms ease,
+    transform 200ms var(--ease-spring);
+}
+.reaction-picker-fade-leave-active .reaction-picker {
+  transition:
+    opacity 100ms ease,
+    transform 100ms ease;
+}
+.reaction-picker-fade-enter-from .reaction-picker {
+  opacity: 0;
+  transform: scale(0.9);
+}
+.reaction-picker-fade-leave-to .reaction-picker {
+  opacity: 0;
+  transform: scale(0.95);
 }
 </style>

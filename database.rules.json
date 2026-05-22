@@ -49,6 +49,13 @@
         },
         "pollClosed": {
           ".write": "auth != null && (data.parent().child('uid').val() === auth.uid || root.child('owner').val() === auth.uid || (root.child('admins').child(auth.uid).val() === true && root.child('owner').val() !== data.parent().child('uid').val()))"
+        },
+        "reactions": {
+          "$emoji": {
+            "$reactorUid": {
+              ".write": "auth != null && $reactorUid === auth.uid && root.child('muted').child(auth.uid).val() !== true"
+            }
+          }
         }
       }
     },
