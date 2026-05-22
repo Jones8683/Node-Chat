@@ -1179,6 +1179,7 @@ import {
   query,
   limitToLast,
   onValue,
+  onDisconnect,
   serverTimestamp,
   set,
   update,
@@ -2959,15 +2960,38 @@ function openAdmin() {
   emit("open-admin");
 }
 
+let typingDisconnectArmed = false;
+
+function armTypingDisconnect() {
+  if (typingDisconnectArmed || !myTypingRef) return;
+  typingDisconnectArmed = true;
+  onDisconnect(myTypingRef)
+    .remove()
+    .catch(() => {
+      typingDisconnectArmed = false;
+    });
+}
+
+function clearMyTyping() {
+  clearTimeout(typingTimeout);
+  if (!myTypingRef) return;
+  remove(myTypingRef).catch(() => {});
+}
+
 function handleTyping() {
   if (!myTypingRef) return;
   if (chatLocked.value && !isAdmin.value) return;
   if (isMuted.value) return;
+  armTypingDisconnect();
   set(myTypingRef, { displayName: props.user.displayName }).catch(() => {});
   clearTimeout(typingTimeout);
   typingTimeout = setTimeout(() => {
     if (myTypingRef) remove(myTypingRef).catch(() => {});
   }, 2000);
+}
+
+function handlePageHideTyping() {
+  clearMyTyping();
 }
 
 function focusComposer() {
@@ -3215,6 +3239,9 @@ onMounted(async () => {
   });
 
   myTypingRef = dbRef(db, `typing/${props.user.uid}`);
+  armTypingDisconnect();
+  window.addEventListener("pagehide", handlePageHideTyping);
+  window.addEventListener("beforeunload", handlePageHideTyping);
 
   await startPresence({
     uid: props.user.uid,
@@ -3305,7 +3332,15 @@ onUnmounted(() => {
   if (lockListener) lockListener();
   if (muteListener) muteListener();
   if (allMutedUsersListener) allMutedUsersListener();
-  if (myTypingRef) remove(myTypingRef).catch(() => {});
+  window.removeEventListener("pagehide", handlePageHideTyping);
+  window.removeEventListener("beforeunload", handlePageHideTyping);
+  if (myTypingRef) {
+    onDisconnect(myTypingRef)
+      .cancel()
+      .catch(() => {});
+    remove(myTypingRef).catch(() => {});
+  }
+  typingDisconnectArmed = false;
   stopPresence();
 });
 
