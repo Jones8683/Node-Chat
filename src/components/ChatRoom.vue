@@ -378,7 +378,7 @@
                     <div
                       v-else-if="item.type === 'gif' && item.gif"
                       class="msg-body msg-body--gif"
-                      @dblclick="startReply(item)"
+                      @dblclick="heartMessage(item.id)"
                     >
                       <button
                         type="button"
@@ -403,7 +403,7 @@
                       v-else
                       class="msg-body"
                       :class="{ 'msg-body--emoji': isEmojiOnly(item.text) }"
-                      @dblclick="startReply(item)"
+                      @dblclick="heartMessage(item.id)"
                     >
                       <span class="text"
                         ><span v-html="formatMessage(item)"></span
@@ -3730,6 +3730,11 @@ function getReactionList(message) {
     })
     .filter(Boolean)
     .sort((a, b) => b.count - a.count);
+}
+
+function heartMessage(messageId) {
+  window.getSelection()?.removeAllRanges();
+  toggleReaction(messageId, "❤️");
 }
 
 async function toggleReaction(messageId, emoji) {
