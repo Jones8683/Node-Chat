@@ -207,7 +207,7 @@ function saveRecents() {
   try {
     localStorage.setItem(RECENTS_KEY, JSON.stringify(recents.value));
   } catch {
-    /* noop */
+    return;
   }
 }
 
@@ -415,7 +415,7 @@ async function fetchCategories() {
       .filter((c) => c.name);
     categories.value = list;
   } catch {
-    /* noop */
+    return;
   }
 }
 

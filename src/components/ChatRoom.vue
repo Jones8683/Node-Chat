@@ -217,16 +217,18 @@
 
                   <template v-if="editingId === item.id">
                     <div class="edit-area">
-                      <textarea
+                      <MessageComposer
                         class="edit-input"
                         ref="editInputRef"
                         v-model="editText"
+                        :max-length="10000"
+                        :resolve-mention="resolveMentionFromText"
+                        :current-user-uid="props.user.uid"
+                        @submit="saveEdit(item.id)"
                         @keydown="handleEditKeydown($event, item.id)"
                         @input="handleEditInput($event, item.id)"
                         @blur="closeMentionPicker"
-                        maxlength="10000"
-                        rows="1"
-                      ></textarea>
+                      />
                       <transition name="mention-fade">
                         <div
                           v-if="
@@ -235,7 +237,9 @@
                             mentionResults.length
                           "
                           class="mention-autocomplete mention-autocomplete--edit"
+                          :class="{ 'picker--keyboard': pickerKeyboardActive }"
                           ref="mentionPickerRef"
+                          @mousemove="pickerKeyboardActive = false"
                         >
                           <div
                             v-for="(mentionUser, i) in mentionResults"
@@ -245,6 +249,7 @@
                               active: i === mentionActiveIndex,
                               'mention-item--everyone': mentionUser.isEveryone,
                             }"
+                            @mouseenter="mentionActiveIndex = i"
                             @mousedown.prevent="insertMention(mentionUser)"
                           >
                             <div
@@ -544,13 +549,16 @@
             <div
               v-if="emojiVisible && emojiResults.length"
               class="emoji-autocomplete"
+              :class="{ 'picker--keyboard': pickerKeyboardActive }"
               ref="emojiPickerRef"
+              @mousemove="pickerKeyboardActive = false"
             >
               <div
                 v-for="(emoji, i) in emojiResults"
                 :key="emoji.id"
                 class="emoji-item"
                 :class="{ active: i === emojiActiveIndex }"
+                @mouseenter="emojiActiveIndex = i"
                 @mousedown.prevent="insertEmoji(emoji)"
               >
                 <span class="emoji-native">{{ emoji.skins[0].native }}</span>
@@ -570,7 +578,9 @@
                 mentionResults.length
               "
               class="mention-autocomplete"
+              :class="{ 'picker--keyboard': pickerKeyboardActive }"
               ref="mentionPickerRef"
+              @mousemove="pickerKeyboardActive = false"
             >
               <div
                 v-for="(mentionUser, i) in mentionResults"
@@ -580,6 +590,7 @@
                   active: i === mentionActiveIndex,
                   'mention-item--everyone': mentionUser.isEveryone,
                 }"
+                @mouseenter="mentionActiveIndex = i"
                 @mousedown.prevent="insertMention(mentionUser)"
               >
                 <div
@@ -745,17 +756,14 @@
                   <Plus :size="20" stroke-width="2.4" />
                 </button>
               </div>
-              <textarea
+              <MessageComposer
                 ref="composerRef"
                 v-model="newMessage"
-                id="message"
-                name="message"
-                autocomplete="off"
-                rows="1"
-                maxlength="10000"
-                enterkeyhint="send"
-                inputmode="text"
+                class="message-composer"
+                :max-length="10000"
                 :disabled="isMuted || (chatLocked && !isAdmin)"
+                :resolve-mention="resolveMentionFromText"
+                :current-user-uid="props.user.uid"
                 :placeholder="
                   isMuted
                     ? 'You are muted'
@@ -763,11 +771,11 @@
                       ? 'Chat is locked'
                       : 'Type a message...'
                 "
-                @keydown.enter.exact.prevent="sendMessage"
+                @submit="sendMessage"
                 @keydown="handleComposerKeydown"
                 @input="handleComposerInput"
                 @blur="closeComposerPickers"
-              ></textarea>
+              />
               <span class="char-warning" v-if="newMessage.length > 9000">{{
                 10000 - newMessage.length
               }}</span>
@@ -1252,6 +1260,7 @@ import {
   userIsOnline,
 } from "../presence";
 import WindowControls from "./WindowControls.vue";
+import MessageComposer from "./MessageComposer.vue";
 import { containsSlur } from "../slurFilter";
 
 const props = defineProps(["user"]);
@@ -1494,6 +1503,27 @@ const EVERYONE_MENTION_ENTRY = {
   isEveryone: true,
 };
 
+const mentionablesByLength = computed(() => {
+  const list = mentionableUsers.value
+    .filter((u) => u.displayName && !u.isEveryone)
+    .map((u) => ({ uid: u.uid, displayName: u.displayName }));
+  list.push({ uid: EVERYONE_MENTION_UID, displayName: "everyone" });
+  return list.sort((a, b) => b.displayName.length - a.displayName.length);
+});
+
+function resolveMentionFromText(rest) {
+  if (!rest) return null;
+  for (const m of mentionablesByLength.value) {
+    if (rest.startsWith(m.displayName)) {
+      const after = rest[m.displayName.length];
+      if (!after || !/[A-Za-z0-9_-]/.test(after)) {
+        return { uid: m.uid, displayName: m.displayName };
+      }
+    }
+  }
+  return null;
+}
+
 const recentParticipants = computed(() => {
   const map = new Map();
   const limit = 30;
@@ -1546,6 +1576,7 @@ const mentionActiveIndex = ref(0);
 const mentionVisible = ref(false);
 const mentionPickerRef = ref(null);
 const activeMentionTarget = ref(null);
+const pickerKeyboardActive = ref(false);
 let mentionQueryStart = -1;
 
 const attachMenuVisible = ref(false);
@@ -2169,12 +2200,7 @@ function forwardWheelToMessages(event) {
 }
 
 function resizeComposer() {
-  const composer = composerRef.value;
-  if (!composer) return;
-  composer.style.height = "0px";
-  const nextHeight = Math.min(composer.scrollHeight, 160);
-  composer.style.height = `${nextHeight}px`;
-  composer.style.overflowY = composer.scrollHeight > 160 ? "auto" : "hidden";
+  return;
 }
 
 function escapeHtml(value) {
@@ -2462,15 +2488,19 @@ function formatTimestampShort(timestamp) {
   });
 }
 
-function getTextareaForMentionTarget(target = activeMentionTarget.value) {
+function getEditorForTarget(target = activeMentionTarget.value) {
   if (target === "composer") return composerRef.value;
   if (target?.startsWith("edit:")) {
-    const id = target.slice(5);
-    return messageContainer.value?.querySelector(
-      `[data-message-id="${CSS.escape(id)}"] .edit-input`,
-    );
+    const refVal = editInputRef.value;
+    if (Array.isArray(refVal)) return refVal[0] || null;
+    return refVal || null;
   }
   return null;
+}
+function getCaretForTarget(target = activeMentionTarget.value) {
+  const editor = getEditorForTarget(target);
+  if (!editor) return 0;
+  return editor.getCaretOffset();
 }
 
 function getTextForMentionTarget(target = activeMentionTarget.value) {
@@ -2495,6 +2525,7 @@ function closeMentionPicker() {
   mentionActiveIndex.value = 0;
   mentionQueryStart = -1;
   activeMentionTarget.value = null;
+  pickerKeyboardActive.value = false;
 }
 
 function closeComposerPickers() {
@@ -2583,11 +2614,11 @@ function getMentionSearchScore(user, query) {
 }
 
 function checkMentionTrigger(target) {
-  const textarea = getTextareaForMentionTarget(target);
-  if (!textarea) return;
+  const editor = getEditorForTarget(target);
+  if (!editor) return;
 
   const text = getTextForMentionTarget(target);
-  const trigger = getMentionQuery(text, textarea.selectionStart);
+  const trigger = getMentionQuery(text, editor.getCaretOffset());
   if (!trigger) {
     if (activeMentionTarget.value === target) closeMentionPicker();
     return;
@@ -2639,6 +2670,7 @@ function handleMentionKeydown(e, target) {
 
   if (e.key === "ArrowDown") {
     e.preventDefault();
+    pickerKeyboardActive.value = true;
     mentionActiveIndex.value =
       (mentionActiveIndex.value + 1) % mentionResults.value.length;
     nextTick(scrollMentionItemIntoView);
@@ -2646,6 +2678,7 @@ function handleMentionKeydown(e, target) {
   }
   if (e.key === "ArrowUp") {
     e.preventDefault();
+    pickerKeyboardActive.value = true;
     mentionActiveIndex.value =
       (mentionActiveIndex.value - 1 + mentionResults.value.length) %
       mentionResults.value.length;
@@ -2668,29 +2701,18 @@ function handleMentionKeydown(e, target) {
 
 function insertMention(mentionUser) {
   const target = activeMentionTarget.value;
-  const textarea = getTextareaForMentionTarget(target);
-  if (!textarea || mentionQueryStart < 0) return;
+  const editor = getEditorForTarget(target);
+  if (!editor || mentionQueryStart < 0) return;
 
-  const text = getTextForMentionTarget(target);
-  const cursor = textarea.selectionStart;
-  const before = text.slice(0, mentionQueryStart);
-  const after = text.slice(cursor);
-  const insertion = `@${mentionUser.displayName} `;
-  const insertionStart = mentionQueryStart;
-  const nextValue = `${before}${insertion}${after}`;
-  setTextForMentionTarget(nextValue, target);
+  const cursor = editor.getCaretOffset();
+  editor.insertMentionAtRange(
+    mentionUser.uid,
+    mentionUser.displayName,
+    mentionQueryStart,
+    cursor,
+  );
   closeMentionPicker();
-
-  nextTick(() => {
-    const newPos = insertionStart + insertion.length;
-    textarea.setSelectionRange(newPos, newPos);
-    textarea.focus();
-    if (target === "composer") {
-      resizeComposer();
-    } else {
-      resizeEditInput(textarea);
-    }
-  });
+  nextTick(() => editor.focus());
 }
 
 function scrollMentionItemIntoView() {
@@ -2706,6 +2728,7 @@ function handleComposerKeydown(e) {
   if (emojiVisible.value && emojiResults.value.length) {
     if (e.key === "ArrowDown") {
       e.preventDefault();
+      pickerKeyboardActive.value = true;
       emojiActiveIndex.value =
         (emojiActiveIndex.value + 1) % emojiResults.value.length;
       nextTick(scrollEmojiItemIntoView);
@@ -2713,6 +2736,7 @@ function handleComposerKeydown(e) {
     }
     if (e.key === "ArrowUp") {
       e.preventDefault();
+      pickerKeyboardActive.value = true;
       emojiActiveIndex.value =
         (emojiActiveIndex.value - 1 + emojiResults.value.length) %
         emojiResults.value.length;
@@ -2772,21 +2796,19 @@ function handleEditKeydown(e, id) {
 }
 
 function wrapSelection(marker) {
-  const textarea = composerRef.value;
-  if (!textarea) return;
-  const start = textarea.selectionStart;
-  const end = textarea.selectionEnd;
-  const selected = newMessage.value.slice(start, end);
-  const before = newMessage.value.slice(0, start);
-  const after = newMessage.value.slice(end);
-  newMessage.value = `${before}${marker}${selected}${marker}${after}`;
+  const editor = composerRef.value;
+  if (!editor) return;
+  const { start, end } = editor.getSelectionRange();
+  const value = editor.getValue();
+  const selected = value.slice(start, end);
+  editor.replaceRangeWithText(start, end, `${marker}${selected}${marker}`);
   nextTick(() => {
     if (selected) {
-      textarea.setSelectionRange(start + marker.length, end + marker.length);
+      editor.setCaretOffset(end + marker.length * 2);
     } else {
-      textarea.setSelectionRange(start + marker.length, start + marker.length);
+      editor.setCaretOffset(start + marker.length);
     }
-    textarea.focus();
+    editor.focus();
   });
 }
 
@@ -3069,7 +3091,7 @@ function handleComposerAreaMousedown(e) {
   if (!(target instanceof Element)) return;
   if (
     target.closest(
-      "textarea, input, button, a, [contenteditable=''], [contenteditable='true'], .reply-bar, .gif-picker, .emoji-picker, .mention-picker, .attach-menu",
+      "textarea, input, button, a, .composer-editor, [contenteditable=''], [contenteditable='true'], .reply-bar, .gif-picker, .emoji-picker, .mention-picker, .attach-menu",
     )
   ) {
     return;
@@ -3091,9 +3113,9 @@ function handleEditInput(event, id) {
 }
 
 async function checkEmojiTrigger() {
-  const textarea = composerRef.value;
-  if (!textarea) return;
-  const cursor = textarea.selectionStart;
+  const editor = composerRef.value;
+  if (!editor) return;
+  const cursor = editor.getCaretOffset();
   const textBefore = newMessage.value.slice(0, cursor);
   const match = textBefore.match(/(^|[\s\n]):([\w]{2,})$/);
   if (match) {
@@ -3120,26 +3142,19 @@ async function checkEmojiTrigger() {
 
 function insertEmoji(emoji) {
   const native = emoji.skins[0].native;
-  const textarea = composerRef.value;
-  if (!textarea) return;
-  const cursor = textarea.selectionStart;
-  const insertionStart = emojiQueryStart;
-  const before = newMessage.value.slice(0, emojiQueryStart);
-  const after = newMessage.value.slice(cursor);
-  newMessage.value = before + native + after;
+  const editor = composerRef.value;
+  if (!editor) return;
+  const cursor = editor.getCaretOffset();
+  editor.replaceRangeWithText(emojiQueryStart, cursor, native);
   closeEmojiPicker();
-  nextTick(() => {
-    const newPos = insertionStart + native.length;
-    textarea.setSelectionRange(newPos, newPos);
-    textarea.focus();
-    resizeComposer();
-  });
+  nextTick(() => editor.focus());
 }
 
 function closeEmojiPicker() {
   emojiVisible.value = false;
   emojiResults.value = [];
   emojiQueryStart = -1;
+  pickerKeyboardActive.value = false;
 }
 
 function scrollEmojiItemIntoView() {
@@ -3485,37 +3500,12 @@ function startEdit(msg) {
 
   nextTick(() => {
     nextTick(() => {
-      const container = messageContainer.value;
-      const msgEl = container?.querySelector(`[data-message-id="${msg.id}"]`);
-      let el = msgEl?.querySelector(".edit-input");
-      if (!el) {
-        const refVal = editInputRef.value;
-        if (Array.isArray(refVal)) {
-          el = refVal.find((node) => {
-            try {
-              return (
-                node &&
-                node.closest &&
-                node.closest("[data-message-id]")?.dataset?.messageId === msg.id
-              );
-            } catch (e) {
-              return false;
-            }
-          });
-        } else if (refVal && typeof refVal.focus === "function") {
-          el = refVal;
-        }
-      }
-
-      if (!el) return;
-
+      const refVal = editInputRef.value;
+      const editor = Array.isArray(refVal) ? refVal[0] : refVal;
+      if (!editor) return;
       try {
-        el.focus();
-        if (typeof el.setSelectionRange === "function") {
-          const len = (el.value || "").length;
-          el.setSelectionRange(len, len);
-        }
-        resizeEditInput(el);
+        editor.focus();
+        editor.setSelectionToEnd();
       } catch (e) {
         console.error("startEdit focus error:", e);
       }
@@ -3528,10 +3518,8 @@ function cancelEdit() {
   editText.value = "";
 }
 
-function resizeEditInput(el) {
-  if (!el) return;
-  el.style.height = "0px";
-  el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+function resizeEditInput() {
+  return;
 }
 
 async function saveEdit(id) {
@@ -4927,6 +4915,7 @@ async function logout() {
   gap: 8px;
 }
 
+.message-composer,
 textarea {
   flex: 1;
   display: block;
@@ -5379,11 +5368,13 @@ textarea::placeholder {
   padding: 7px 10px;
   border-radius: 6px;
   cursor: pointer;
-  transition: background 0.1s;
 }
 
-.emoji-item:hover,
 .emoji-item.active {
+  background: var(--surface-2);
+}
+
+.emoji-autocomplete:not(.picker--keyboard) .emoji-item:hover {
   background: var(--surface-2);
 }
 
@@ -5454,13 +5445,13 @@ textarea::placeholder {
   padding: 7px 10px;
   border-radius: 6px;
   cursor: pointer;
-  transition:
-    background 0.1s,
-    color 0.1s;
 }
 
-.mention-item:hover,
 .mention-item.active {
+  background: var(--surface-2);
+}
+
+.mention-autocomplete:not(.picker--keyboard) .mention-item:hover {
   background: var(--surface-2);
 }
 
