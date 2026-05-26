@@ -24,11 +24,11 @@ const DISPLAY_NAME_PATTERN = /^[a-zA-Z0-9_\-. ]+$/;
 const PASSWORD_MIN = 6;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export function normalizeDisplayName(raw) {
+function normalizeDisplayName(raw) {
   return String(raw || "").trim();
 }
 
-export function nameToKey(name) {
+function nameToKey(name) {
   return normalizeDisplayName(name).toLowerCase().replace(/\s+/g, "_");
 }
 
@@ -44,7 +44,7 @@ export function validateDisplayName(raw) {
   return null;
 }
 
-export function generateInviteToken() {
+function generateInviteToken() {
   return cryptoRandomString({ length: 7, type: "alphanumeric" }).toUpperCase();
 }
 
@@ -63,7 +63,7 @@ export async function deleteInviteToken(token) {
   await remove(dbRef(db, `invites/${token}`));
 }
 
-export async function validateInviteToken(token) {
+async function validateInviteToken(token) {
   const key = String(token || "")
     .trim()
     .toUpperCase();
@@ -270,30 +270,6 @@ export async function changeUserPassword(newPassword) {
   const user = auth.currentUser;
   if (!user) throw new Error("Not authenticated.");
   await updatePassword(user, newPassword);
-}
-
-export async function isUserAdmin(uid) {
-  const snap = await get(dbRef(db, `admins/${uid}`));
-  return snap.exists() && snap.val() === true;
-}
-
-export async function getOwnerUid() {
-  try {
-    const snap = await get(dbRef(db, "owner"));
-    return snap.exists() ? snap.val() : null;
-  } catch {
-    return null;
-  }
-}
-
-export async function isUserOwner(uid) {
-  return (await getOwnerUid()) === uid;
-}
-
-export async function getAllUsers() {
-  const snap = await get(dbRef(db, "users"));
-  if (!snap.exists()) return [];
-  return Object.entries(snap.val()).map(([uid, data]) => ({ uid, ...data }));
 }
 
 export async function adminRenameUser(uid, rawName) {

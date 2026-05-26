@@ -38,7 +38,10 @@ function loadBaseImage() {
 
 export function updateBadge(unreadCount) {
   if (!faviconLink) initBadge();
-  if (!unreadCount || unreadCount <= 0) return;
+  if (!unreadCount || unreadCount <= 0) {
+    clearBadge();
+    return;
+  }
   if (unreadCount === lastUnreadCount) return;
   lastUnreadCount = unreadCount;
 

@@ -34,7 +34,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from "vue";
 import DesktopDragHeader from "./DesktopDragHeader.vue";
-import { changeDisplayName } from "../authUtils";
+import { changeDisplayName, validateDisplayName } from "../authUtils";
 import { auth } from "../firebase";
 
 const emit = defineEmits(["done"]);
@@ -56,20 +56,9 @@ onUnmounted(() => {
 async function submit() {
   const trimmed = name.value.trim();
 
-  if (!trimmed) {
-    error.value = "Please enter a display name";
-    return;
-  }
-  if (trimmed.length < 2) {
-    error.value = "Display name must be at least 2 characters";
-    return;
-  }
-  if (trimmed.length > 12) {
-    error.value = "Display name must be at most 12 characters";
-    return;
-  }
-  if (!/^[a-zA-Z0-9_\-. ]+$/.test(trimmed)) {
-    error.value = "Only letters, numbers, spaces, and _ - . are allowed";
+  const validationError = validateDisplayName(trimmed);
+  if (validationError) {
+    error.value = validationError;
     return;
   }
 

@@ -1862,21 +1862,25 @@ async function sendGif(gif) {
   }
 }
 
-async function copyGifLink(item) {
-  const url = item?.gif?.url;
-  if (!url) return;
+async function copyWithFeedback(text, itemId, errorLabel) {
   try {
-    await copy(url);
-    copiedMessageId.value = item.id;
+    await copy(text);
+    copiedMessageId.value = itemId;
     clearTimeout(copyResetTimer);
     copyResetTimer = setTimeout(() => {
-      if (copiedMessageId.value === item.id) {
+      if (copiedMessageId.value === itemId) {
         copiedMessageId.value = null;
       }
     }, 1200);
   } catch (err) {
-    console.error("Failed to copy GIF link:", err);
+    console.error(errorLabel, err);
   }
+}
+
+function copyGifLink(item) {
+  const url = item?.gif?.url;
+  if (!url) return;
+  return copyWithFeedback(url, item.id, "Failed to copy GIF link:");
 }
 
 function cancelPollDialog() {
@@ -2470,22 +2474,17 @@ function restoreScrollAnchor(scrollEl) {
   return false;
 }
 
-function formatTimestamp(timestamp) {
+function formatTimestamp(timestamp, { short = false } = {}) {
   if (!timestamp) return "";
   return new Date(timestamp).toLocaleTimeString("en-US", {
-    hour: "2-digit",
+    hour: short ? "numeric" : "2-digit",
     minute: "2-digit",
     hour12: !use24HourTime.value,
   });
 }
 
 function formatTimestampShort(timestamp) {
-  if (!timestamp) return "";
-  return new Date(timestamp).toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: !use24HourTime.value,
-  });
+  return formatTimestamp(timestamp, { short: true });
 }
 
 function getEditorForTarget(target = activeMentionTarget.value) {
@@ -3425,23 +3424,14 @@ onUnmounted(() => {
   stopPresence();
 });
 
-async function copyMessageText(item) {
+function copyMessageText(item) {
   const raw = item?.text || "";
   if (!raw.trim()) return;
-  const text = detokenizeMentions(raw);
-
-  try {
-    await copy(text);
-    copiedMessageId.value = item.id;
-    clearTimeout(copyResetTimer);
-    copyResetTimer = setTimeout(() => {
-      if (copiedMessageId.value === item.id) {
-        copiedMessageId.value = null;
-      }
-    }, 1200);
-  } catch (err) {
-    console.error("Failed to copy message:", err);
-  }
+  return copyWithFeedback(
+    detokenizeMentions(raw),
+    item.id,
+    "Failed to copy message:",
+  );
 }
 
 function startReply(item) {

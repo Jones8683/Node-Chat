@@ -1,11 +1,6 @@
 <template>
   <transition name="modal-fade" appear>
-    <div
-      v-if="isOpen"
-      class="modal-overlay"
-      @click="closeIfClickedOutside"
-      @keydown.esc="close"
-    >
+    <div v-if="isOpen" class="modal-overlay" @click="closeIfClickedOutside">
       <div class="modal-container" role="dialog" aria-modal="true">
         <div class="modal-header">
           <div>
@@ -406,6 +401,7 @@ import {
   changeAvatarColor,
   changeDisplayName,
   changeUserPassword,
+  validateDisplayName,
 } from "../authUtils";
 import {
   notificationsSupported,
@@ -710,23 +706,22 @@ function onKeyDown(e) {
   if (e.key === "Escape") close();
 }
 
+let usernameSuccessTimer = null;
+let passwordSuccessTimer = null;
+
 onMounted(() => window.addEventListener("keydown", onKeyDown));
-onUnmounted(() => window.removeEventListener("keydown", onKeyDown));
+onUnmounted(() => {
+  window.removeEventListener("keydown", onKeyDown);
+  if (usernameSuccessTimer) clearTimeout(usernameSuccessTimer);
+  if (passwordSuccessTimer) clearTimeout(passwordSuccessTimer);
+});
 
 async function changeUsername() {
   const trimmed = newUsername.value.trim();
 
-  if (!trimmed) {
-    errorUsername.value = "Please enter a display name";
-    return;
-  }
-  if (trimmed.length < 2) {
-    errorUsername.value = "Display name must be at least 2 characters";
-    return;
-  }
-  if (!/^[a-zA-Z0-9_\-. ]+$/.test(trimmed)) {
-    errorUsername.value =
-      "Only letters, numbers, spaces, and _ - . are allowed";
+  const validationError = validateDisplayName(trimmed);
+  if (validationError) {
+    errorUsername.value = validationError;
     return;
   }
   if (trimmed === props.user.displayName) {
@@ -743,8 +738,10 @@ async function changeUsername() {
     successUsername.value = "Display name updated!";
     newUsername.value = "";
     emit("refreshUser");
-    setTimeout(() => {
+    if (usernameSuccessTimer) clearTimeout(usernameSuccessTimer);
+    usernameSuccessTimer = setTimeout(() => {
       successUsername.value = "";
+      usernameSuccessTimer = null;
     }, 3000);
   } catch (e) {
     errorUsername.value = e.message || "Failed to update display name";
@@ -792,8 +789,10 @@ async function changePassword() {
     currentPassword.value = "";
     newPassword.value = "";
     confirmPassword.value = "";
-    setTimeout(() => {
+    if (passwordSuccessTimer) clearTimeout(passwordSuccessTimer);
+    passwordSuccessTimer = setTimeout(() => {
       successPassword.value = "";
+      passwordSuccessTimer = null;
     }, 3000);
   } catch (e) {
     if (

@@ -8,6 +8,7 @@ import {
   serverTimestamp,
   goOnline,
 } from "firebase/database";
+import { randomId } from "./randomId";
 
 const HEARTBEAT_MS = 25000;
 const STALE_TAB_MS = 5 * 60 * 1000;
@@ -25,16 +26,6 @@ let offlineHandler = null;
 let pageShowHandler = null;
 let pageHideHandler = null;
 let beforeUnloadHandler = null;
-
-function generateTabId() {
-  if (
-    typeof crypto !== "undefined" &&
-    typeof crypto.randomUUID === "function"
-  ) {
-    return crypto.randomUUID();
-  }
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-}
 
 function tabRef() {
   if (!currentUid || !tabId) return null;
@@ -191,7 +182,7 @@ export async function startPresence(user) {
     await stopPresence();
   }
   currentUid = user.uid;
-  tabId = generateTabId();
+  tabId = randomId();
   currentProfile = {
     displayName: user.displayName || null,
     avatarColor: user.preferences?.avatarColor || null,

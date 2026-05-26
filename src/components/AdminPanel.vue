@@ -278,7 +278,7 @@
                   class="user-search-input"
                   placeholder="Search users"
                   v-model="userSearchQuery"
-                  @keydown.esc.stop.prevent="onUserSearchEscape"
+                  @keydown.escape.stop.prevent="onUserSearchEscape"
                   spellcheck="false"
                   autocomplete="off"
                 />
@@ -316,7 +316,7 @@
                               class="username-edit-input"
                               v-model="editingUserName"
                               @keydown.enter="saveUsername(u.uid)"
-                              @keydown.esc="cancelEditUsername"
+                              @keydown.escape="cancelEditUsername"
                               maxlength="12"
                               autofocus
                             />
@@ -673,6 +673,11 @@ function syncAdminRoleResolved() {
 function ensureInvitesListener() {
   if (invitesListener || !canUseAdminPanel.value) return;
   loadingInvites.value = true;
+  if (!inviteInterval) {
+    inviteInterval = setInterval(() => {
+      now.value = Date.now();
+    }, 1000);
+  }
   invitesListener = onValue(
     dbRef(db, "invites"),
     (snap) => {
@@ -705,6 +710,10 @@ function stopInvitesListener() {
     invitesListener();
     invitesListener = null;
   }
+  if (inviteInterval) {
+    clearInterval(inviteInterval);
+    inviteInterval = null;
+  }
   invites.value = [];
   loadingInvites.value = false;
   errorInvite.value = "";
@@ -727,10 +736,6 @@ onMounted(() => {
     },
     (error) => {},
   );
-
-  inviteInterval = setInterval(() => {
-    now.value = Date.now();
-  }, 1000);
 
   adminsListener = onValue(
     dbRef(db, "admins"),
@@ -786,6 +791,7 @@ onUnmounted(() => {
   if (auditListener) auditListener();
   if (messagesListener) messagesListener();
   if (inviteInterval) clearInterval(inviteInterval);
+  if (copyFeedbackTimer) clearTimeout(copyFeedbackTimer);
 });
 
 function stopUsersListener() {
@@ -942,6 +948,7 @@ function onKeyDown(e) {
 }
 
 function onOutsideClick(e) {
+  if (!props.isOpen || !purgeDropdownOpen.value) return;
   if (purgeDropdownRef.value && !purgeDropdownRef.value.contains(e.target)) {
     purgeDropdownOpen.value = false;
   }
@@ -970,11 +977,14 @@ async function generateInvite() {
   }
 }
 
+let copyFeedbackTimer = null;
 function copyToClipboard(token) {
   copy(token).then(() => {
     copyFeedback.value = true;
-    setTimeout(() => {
+    if (copyFeedbackTimer) clearTimeout(copyFeedbackTimer);
+    copyFeedbackTimer = setTimeout(() => {
       copyFeedback.value = false;
+      copyFeedbackTimer = null;
     }, 2000);
   });
 }
@@ -1299,7 +1309,9 @@ async function promoteUserConfirmed(uid) {
 
     confirmAction.value.show = false;
   } catch (e) {
-    alert("Failed to promote user: " + (e.message || "Unknown error"));
+    adminActionError.value =
+      "Failed to promote user: " + (e.message || "Unknown error");
+    confirmAction.value.show = false;
   } finally {
     confirmAction.value.loading = false;
   }
@@ -1363,7 +1375,9 @@ async function demoteUserConfirmed(uid) {
 
     confirmAction.value.show = false;
   } catch (e) {
-    alert("Failed to demote user: " + (e.message || "Unknown error"));
+    adminActionError.value =
+      "Failed to demote user: " + (e.message || "Unknown error");
+    confirmAction.value.show = false;
   } finally {
     confirmAction.value.loading = false;
   }
@@ -1572,7 +1586,9 @@ async function saveUsername(uid) {
     if (u) u.displayName = newName;
     clearEditUsername();
   } catch (e) {
-    alert("Failed to update username: " + (e.message || "Unknown error"));
+    adminActionError.value =
+      "Failed to update username: " + (e.message || "Unknown error");
+    clearEditUsername();
   }
 }
 </script>

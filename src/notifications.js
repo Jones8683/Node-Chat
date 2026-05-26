@@ -1,4 +1,5 @@
 import { isTauri } from "@tauri-apps/api/core";
+import { randomId } from "./randomId";
 
 let tauriNotificationModulePromise = null;
 
@@ -6,10 +7,7 @@ const notificationHistory = new Map();
 const NOTIFICATION_THROTTLE_MS = 1500;
 const NOTIFICATION_HISTORY_SIZE = 50;
 
-const TAB_ID =
-  typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-    ? crypto.randomUUID()
-    : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+const TAB_ID = randomId();
 
 function hashNotification({ title, body }) {
   return `${title}|${body}`;
@@ -174,8 +172,4 @@ async function sendWebNotification({ title, body, icon }) {
     console.error("Web notification failed:", err);
     return false;
   }
-}
-
-export function clearNotificationHistory() {
-  notificationHistory.clear();
 }

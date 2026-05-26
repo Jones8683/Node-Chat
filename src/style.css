@@ -60,15 +60,6 @@ body {
   animation: fadeIn 0.4s ease-in;
 }
 
-body.modal-open {
-  overflow: hidden;
-}
-
-html.modal-open,
-html.modal-open body {
-  overflow: hidden;
-}
-
 button {
   font-family: inherit;
 }
@@ -93,47 +84,32 @@ textarea::-webkit-scrollbar-button {
   width: 0 !important;
 }
 
-.messages::-webkit-scrollbar {
-  width: 5px;
-}
-.messages::-webkit-scrollbar-track {
-  background: transparent;
-}
-.messages::-webkit-scrollbar-thumb {
-  background: #2c2a271a;
-  border-radius: 999px;
-  transition: background 160ms ease;
-}
-.messages::-webkit-scrollbar-thumb:hover {
-  background: #2c2a2740;
-}
-
-.online-panel-list::-webkit-scrollbar {
-  width: 4px;
-}
-.online-panel-list::-webkit-scrollbar-track {
-  background: transparent;
-}
-.online-panel-list::-webkit-scrollbar-thumb {
-  background: #2c2a271a;
-  border-radius: 999px;
-  transition: background 160ms ease;
-}
-.online-panel-list::-webkit-scrollbar-thumb:hover {
-  background: #2c2a2738;
-}
-
+.messages::-webkit-scrollbar,
+.online-panel-list::-webkit-scrollbar,
 textarea::-webkit-scrollbar {
   width: 4px;
 }
+
+.messages::-webkit-scrollbar {
+  width: 5px;
+}
+
+.messages::-webkit-scrollbar-track,
+.online-panel-list::-webkit-scrollbar-track,
 textarea::-webkit-scrollbar-track {
   background: transparent;
 }
+
+.messages::-webkit-scrollbar-thumb,
+.online-panel-list::-webkit-scrollbar-thumb,
 textarea::-webkit-scrollbar-thumb {
   background: #2c2a271a;
   border-radius: 999px;
   transition: background 160ms ease;
 }
+
+.messages::-webkit-scrollbar-thumb:hover,
+.online-panel-list::-webkit-scrollbar-thumb:hover,
 textarea::-webkit-scrollbar-thumb:hover {
   background: #2c2a2740;
 }
