@@ -1,5 +1,5 @@
 <template>
-  <div class="chat">
+  <div class="chat" :class="{ 'picker-locked': reactionPickerVisible }">
     <div class="header" ref="headerRef" data-tauri-drag-region>
       <div class="header-brand">
         <img src="/icon.png" class="header-logo" alt="" aria-hidden="true" />
@@ -103,6 +103,7 @@
                 'message--start': item.isGroupStart,
                 'message--ping': isMessagePing(item),
                 'message--highlighted': highlightedMessageId === item.id,
+                'message--picker-active': reactionPickerMessageId === item.id,
               }"
             >
               <div
@@ -3789,10 +3790,16 @@ function openReactionPicker(messageId, event) {
   if (isMuted.value) return;
 
   const btn = event?.currentTarget || event?.target;
-  const messageEl = btn?.closest(".message");
-  const actionsEl =
-    messageEl?.querySelector(".msg-actions") || btn?.closest(".msg-actions");
-  const anchor = actionsEl || messageEl || btn || null;
+  const inlineAddBtn = btn?.closest?.(".reaction-badge--add");
+  const messageEl = btn?.closest?.(".message");
+  const actionsEl = btn?.closest?.(".msg-actions");
+  const anchor =
+    inlineAddBtn ||
+    actionsEl ||
+    messageEl?.querySelector(".msg-actions") ||
+    messageEl ||
+    btn ||
+    null;
   reactionPickerAnchorEl = anchor;
 
   reactionPickerMessageId.value = messageId;
@@ -4280,6 +4287,19 @@ async function logout() {
   background: rgba(44, 42, 39, 0.05);
 }
 
+.chat.picker-locked {
+  pointer-events: none;
+}
+
+.chat.picker-locked .message:not(.message--picker-active):hover {
+  background: transparent;
+}
+
+.chat.picker-locked .message--picker-active,
+.chat.picker-locked .message--picker-active:hover {
+  background: rgba(44, 42, 39, 0.05);
+}
+
 .message--editing {
   background: rgba(90, 90, 240, 0.04);
 }
@@ -4318,7 +4338,8 @@ async function logout() {
   margin-top: 6px;
 }
 
-.message:hover .msg-side-time {
+.message:hover .msg-side-time,
+.message--picker-active .msg-side-time {
   opacity: 1;
 }
 
@@ -4379,7 +4400,8 @@ async function logout() {
   z-index: 10;
 }
 
-.message:hover .msg-actions {
+.message:hover .msg-actions,
+.message--picker-active .msg-actions {
   opacity: 1;
   pointer-events: all;
 }
@@ -6743,6 +6765,7 @@ textarea::placeholder {
 }
 
 .message:hover .reaction-badge--add,
+.message--picker-active .reaction-badge--add,
 .reaction-badge--add:focus-visible {
   opacity: 1;
   pointer-events: auto;
@@ -6834,18 +6857,19 @@ textarea::placeholder {
   z-index: 540;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: 10px;
   box-shadow:
     0 18px 50px rgba(0, 0, 0, 0.22),
     0 4px 14px rgba(0, 0, 0, 0.08);
   transform-origin: var(--rp-origin, bottom right);
+  overflow: hidden;
 }
 
 .reaction-picker-quick {
   display: flex;
   align-items: center;
   gap: 2px;
-  padding: 5px 7px;
+  padding: 5px 6px;
 }
 
 .reaction-picker-btn {
@@ -6857,7 +6881,7 @@ textarea::placeholder {
   font-size: 20px;
   border: none;
   background: transparent;
-  border-radius: 999px;
+  border-radius: 6px;
   cursor: pointer;
   transition:
     background-color 100ms ease,
@@ -6868,11 +6892,10 @@ textarea::placeholder {
 
 .reaction-picker-btn:hover {
   background: rgba(44, 42, 39, 0.08);
-  transform: scale(1.2);
 }
 
 .reaction-picker-btn:active {
-  transform: scale(0.9);
+  transform: scale(0.92);
   transition-duration: 50ms;
 }
 
