@@ -415,8 +415,10 @@
                         ></span
                       >
                     </div>
-                    <div
+                    <TransitionGroup
                       v-if="getReactionList(item).length"
+                      name="reaction-pop"
+                      tag="div"
                       class="reactions-row"
                     >
                       <button
@@ -425,28 +427,35 @@
                         type="button"
                         class="reaction-badge"
                         :class="{ 'reaction-badge--me': r.iReacted }"
+                        :disabled="isMuted"
                         @click="toggleReaction(item.id, r.emoji)"
                       >
-                        <span class="reaction-emoji">{{ r.emoji }}</span>
+                        <span
+                          class="reaction-emoji"
+                          v-html="twemojify(r.emoji)"
+                        ></span>
                         <span class="reaction-count">{{ r.count }}</span>
                         <span class="reaction-tooltip">{{ r.tooltip }}</span>
                       </button>
                       <button
+                        key="__add__"
                         type="button"
                         class="reaction-badge reaction-badge--add"
                         title="Add reaction"
+                        :disabled="isMuted"
                         @click.stop="openReactionPicker(item.id, $event)"
                       >
-                        <Smile :size="14" stroke-width="2" />
+                        <SmilePlus :size="14" :stroke-width="2" />
                       </button>
-                    </div>
+                    </TransitionGroup>
                     <div class="msg-actions">
                       <button
                         class="msg-action-btn"
                         title="Add Reaction"
+                        :disabled="isMuted"
                         @click.stop="openReactionPicker(item.id, $event)"
                       >
-                        <Smile :size="18" stroke-width="2" />
+                        <SmilePlus :size="16" :stroke-width="2" />
                       </button>
                       <button
                         v-if="item.type === 'gif' && item.gif?.url"
@@ -462,9 +471,9 @@
                         <Check
                           v-if="copiedMessageId === item.id"
                           :size="16"
-                          stroke-width="2.2"
+                          :stroke-width="2"
                         />
-                        <Copy v-else :size="16" stroke-width="2" />
+                        <Copy v-else :size="16" :stroke-width="2" />
                       </button>
                       <button
                         v-else-if="item.type !== 'poll'"
@@ -480,9 +489,9 @@
                         <Check
                           v-if="copiedMessageId === item.id"
                           :size="16"
-                          stroke-width="2.2"
+                          :stroke-width="2"
                         />
-                        <Copy v-else :size="16" stroke-width="2" />
+                        <Copy v-else :size="16" :stroke-width="2" />
                       </button>
                       <button
                         v-if="
@@ -494,14 +503,14 @@
                         @click="startEdit(item)"
                         title="Edit"
                       >
-                        <Pencil :size="16" stroke-width="2" />
+                        <Pencil :size="16" :stroke-width="2" />
                       </button>
                       <button
                         class="msg-action-btn"
                         @click="startReply(item)"
                         title="Reply"
                       >
-                        <CornerUpLeft :size="16" stroke-width="2.2" />
+                        <CornerUpLeft :size="16" :stroke-width="2" />
                       </button>
                       <button
                         v-if="
@@ -513,7 +522,7 @@
                         @click="promptDelete(item.id)"
                         title="Delete"
                       >
-                        <Trash2 :size="16" stroke-width="2" />
+                        <Trash2 :size="16" :stroke-width="2" />
                       </button>
                     </div>
                   </template>
@@ -561,7 +570,10 @@
                 @mouseenter="emojiActiveIndex = i"
                 @mousedown.prevent="insertEmoji(emoji)"
               >
-                <span class="emoji-native">{{ emoji.skins[0].native }}</span>
+                <span
+                  class="emoji-native"
+                  v-html="twemojify(emoji.skins[0].native)"
+                ></span>
                 <span class="emoji-name">{{
                   emoji.id.replace(/_/g, " ")
                 }}</span>
@@ -1102,25 +1114,27 @@
         </div>
       </transition>
 
-      <transition name="reaction-picker-fade">
+      <transition name="reaction-picker">
         <div
           v-if="reactionPickerVisible"
-          class="reaction-picker"
+          class="reaction-picker-wrap"
           :style="{
             top: reactionPickerPos.top + 'px',
-            left: reactionPickerPos.left + 'px',
+            right: reactionPickerPos.right + 'px',
+            '--rp-origin': reactionPickerPos.origin,
           }"
           ref="reactionPickerEl"
         >
-          <button
-            v-for="emoji in QUICK_REACTIONS"
-            :key="emoji"
-            type="button"
-            class="reaction-picker-btn"
-            @click="handleQuickReaction(emoji)"
-          >
-            {{ emoji }}
-          </button>
+          <div class="reaction-picker-quick">
+            <button
+              v-for="emoji in QUICK_REACTIONS"
+              :key="emoji"
+              type="button"
+              class="reaction-picker-btn"
+              @click="handleQuickReaction(emoji)"
+              v-html="twemojify(emoji)"
+            ></button>
+          </div>
         </div>
       </transition>
 
@@ -1230,8 +1244,9 @@ import {
   Plus,
   ChartBarBig,
   Film,
-  Smile,
+  SmilePlus,
 } from "lucide-vue-next";
+import { twemojify } from "../twemoji";
 const GifPicker = defineAsyncComponent(() => import("./GifPicker.vue"));
 
 import {
@@ -2356,7 +2371,9 @@ function formatMessageInternal(messageOrText, { linkify = true } = {}) {
 
   if (message && message.type === "poll" && message.pollQuestion) {
     const safeQuestion = escapeHtml(message.pollQuestion);
-    return `<span class="poll-inline"><span class="poll-inline-icon">📊</span><span class="poll-inline-label">Poll:</span> ${safeQuestion}</span>`;
+    return twemojify(
+      `<span class="poll-inline"><span class="poll-inline-icon">📊</span><span class="poll-inline-label">Poll:</span> ${safeQuestion}</span>`,
+    );
   }
 
   if (message && message.type === "gif" && message.gif) {
@@ -2401,7 +2418,11 @@ function formatMessageInternal(messageOrText, { linkify = true } = {}) {
     (_, idx) => escapes[parseInt(idx)],
   );
 
-  return restoreMentionPlaceholders(formatted, mentionState.replacements);
+  const restored = restoreMentionPlaceholders(
+    formatted,
+    mentionState.replacements,
+  );
+  return twemojify(restored);
 }
 
 function formatMessage(messageOrText) {
@@ -2966,16 +2987,20 @@ function handleClickOutside(e) {
 }
 
 function handleGlobalKeydown(e) {
-  if (e.key === "/") {
+  if (e.key === "/" && !e.ctrlKey && !e.metaKey && !e.altKey) {
     const active = document.activeElement;
     const isTypingEl =
       active &&
       (active.tagName === "INPUT" ||
         active.tagName === "TEXTAREA" ||
-        active.isContentEditable ||
-        composerRef.value?.contains(active));
+        active.isContentEditable);
+    const isInModal =
+      active &&
+      active.closest?.(
+        ".modal-overlay, .settings-overlay, .admin-overlay, .auth-overlay, .poll-overlay, .view-votes-overlay",
+      );
 
-    if (!isTypingEl) {
+    if (!isTypingEl && !isInModal) {
       e.preventDefault();
       focusComposer();
       return;
@@ -3679,11 +3704,13 @@ async function sendMessage() {
   }
 }
 
-const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥", "🎉", "👀"];
+const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥", "🎉"];
 const reactionPickerMessageId = ref(null);
-const reactionPickerPos = ref({ top: 0, left: 0 });
+const reactionPickerPos = ref({ top: 0, right: 8, origin: "bottom right" });
 const reactionPickerVisible = ref(false);
 const reactionPickerEl = ref(null);
+let reactionPickerAnchorEl = null;
+let reactionPickerScrollEl = null;
 
 function getReactionList(message) {
   const reactions = message.reactions;
@@ -3731,47 +3758,75 @@ async function toggleReaction(messageId, emoji) {
   closeReactionPicker();
 }
 
+const PICKER_QUICK_W = 322;
+const PICKER_QUICK_H = 46;
+const PICKER_GAP = 6;
+
+function computePickerPosition(anchorEl) {
+  if (!anchorEl) return null;
+  const rect = anchorEl.getBoundingClientRect();
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
+  const RIGHT_NUDGE = 8;
+  let right = vw - rect.right - RIGHT_NUDGE;
+  let top = rect.top - PICKER_QUICK_H - PICKER_GAP;
+  let origin = "bottom right";
+
+  if (top < 8) {
+    top = rect.bottom + PICKER_GAP;
+    origin = "top right";
+    if (top + PICKER_QUICK_H > vh - 8) {
+      top = Math.max(8, vh - PICKER_QUICK_H - 8);
+    }
+  }
+
+  right = Math.max(8, Math.min(right, vw - PICKER_QUICK_W - 8));
+  return { top, right, origin };
+}
+
 function openReactionPicker(messageId, event) {
   if (isMuted.value) return;
+
+  const btn = event?.currentTarget || event?.target;
+  const messageEl = btn?.closest(".message");
+  const actionsEl =
+    messageEl?.querySelector(".msg-actions") || btn?.closest(".msg-actions");
+  const anchor = actionsEl || messageEl || btn || null;
+  reactionPickerAnchorEl = anchor;
+
   reactionPickerMessageId.value = messageId;
   reactionPickerVisible.value = true;
 
-  const btn = event?.currentTarget || event?.target;
-  if (btn) {
-    const actionsEl = btn.closest(".msg-actions");
-    const rect = actionsEl
-      ? actionsEl.getBoundingClientRect()
-      : btn.getBoundingClientRect();
-    const pickerH = 48;
-    let left = rect.right - 340;
-    let top = rect.top - pickerH - 4;
+  const pos = computePickerPosition(anchor);
+  if (pos) reactionPickerPos.value = pos;
 
-    left = Math.max(8, Math.min(left, window.innerWidth - 360));
-    if (top < 8) top = rect.bottom + 4;
-
-    reactionPickerPos.value = { top, left };
+  const scrollEl =
+    anchor?.closest(".messages") || document.querySelector(".messages");
+  if (scrollEl) {
+    reactionPickerScrollEl = scrollEl;
+    scrollEl.addEventListener("scroll", closeReactionPicker, { passive: true });
   }
+  window.addEventListener("resize", closeReactionPicker, { passive: true });
+  window.addEventListener("blur", closeReactionPicker);
 }
 
 function closeReactionPicker() {
+  if (!reactionPickerVisible.value) return;
   reactionPickerVisible.value = false;
   reactionPickerMessageId.value = null;
+  reactionPickerAnchorEl = null;
+  if (reactionPickerScrollEl) {
+    reactionPickerScrollEl.removeEventListener("scroll", closeReactionPicker);
+    reactionPickerScrollEl = null;
+  }
+  window.removeEventListener("resize", closeReactionPicker);
+  window.removeEventListener("blur", closeReactionPicker);
 }
 
 function handleQuickReaction(emoji) {
   if (!reactionPickerMessageId.value) return;
   toggleReaction(reactionPickerMessageId.value, emoji);
-}
-
-async function searchAndReact(query) {
-  if (!reactionPickerMessageId.value) return;
-  const ready = await ensureEmojiReady();
-  if (!ready || !emojiSearchIndex) return;
-  const results = await emojiSearchIndex.search(query);
-  if (results && results.length > 0) {
-    const native = results[0].skins[0].native;
-    toggleReaction(reactionPickerMessageId.value, native);
-  }
 }
 
 async function logout() {
@@ -5373,7 +5428,15 @@ textarea::placeholder {
   line-height: 1;
   flex-shrink: 0;
   width: 26px;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.emoji-native :deep(img.twemoji) {
+  width: 20px;
+  height: 20px;
+  vertical-align: middle;
 }
 
 .emoji-name {
@@ -6618,99 +6681,127 @@ textarea::placeholder {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  padding: 3px 0 2px;
+  padding: 4px 0 2px;
+  position: relative;
 }
 
 .reaction-badge {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: 30px;
-  padding: 0 10px;
+  gap: 5px;
+  height: 24px;
+  padding: 0 7px;
   border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--surface-2);
+  border: 1px solid transparent;
+  background: rgba(44, 42, 39, 0.06);
   cursor: pointer;
   font-family: "Satoshi", sans-serif;
   transition:
-    background 140ms ease,
-    border-color 140ms ease,
-    transform 140ms var(--ease-out-quint);
+    background-color 120ms ease,
+    border-color 120ms ease,
+    transform 80ms var(--ease-out-quint);
+  will-change: transform;
 }
 
 .reaction-badge:hover {
-  background: var(--border);
-  border-color: var(--text-muted);
+  background: rgba(44, 42, 39, 0.1);
+  border-color: rgba(44, 42, 39, 0.1);
 }
 
-.reaction-badge:active {
-  transform: scale(0.95);
-  transition-duration: 60ms;
+.reaction-badge:active:not(:disabled) {
+  transform: scale(0.92);
+  transition-duration: 50ms;
+}
+
+.reaction-badge:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .reaction-badge--me {
-  background: rgba(90, 90, 240, 0.12);
-  border-color: rgba(90, 90, 240, 0.5);
+  background: rgba(90, 90, 240, 0.16);
+  border-color: rgba(90, 90, 240, 0.55);
 }
 
 .reaction-badge--me:hover {
-  background: rgba(90, 90, 240, 0.18);
-  border-color: rgba(90, 90, 240, 0.65);
+  background: rgba(90, 90, 240, 0.22);
+  border-color: rgba(90, 90, 240, 0.75);
 }
 
 .reaction-badge--add {
   color: var(--text-muted);
-  padding: 0 8px;
+  padding: 0 6px;
   gap: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 120ms ease,
+    background-color 120ms ease,
+    color 120ms ease,
+    border-color 120ms ease;
+}
+
+.message:hover .reaction-badge--add,
+.reaction-badge--add:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@media (hover: none) {
+  .reaction-badge--add {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 
 .reaction-badge--add:hover {
   color: var(--text);
-  background: var(--border);
+  background: rgba(44, 42, 39, 0.1);
 }
 
 .reaction-emoji {
+  display: inline-flex;
+  align-items: center;
   font-size: 16px;
   line-height: 1;
 }
 
 .reaction-count {
   font-size: 13px;
-  font-weight: 700;
-  color: var(--text-muted);
+  font-weight: 600;
+  color: var(--text);
   line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
 
 .reaction-badge--me .reaction-count {
   color: var(--accent);
+  font-weight: 700;
 }
 
 .reaction-tooltip {
   position: absolute;
-  bottom: calc(100% + 8px);
+  bottom: calc(100% + 6px);
   left: 50%;
-  transform: translateX(-50%);
-  background: var(--text);
-  color: var(--bg);
+  background: #2c2a27;
+  color: #f7f2e6;
   font-size: 12px;
   font-weight: 600;
-  padding: 5px 10px;
-  border-radius: 6px;
+  padding: 5px 9px;
+  border-radius: 5px;
   white-space: nowrap;
   pointer-events: none;
   opacity: 0;
+  transform: translateX(-50%) translateY(4px);
   transition:
     opacity 140ms ease,
     transform 140ms ease;
-  transform: translateX(-50%) translateY(4px);
   z-index: 100;
-  max-width: 200px;
+  max-width: 220px;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.reaction-badge {
-  position: relative;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
 }
 
 .reaction-badge:hover .reaction-tooltip {
@@ -6718,84 +6809,89 @@ textarea::placeholder {
   transform: translateX(-50%) translateY(0);
 }
 
-.reaction-picker-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 550;
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-start;
+.reaction-pop-enter-active {
+  transition:
+    transform 260ms var(--ease-spring),
+    opacity 160ms ease;
+}
+.reaction-pop-leave-active {
+  transition:
+    transform 160ms var(--ease-out-quint),
+    opacity 120ms ease;
+  position: absolute;
+}
+.reaction-pop-enter-from {
+  transform: scale(0.4);
+  opacity: 0;
+}
+.reaction-pop-leave-to {
+  transform: scale(0.6);
+  opacity: 0;
 }
 
-.reaction-picker {
+.reaction-picker-wrap {
   position: fixed;
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  padding: 6px 8px;
+  z-index: 540;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 999px;
   box-shadow:
-    0 12px 40px rgba(0, 0, 0, 0.18),
-    0 2px 8px rgba(0, 0, 0, 0.08);
-  z-index: 551;
+    0 18px 50px rgba(0, 0, 0, 0.22),
+    0 4px 14px rgba(0, 0, 0, 0.08);
+  transform-origin: var(--rp-origin, bottom right);
+}
+
+.reaction-picker-quick {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 5px 7px;
 }
 
 .reaction-picker-btn {
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 20px;
   border: none;
   background: transparent;
-  border-radius: 50%;
+  border-radius: 999px;
   cursor: pointer;
   transition:
-    background 120ms ease,
-    transform 120ms var(--ease-out-quint);
+    background-color 100ms ease,
+    transform 100ms var(--ease-out-quint);
   line-height: 1;
+  color: var(--text-muted);
 }
 
 .reaction-picker-btn:hover {
-  background: var(--surface-2);
+  background: rgba(44, 42, 39, 0.08);
   transform: scale(1.2);
 }
 
 .reaction-picker-btn:active {
   transform: scale(0.9);
-  transition-duration: 60ms;
+  transition-duration: 50ms;
 }
 
-.reaction-picker-fade-enter-active {
-  transition: opacity 140ms ease;
-}
-.reaction-picker-fade-leave-active {
-  transition: opacity 100ms ease;
-}
-.reaction-picker-fade-enter-from,
-.reaction-picker-fade-leave-to {
-  opacity: 0;
-}
-
-.reaction-picker-fade-enter-active .reaction-picker {
+.reaction-picker-enter-active {
   transition:
-    opacity 160ms ease,
-    transform 200ms var(--ease-spring);
+    opacity 180ms ease,
+    transform 220ms var(--ease-spring);
 }
-.reaction-picker-fade-leave-active .reaction-picker {
+.reaction-picker-leave-active {
   transition:
-    opacity 100ms ease,
-    transform 100ms ease;
+    opacity 120ms ease,
+    transform 120ms var(--ease-out-quint);
 }
-.reaction-picker-fade-enter-from .reaction-picker {
+.reaction-picker-enter-from {
   opacity: 0;
-  transform: scale(0.9);
+  transform: scale(0.85) translateY(4px);
 }
-.reaction-picker-fade-leave-to .reaction-picker {
+.reaction-picker-leave-to {
   opacity: 0;
-  transform: scale(0.95);
+  transform: scale(0.95) translateY(2px);
 }
 </style>

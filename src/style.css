@@ -137,6 +137,34 @@ textarea::-webkit-scrollbar-thumb:hover {
   }
 }
 
+img.twemoji {
+  height: 1.2em;
+  width: 1.2em;
+  vertical-align: -0.22em;
+  display: inline-block;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.msg-body--emoji img.twemoji {
+  height: 1em;
+  width: 1em;
+  vertical-align: -0.15em;
+  margin: 0 1px;
+}
+
+.reaction-emoji img.twemoji {
+  height: 16px;
+  width: 16px;
+  vertical-align: -3px;
+}
+
+.reaction-picker-btn img.twemoji {
+  height: 22px;
+  width: 22px;
+  vertical-align: middle;
+}
+
 .toggle-switch {
   --toggle-w: 44px;
   --toggle-h: 24px;
