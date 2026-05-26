@@ -117,6 +117,16 @@
               @submit.prevent="changePassword"
             >
               <h3 class="section-title">PASSWORD</h3>
+              <input
+                type="text"
+                name="username"
+                autocomplete="username"
+                :value="user.email"
+                aria-hidden="true"
+                tabindex="-1"
+                readonly
+                class="visually-hidden"
+              />
               <div class="field">
                 <label for="current-password">Current password</label>
                 <div class="password-wrap">
@@ -803,6 +813,18 @@ async function changePassword() {
 </script>
 
 <style scoped>
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .modal-overlay {
   position: fixed;
   inset: 0;
