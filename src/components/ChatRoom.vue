@@ -2193,32 +2193,6 @@ function scrollToBottom() {
   }, 1200);
 }
 
-function forwardWheelToMessages(event) {
-  const scrollEl = messageContainer.value;
-  if (!scrollEl) return;
-
-  const composer = composerRef.value;
-  if (
-    composer &&
-    event.target instanceof Node &&
-    composer.contains(event.target)
-  ) {
-    const canScrollUp = composer.scrollTop > 0;
-    const canScrollDown =
-      composer.scrollTop + composer.clientHeight < composer.scrollHeight;
-
-    if (
-      (event.deltaY < 0 && canScrollUp) ||
-      (event.deltaY > 0 && canScrollDown)
-    ) {
-      return;
-    }
-  }
-
-  event.preventDefault();
-  scrollEl.scrollTop += event.deltaY;
-}
-
 function resizeComposer() {
   return;
 }
@@ -3334,16 +3308,6 @@ onMounted(async () => {
   messageContainer.value?.addEventListener("scroll", handleMessageScroll, {
     passive: true,
   });
-  headerRef.value?.addEventListener("wheel", forwardWheelToMessages, {
-    passive: false,
-  });
-  typingAreaRef.value?.addEventListener("wheel", forwardWheelToMessages, {
-    passive: false,
-  });
-  inputRowRef.value?.addEventListener("wheel", forwardWheelToMessages, {
-    passive: false,
-  });
-
   myTypingRef = dbRef(db, `typing/${props.user.uid}`);
   armTypingDisconnect();
   window.addEventListener("pagehide", handlePageHideTyping);
@@ -3423,9 +3387,6 @@ onUnmounted(() => {
   document.removeEventListener("click", handleClickOutside);
   document.removeEventListener("keydown", handleGlobalKeydown);
   messageContainer.value?.removeEventListener("scroll", handleMessageScroll);
-  headerRef.value?.removeEventListener("wheel", forwardWheelToMessages);
-  typingAreaRef.value?.removeEventListener("wheel", forwardWheelToMessages);
-  inputRowRef.value?.removeEventListener("wheel", forwardWheelToMessages);
   clearTimeout(typingTimeout);
   clearTimeout(copyResetTimer);
   clearTimeout(slurWarningTimer);
@@ -4720,7 +4681,6 @@ async function logout() {
   outline: none;
   resize: none;
   min-height: 36px;
-  overflow-y: hidden;
   line-height: 1.4;
   transition:
     border-color 160ms ease,
@@ -4996,10 +4956,13 @@ textarea {
   line-height: 1.4;
   resize: none;
   min-height: 22px;
-  max-height: 160px;
-  overflow-y: hidden;
-  scrollbar-width: thin;
   margin: 0;
+  min-width: 0;
+}
+
+textarea {
+  max-height: 160px;
+  overflow-y: auto;
 }
 
 textarea::placeholder {

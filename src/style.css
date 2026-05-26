@@ -78,7 +78,9 @@ input:-webkit-autofill:focus {
 
 .messages::-webkit-scrollbar-button,
 .online-panel-list::-webkit-scrollbar-button,
-textarea::-webkit-scrollbar-button {
+textarea::-webkit-scrollbar-button,
+.composer-editor::-webkit-scrollbar-button,
+.edit-input::-webkit-scrollbar-button {
   display: none !important;
   height: 0 !important;
   width: 0 !important;
@@ -86,7 +88,9 @@ textarea::-webkit-scrollbar-button {
 
 .messages::-webkit-scrollbar,
 .online-panel-list::-webkit-scrollbar,
-textarea::-webkit-scrollbar {
+textarea::-webkit-scrollbar,
+.composer-editor::-webkit-scrollbar,
+.edit-input::-webkit-scrollbar {
   width: 4px;
 }
 
@@ -96,34 +100,58 @@ textarea::-webkit-scrollbar {
 
 .messages::-webkit-scrollbar-track,
 .online-panel-list::-webkit-scrollbar-track,
-textarea::-webkit-scrollbar-track {
+textarea::-webkit-scrollbar-track,
+.composer-editor::-webkit-scrollbar-track,
+.edit-input::-webkit-scrollbar-track {
   background: transparent;
 }
 
 .messages::-webkit-scrollbar-thumb,
 .online-panel-list::-webkit-scrollbar-thumb,
-textarea::-webkit-scrollbar-thumb {
+textarea::-webkit-scrollbar-thumb,
+.composer-editor::-webkit-scrollbar-thumb,
+.edit-input::-webkit-scrollbar-thumb {
   background: #2c2a271a;
   border-radius: 999px;
   transition: background 160ms ease;
+  cursor: default;
+}
+
+.messages::-webkit-scrollbar,
+.online-panel-list::-webkit-scrollbar,
+textarea::-webkit-scrollbar,
+.composer-editor::-webkit-scrollbar,
+.edit-input::-webkit-scrollbar,
+.messages::-webkit-scrollbar-track,
+.online-panel-list::-webkit-scrollbar-track,
+textarea::-webkit-scrollbar-track,
+.composer-editor::-webkit-scrollbar-track,
+.edit-input::-webkit-scrollbar-track {
+  cursor: default;
 }
 
 .messages::-webkit-scrollbar-thumb:hover,
 .online-panel-list::-webkit-scrollbar-thumb:hover,
-textarea::-webkit-scrollbar-thumb:hover {
+textarea::-webkit-scrollbar-thumb:hover,
+.composer-editor::-webkit-scrollbar-thumb:hover,
+.edit-input::-webkit-scrollbar-thumb:hover {
   background: #2c2a2740;
 }
 
 @supports (-moz-appearance: none) {
   .messages,
   .online-panel-list,
-  textarea {
+  textarea,
+  .composer-editor,
+  .edit-input {
     scrollbar-width: thin;
     scrollbar-color: transparent transparent;
   }
   .messages:hover,
   .online-panel-list:hover,
-  textarea:hover {
+  textarea:hover,
+  .composer-editor:hover,
+  .edit-input:hover {
     scrollbar-color: #2c2a272e transparent;
   }
 }
@@ -142,7 +170,6 @@ img.twemoji {
   width: 1.2em;
   vertical-align: -0.22em;
   display: inline-block;
-  user-select: none;
   -webkit-user-drag: none;
 }
 

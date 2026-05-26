@@ -29,6 +29,7 @@
 
 <script setup>
 import { ref, watch, onMounted, nextTick } from "vue";
+import { twemojifyNode, isTwemojiImg } from "../twemoji";
 
 const props = defineProps({
   modelValue: { type: String, default: "" },
@@ -94,6 +95,9 @@ function serializeNode(node) {
     const name = node.getAttribute(PILL_NAME_ATTR) || "";
     return `@${name}`;
   }
+  if (isTwemojiImg(node)) {
+    return node.getAttribute("alt") || "";
+  }
   if (node.tagName === "BR") return "\n";
   if (node.tagName === "DIV" || node.tagName === "P") {
     let inner = "";
@@ -157,6 +161,16 @@ function offsetOfPoint(root, container, offset) {
         }
         const name = node.getAttribute(PILL_NAME_ATTR) || "";
         total += `@${name}`.length;
+        return false;
+      }
+      if (isTwemojiImg(node)) {
+        const altLen = (node.getAttribute("alt") || "").length;
+        if (node === container) {
+          if (offset === 0) return true;
+          total += altLen;
+          return true;
+        }
+        total += altLen;
         return false;
       }
       if (node.tagName === "BR") {
@@ -225,6 +239,23 @@ function setCaretOffset(target) {
         remaining -= len;
         return;
       }
+      if (isTwemojiImg(node)) {
+        const len = (node.getAttribute("alt") || "").length;
+        if (remaining <= 0) {
+          const parent = node.parentNode;
+          const idx = Array.prototype.indexOf.call(parent.childNodes, node);
+          place(parent, idx);
+          return;
+        }
+        if (remaining < len) {
+          const parent = node.parentNode;
+          const idx = Array.prototype.indexOf.call(parent.childNodes, node);
+          place(parent, idx + 1);
+          return;
+        }
+        remaining -= len;
+        return;
+      }
       if (node.tagName === "BR") {
         if (remaining <= 0) {
           const parent = node.parentNode;
@@ -272,7 +303,16 @@ function buildFromString(text) {
     }
   }
   root.appendChild(frag);
+  twemojifyNode(root);
   updateEmpty();
+}
+
+function convertEmojisPreservingCaret() {
+  const root = rootRef.value;
+  if (!root || !root.textContent) return;
+  const caret = getCaretOffset();
+  twemojifyNode(root);
+  setCaretOffset(caret);
 }
 
 function parseSegments(text) {
@@ -324,7 +364,10 @@ function matchMentionName(rest) {
 function updateEmpty() {
   const root = rootRef.value;
   if (!root) return;
-  const empty = !root.textContent && !root.querySelector("[data-mention-uid]");
+  const hasAtomic = !!root.querySelector(
+    "[data-mention-uid], img.twemoji",
+  );
+  const empty = !root.textContent && !hasAtomic;
   isEmpty.value = empty;
   if (empty && root.firstChild) {
     while (root.firstChild) root.removeChild(root.firstChild);
@@ -348,6 +391,7 @@ function onInput(event) {
     return;
   }
   enforceMaxLength();
+  convertEmojisPreservingCaret();
   emitValue();
   emit("input", event);
 }
@@ -355,6 +399,7 @@ function onInput(event) {
 function onCompositionEnd(event) {
   composing = false;
   enforceMaxLength();
+  convertEmojisPreservingCaret();
   emitValue();
   emit("input", event);
 }
@@ -385,12 +430,12 @@ function onKeydown(event) {
   }
 
   if (event.key === "Backspace" && !composing) {
-    if (handlePillDelete("backward")) {
+    if (handleAtomicDelete("backward")) {
       event.preventDefault();
       emitValue();
     }
   } else if (event.key === "Delete" && !composing) {
-    if (handlePillDelete("forward")) {
+    if (handleAtomicDelete("forward")) {
       event.preventDefault();
       emitValue();
     }
@@ -404,14 +449,18 @@ function onBeforeInput(event) {
   ) {
     const direction =
       event.inputType === "deleteContentBackward" ? "backward" : "forward";
-    if (handlePillDelete(direction)) {
+    if (handleAtomicDelete(direction)) {
       event.preventDefault();
       nextTick(emitValue);
     }
   }
 }
 
-function handlePillDelete(direction) {
+function isAtomic(node) {
+  return isPill(node) || isTwemojiImg(node);
+}
+
+function handleAtomicDelete(direction) {
   const sel = window.getSelection();
   if (!sel || !sel.rangeCount) return false;
   const range = sel.getRangeAt(0);
@@ -419,11 +468,11 @@ function handlePillDelete(direction) {
   const root = rootRef.value;
   if (!root || !root.contains(range.startContainer)) return false;
 
-  const pill = findAdjacentPill(range, direction);
-  if (!pill) return false;
-  const parent = pill.parentNode;
-  const idx = Array.prototype.indexOf.call(parent.childNodes, pill);
-  pill.remove();
+  const atomic = findAdjacentAtomic(range, direction);
+  if (!atomic) return false;
+  const parent = atomic.parentNode;
+  const idx = Array.prototype.indexOf.call(parent.childNodes, atomic);
+  atomic.remove();
   const newRange = document.createRange();
   newRange.setStart(parent, idx);
   newRange.collapse(true);
@@ -432,21 +481,21 @@ function handlePillDelete(direction) {
   return true;
 }
 
-function findAdjacentPill(range, direction) {
+function findAdjacentAtomic(range, direction) {
   const container = range.startContainer;
   const offset = range.startOffset;
 
   if (container.nodeType === 3) {
     if (direction === "backward" && offset === 0) {
       const prev = container.previousSibling;
-      if (isPill(prev)) return prev;
+      if (isAtomic(prev)) return prev;
     }
     if (
       direction === "forward" &&
       offset === (container.textContent || "").length
     ) {
       const next = container.nextSibling;
-      if (isPill(next)) return next;
+      if (isAtomic(next)) return next;
     }
     return null;
   }
@@ -454,10 +503,10 @@ function findAdjacentPill(range, direction) {
   if (container.nodeType === 1) {
     if (direction === "backward") {
       const target = container.childNodes[offset - 1];
-      if (isPill(target)) return target;
+      if (isAtomic(target)) return target;
     } else {
       const target = container.childNodes[offset];
-      if (isPill(target)) return target;
+      if (isAtomic(target)) return target;
     }
   }
   return null;
@@ -482,8 +531,12 @@ function onPaste(event) {
 
 function insertTextAtCaret(text) {
   const sel = window.getSelection();
+  const root = rootRef.value;
   if (!sel || !sel.rangeCount) {
-    rootRef.value?.appendChild(document.createTextNode(text));
+    if (root) {
+      root.appendChild(document.createTextNode(text));
+      twemojifyNode(root);
+    }
     return;
   }
   const range = sel.getRangeAt(0);
@@ -515,6 +568,7 @@ function insertTextAtCaret(text) {
     sel.removeAllRanges();
     sel.addRange(r);
   }
+  convertEmojisPreservingCaret();
   enforceMaxLength();
 }
 
@@ -617,6 +671,14 @@ defineExpose({
   content: attr(data-placeholder);
   color: var(--text-muted, #888);
   pointer-events: none;
+}
+
+.composer-editor :deep(img.twemoji) {
+  height: 1.2em;
+  width: 1.2em;
+  vertical-align: -0.22em;
+  display: inline-block;
+  -webkit-user-drag: none;
 }
 
 .composer-editor :deep(.mention) {

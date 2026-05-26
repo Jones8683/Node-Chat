@@ -4,12 +4,21 @@ const EMOJI_TEST = /\p{Extended_Pictographic}/u;
 const cache = new Map();
 const MAX_CACHE = 4000;
 
-const TWEMOJI_OPTIONS = {
+const BASE = {
   folder: "svg",
   ext: ".svg",
   className: "twemoji",
   base: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/",
+};
+
+const STRING_OPTIONS = {
+  ...BASE,
   attributes: () => ({ draggable: "false" }),
+};
+
+const NODE_OPTIONS = {
+  ...BASE,
+  attributes: () => ({ draggable: "false", contenteditable: "false" }),
 };
 
 export function twemojify(input) {
@@ -20,7 +29,7 @@ export function twemojify(input) {
   const cached = cache.get(str);
   if (cached !== undefined) return cached;
 
-  const parsed = twemoji.parse(str, TWEMOJI_OPTIONS);
+  const parsed = twemoji.parse(str, STRING_OPTIONS);
 
   if (cache.size >= MAX_CACHE) {
     const firstKey = cache.keys().next().value;
@@ -28,4 +37,19 @@ export function twemojify(input) {
   }
   cache.set(str, parsed);
   return parsed;
+}
+
+export function twemojifyNode(node) {
+  if (!node) return;
+  twemoji.parse(node, NODE_OPTIONS);
+}
+
+export function isTwemojiImg(node) {
+  return (
+    node &&
+    node.nodeType === 1 &&
+    node.tagName === "IMG" &&
+    node.classList &&
+    node.classList.contains("twemoji")
+  );
 }
