@@ -124,7 +124,10 @@ function getSelectionRange() {
     return { start: len, end: len };
   }
   const range = sel.getRangeAt(0);
-  if (!root.contains(range.startContainer) || !root.contains(range.endContainer)) {
+  if (
+    !root.contains(range.startContainer) ||
+    !root.contains(range.endContainer)
+  ) {
     const len = serialize().length;
     return { start: len, end: len };
   }
@@ -321,8 +324,7 @@ function matchMentionName(rest) {
 function updateEmpty() {
   const root = rootRef.value;
   if (!root) return;
-  const empty =
-    !root.textContent && !root.querySelector("[data-mention-uid]");
+  const empty = !root.textContent && !root.querySelector("[data-mention-uid]");
   isEmpty.value = empty;
   if (empty && root.firstChild) {
     while (root.firstChild) root.removeChild(root.firstChild);
@@ -370,7 +372,13 @@ function onKeydown(event) {
   emit("keydown", event);
   if (event.defaultPrevented) return;
 
-  if (event.key === "Enter" && !event.shiftKey && !event.ctrlKey && !event.metaKey && !composing) {
+  if (
+    event.key === "Enter" &&
+    !event.shiftKey &&
+    !event.ctrlKey &&
+    !event.metaKey &&
+    !composing
+  ) {
     event.preventDefault();
     emit("submit", event);
     return;
