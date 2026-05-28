@@ -5012,11 +5012,11 @@ textarea::placeholder {
 }
 
 .attach-btn :deep(svg) {
-  transition: transform 240ms var(--ease-out-quint);
+  transition: transform 400ms var(--ease-out-quint);
 }
 
 .attach-btn.open :deep(svg) {
-  transform: rotate(45deg);
+  transform: rotate(135deg);
 }
 
 .attach-btn:focus-visible {
@@ -5098,23 +5098,23 @@ textarea::placeholder {
 
 .attach-menu-enter-active {
   transition:
-    opacity 0.16s ease,
-    transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
   transform-origin: bottom left;
 }
 .attach-menu-leave-active {
   transition:
-    opacity 0.12s ease,
-    transform 0.12s ease;
+    opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.2s cubic-bezier(0.4, 0, 1, 1);
   transform-origin: bottom left;
 }
 .attach-menu-enter-from {
   opacity: 0;
-  transform: translateY(6px) scale(0.94);
+  transform: translateY(8px) scale(0.92);
 }
 .attach-menu-leave-to {
   opacity: 0;
-  transform: translateY(4px) scale(0.97);
+  transform: translateY(4px) scale(0.96);
 }
 
 .online-btn {
