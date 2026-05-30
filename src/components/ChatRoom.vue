@@ -1,87 +1,32 @@
 <template>
   <div class="chat" :class="{ 'picker-locked': reactionPickerVisible }">
-    <div class="header" ref="headerRef" data-tauri-drag-region>
-      <div class="header-brand">
-        <img src="/icon.png" class="header-logo" alt="" aria-hidden="true" />
-        <span class="header-wordmark">Node Chat</span>
-      </div>
-      <div class="header-actions">
-        <button
-          class="online-btn"
-          @click="showOnlinePanel = !showOnlinePanel"
-          :class="{ active: showOnlinePanel }"
-          title="Members"
-        >
-          <span class="online-btn-dot"></span>
-          <span class="online-btn-count">{{ onlineUsers.length }} online</span>
-        </button>
-        <div class="user-menu" ref="menuRef">
-          <button class="user-btn" @click="showDropdown = !showDropdown">
-            <div
-              class="avatar"
-              :style="getAvatarStyle(user.displayName, user.uid)"
-            >
-              {{ getAvatarInitial(user.displayName, user.uid) }}
-            </div>
-            <svg
-              class="chevron"
-              :class="{ open: showDropdown }"
-              width="12"
-              height="12"
-              viewBox="0 0 12 12"
-              fill="none"
-            >
-              <path
-                d="M2 4L6 8L10 4"
-                stroke="currentColor"
-                stroke-width="1.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
-          </button>
-          <transition name="dropdown-fade">
-            <div class="dropdown" v-if="showDropdown">
-              <div class="dropdown-profile">
-                <div
-                  class="avatar large"
-                  :style="getAvatarStyle(user.displayName, user.uid)"
-                >
-                  {{ getAvatarInitial(user.displayName, user.uid) }}
-                </div>
-                <div class="dropdown-info">
-                  <div class="dropdown-name">{{ user.displayName }}</div>
-                  <div class="dropdown-email">{{ user.email }}</div>
-                </div>
-              </div>
-              <div class="divider"></div>
-              <button class="dropdown-item" @click="openSettings">
-                <Settings2 :size="14" stroke-width="2" />
-                Settings
-              </button>
-              <button
-                v-if="isAdmin"
-                class="dropdown-item admin-item"
-                @click="openAdmin"
-              >
-                <ShieldCheck :size="14" stroke-width="2" />
-                Admin
-              </button>
-              <div class="divider"></div>
-              <button class="dropdown-item danger" @click="logout">
-                <LogOut :size="14" stroke-width="2" />
-                Sign Out
-              </button>
-            </div>
-          </transition>
-        </div>
-        <WindowControls with-divider />
-      </div>
-    </div>
-
     <div class="chat-body">
       <div class="chat-main">
-        <div class="messages" ref="messageContainer">
+        <div class="messages-wrap">
+          <div class="messages" ref="messageContainer">
+          <div
+            v-if="showDmIntro"
+            class="dm-intro"
+          >
+            <div
+              class="dm-intro-avatar"
+              :style="
+                getAvatarStyle(
+                  partner.displayName,
+                  partner.uid,
+                  partner.avatarColor,
+                  ownerUid,
+                )
+              "
+            >
+              {{ getAvatarInitial(partner.displayName, partner.uid, ownerUid) }}
+            </div>
+            <div class="dm-intro-name">{{ partner.displayName }}</div>
+            <div class="dm-intro-text">
+              This is the beginning of your message history with
+              <strong>{{ partner.displayName }}</strong>.
+            </div>
+          </div>
           <button
             class="load-more"
             v-if="hasMore"
@@ -233,6 +178,7 @@
                       <transition name="mention-fade">
                         <div
                           v-if="
+                            !isDm &&
                             mentionVisible &&
                             activeMentionTarget === `edit:${item.id}` &&
                             mentionResults.length
@@ -516,7 +462,8 @@
                       <button
                         v-if="
                           item.uid === user.uid ||
-                          (isAdmin &&
+                          (!isDm &&
+                            isAdmin &&
                             (ownerUid !== item.uid || user.uid === ownerUid))
                         "
                         class="msg-action-btn danger"
@@ -533,18 +480,19 @@
           </template>
         </div>
 
-        <transition name="jump-fade">
-          <button
-            v-if="showJumpButton"
-            class="jump-to-bottom"
-            @click="scrollToBottom"
-          >
-            <span v-if="scrollUnread > 0" class="jump-unread">{{
-              scrollUnread
-            }}</span>
-            <ChevronDown :size="16" stroke-width="2.5" />
-          </button>
-        </transition>
+          <transition name="jump-fade">
+            <button
+              v-if="showJumpButton"
+              class="jump-to-bottom"
+              @click="scrollToBottom"
+            >
+              <span v-if="scrollUnread > 0" class="jump-unread">{{
+                scrollUnread
+              }}</span>
+              <ChevronDown :size="16" stroke-width="2.5" />
+            </button>
+          </transition>
+        </div>
 
         <div class="composer-wrap">
           <GifPicker
@@ -586,6 +534,7 @@
           <transition name="mention-fade">
             <div
               v-if="
+                !isDm &&
                 mentionVisible &&
                 activeMentionTarget === 'composer' &&
                 mentionResults.length
@@ -663,7 +612,7 @@
                 <span>You've been muted by an admin</span>
               </div>
               <div
-                v-else-if="chatLocked && !isAdmin"
+                v-else-if="!isDm && chatLocked && !isAdmin"
                 key="locked"
                 class="chat-banner chat-banner--locked"
               >
@@ -742,6 +691,7 @@
                       <span class="attach-menu-label">Send a GIF</span>
                     </button>
                     <button
+                      v-if="!isDm"
                       type="button"
                       class="attach-menu-item"
                       role="menuitem"
@@ -798,7 +748,7 @@
       </div>
 
       <transition name="panel-slide">
-        <div v-if="showOnlinePanel" class="online-panel">
+        <div v-if="!isDm && onlinePanelOpen" class="online-panel">
           <div class="online-panel-header">
             <span class="online-panel-dot"></span>
             <span class="online-panel-title">Online</span>
@@ -1226,11 +1176,7 @@ import {
   defineAsyncComponent,
 } from "vue";
 import { db } from "../firebase";
-import { logoutCurrentUser } from "../authUtils";
 import {
-  ShieldCheck,
-  Settings2,
-  LogOut,
   Crown,
   Copy,
   Check,
@@ -1264,48 +1210,66 @@ import {
   get,
 } from "firebase/database";
 import copy from "clipboard-copy";
-import { initBadge, updateBadge, clearBadge } from "../faviconBadge";
-import {
-  ensureNotificationPermission,
-  sendSystemNotification,
-} from "../notifications";
-import {
-  startPresence,
-  stopPresence,
-  updatePresenceProfile,
-  userIsOnline,
-} from "../presence";
-import WindowControls from "./WindowControls.vue";
+import { userIsOnline } from "../presence";
+import { sendSystemNotification } from "../notifications";
 import MessageComposer from "./MessageComposer.vue";
 import { containsSlur } from "../slurFilter";
+import {
+  OWNER_AVATAR_URL,
+  hashAvatarColor,
+  getAvatarInitial as sharedGetAvatarInitial,
+  getAvatarStyle as sharedGetAvatarStyle,
+} from "../avatar";
+import {
+  recordDmSend,
+  markDmRead,
+  refreshDmThreadLastMessage,
+  partnerUidFromThread,
+} from "../dmUtils";
 
-const props = defineProps(["user"]);
-const emit = defineEmits(["ready", "open-settings", "open-admin"]);
+const props = defineProps({
+  user: { type: Object, required: true },
+  mode: { type: String, default: "channel" },
+  threadId: { type: String, default: null },
+  partner: { type: Object, default: null },
+  ownerUid: { type: String, default: null },
+  adminUsers: { type: Object, default: () => new Set() },
+  allUsers: { type: Object, default: () => ({}) },
+  presenceUsers: { type: Object, default: () => ({}) },
+  isMuted: { type: Boolean, default: false },
+  allMutedUsers: { type: Object, default: () => new Set() },
+  onlinePanelOpen: { type: Boolean, default: false },
+  isActive: { type: Boolean, default: true },
+});
+const emit = defineEmits(["ready", "unread-count"]);
+
+const isDm = computed(() => props.mode === "dm");
+const messagesPath = computed(() =>
+  isDm.value ? `dms/threads/${props.threadId}/messages` : "messages",
+);
+const typingPath = computed(() =>
+  isDm.value ? `dms/threads/${props.threadId}/typing` : "typing",
+);
 const messages = ref([]);
+const hasEmittedReady = ref(false);
+const showDmIntro = computed(
+  () =>
+    isDm.value &&
+    hasEmittedReady.value &&
+    messages.value.length === 0 &&
+    !!props.partner,
+);
 const showJumpButton = ref(false);
 const scrollUnread = ref(0);
 const isScrollingSmooth = ref(false);
 const SHOW_JUMP_THRESHOLD = 300;
 const GROUP_TIMEOUT = 5 * 60 * 1000;
-const presenceUsers = ref({});
-const ownerUid = ref(null);
-const adminUsers = ref(new Set());
-const showOnlinePanel = ref(false);
-const AVATAR_COLORS = [
-  "#6366f1",
-  "#8b5cf6",
-  "#ec4899",
-  "#f43f5e",
-  "#f97316",
-  "#22c55e",
-  "#14b8a6",
-  "#3b82f6",
-];
-const OWNER_AVATAR_URL = "/owner.png";
+const presenceUsers = computed(() => props.presenceUsers || {});
+const ownerUid = computed(() => props.ownerUid || null);
+const adminUsers = computed(() => props.adminUsers || new Set());
 
 function getAvatarInitial(name, uid = null) {
-  if (OWNER_AVATAR_URL && ownerUid.value && uid === ownerUid.value) return "";
-  return (name && name[0]?.toUpperCase()) || "?";
+  return sharedGetAvatarInitial(name, uid, ownerUid.value);
 }
 
 function getAvatarColor(name, uid = null, storedColor = null) {
@@ -1316,29 +1280,12 @@ function getAvatarColor(name, uid = null, storedColor = null) {
       presenceUsers.value[uid]?.profile?.avatarColor;
     if (stored) return stored;
   }
-  const safeName = name || "?";
-  let hash = 0;
-  for (let i = 0; i < safeName.length; i++) {
-    hash = (hash << 5) - hash + safeName.charCodeAt(i);
-    hash |= 0;
-  }
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+  return hashAvatarColor(name);
 }
 
 function getAvatarStyle(name, uid = null, storedColor = null) {
-  const color = getAvatarColor(name, uid, storedColor);
-
-  if (OWNER_AVATAR_URL && ownerUid.value && uid === ownerUid.value) {
-    return {
-      backgroundColor: color,
-      backgroundImage: `url("${OWNER_AVATAR_URL}")`,
-      backgroundSize: "cover",
-      backgroundPosition: "center",
-      backgroundRepeat: "no-repeat",
-    };
-  }
-
-  return { background: color };
+  const resolvedColor = getAvatarColor(name, uid, storedColor);
+  return sharedGetAvatarStyle(name, uid, resolvedColor, ownerUid.value);
 }
 
 function getLatestUser(uid, fallback = {}) {
@@ -1449,13 +1396,10 @@ const showTimestamps = computed(
 const use24HourTime = computed(
   () => props.user?.preferences?.timeFormat === "24h",
 );
-const menuRef = ref(null);
 const messageContainer = ref(null);
 const composerRef = ref(null);
-const headerRef = ref(null);
 const typingAreaRef = ref(null);
 const inputRowRef = ref(null);
-const showDropdown = ref(false);
 const typingUsersRaw = ref({});
 const hasMore = ref(false);
 const isAdmin = computed(
@@ -1476,7 +1420,7 @@ let unreadCount = 0;
 let initialLoadDone = false;
 let hasPositionedInitialScroll = false;
 let knownIds = new Set();
-const allUsers = ref({});
+const allUsers = computed(() => props.allUsers || {});
 const EVERYONE_MENTION_UID = "everyone";
 
 const mentionableUsers = computed(() => {
@@ -1558,18 +1502,12 @@ let typingTimeout = null;
 let myTypingRef = null;
 let messagesListener = null;
 let typingListener = null;
-let presenceListener = null;
-let ownerListener = null;
-let adminsListener = null;
-let usersListener = null;
 let lockListener = null;
-let muteListener = null;
-let allMutedUsersListener = null;
 let copyResetTimer = null;
 
 const chatLocked = ref(false);
-const isMuted = ref(false);
-const allMutedUsers = ref(new Set());
+const isMuted = computed(() => !!props.isMuted);
+const allMutedUsers = computed(() => props.allMutedUsers || new Set());
 const slurWarningVisible = ref(false);
 let slurWarningTimer = null;
 const slurShakeKey = ref(0);
@@ -1577,7 +1515,6 @@ const replyingTo = ref(null);
 const highlightedMessageId = ref(null);
 let pendingScrollAnchor = null;
 let shouldScrollToBottom = false;
-let hasEmittedReady = false;
 
 const emojiResults = ref([]);
 const emojiActiveIndex = ref(0);
@@ -1862,7 +1799,7 @@ async function sendGif(gif) {
   };
 
   try {
-    await push(dbRef(db, "messages"), {
+    await push(dbRef(db, messagesPath.value), {
       type: "gif",
       gif: safeGif,
       displayName: props.user.displayName,
@@ -1871,6 +1808,14 @@ async function sendGif(gif) {
       timestamp: serverTimestamp(),
       ...(replySnapshot ? { replyTo: replySnapshot } : {}),
     });
+    if (isDm.value && props.partner?.uid) {
+      await recordDmSend({
+        threadId: props.threadId,
+        myUid: props.user.uid,
+        partnerUid: props.partner.uid,
+        message: { type: "gif", gif: safeGif },
+      });
+    }
   } catch (err) {
     console.error("Failed to send GIF:", err);
     replyingTo.value = replySnapshot;
@@ -2119,13 +2064,6 @@ const offlineMembers = computed(() => {
     }))
     .sort((a, b) => (b.lastSeen || 0) - (a.lastSeen || 0));
 });
-
-watch(
-  () => [props.user.displayName, props.user.preferences?.avatarColor],
-  ([displayName, avatarColor]) => {
-    updatePresenceProfile({ displayName, avatarColor });
-  },
-);
 
 function formatLastSeen(ts) {
   if (!ts) return null;
@@ -2919,22 +2857,12 @@ function isMessagePing(message) {
   return false;
 }
 
-function handleAppForeground() {
-  if (document.hidden) return;
-  unreadCount = 0;
-  document.title = "Node Chat";
-  clearBadge();
-}
-
 function handleClickOutside(e) {
   if (reactionPickerVisible.value) {
     const pickerDom = reactionPickerEl.value;
     if (!pickerDom || !pickerDom.contains(e.target)) {
       closeReactionPicker();
     }
-  }
-  if (menuRef.value && !menuRef.value.contains(e.target)) {
-    showDropdown.value = false;
   }
   if (
     attachMenuVisible.value &&
@@ -2962,6 +2890,7 @@ function handleClickOutside(e) {
 }
 
 function handleGlobalKeydown(e) {
+  if (!props.isActive) return;
   if (e.key === "/" && !e.ctrlKey && !e.metaKey && !e.altKey) {
     const active = document.activeElement;
     const isTypingEl =
@@ -3031,20 +2960,6 @@ function handleGlobalKeydown(e) {
     attachMenuVisible.value = false;
     return;
   }
-
-  if (showDropdown.value) {
-    showDropdown.value = false;
-  }
-}
-
-function openSettings() {
-  showDropdown.value = false;
-  emit("open-settings");
-}
-
-function openAdmin() {
-  showDropdown.value = false;
-  emit("open-admin");
 }
 
 let typingDisconnectArmed = false;
@@ -3082,7 +2997,11 @@ function handlePageHideTyping() {
 }
 
 function focusComposer() {
-  composerRef.value?.focus();
+  const editor = composerRef.value;
+  if (!editor) return;
+  editor.focus();
+  editor.setSelectionToEnd?.();
+  requestAnimationFrame(() => editor.setSelectionToEnd?.());
 }
 
 function handleComposerAreaMousedown(e) {
@@ -3165,7 +3084,10 @@ function scrollEmojiItemIntoView() {
 
 function subscribeMessages() {
   if (messagesListener) messagesListener();
-  const messagesRef = query(dbRef(db, "messages"), limitToLast(messageLimit));
+  const messagesRef = query(
+    dbRef(db, messagesPath.value),
+    limitToLast(messageLimit),
+  );
   messagesListener = onValue(
     messagesRef,
     (snapshot) => {
@@ -3191,41 +3113,43 @@ function subscribeMessages() {
           if (!knownIds.has(msg.id)) {
             knownIds.add(msg.id);
             if (!isPagingHistory && msg.uid !== props.user.uid) {
-              const appBackgrounded = document.hidden || !document.hasFocus();
-              if (document.hidden) {
-                unreadCount++;
-                updateBadge(unreadCount);
+              if (isDm.value && props.isActive && !document.hidden) {
+                markDmRead(props.user.uid, props.threadId);
               }
-              if (appBackgrounded) {
-                const notifMode =
-                  props.user.preferences?.notificationMode || "ping";
-                const isPing = isMessagePing(msg);
-                const baseOk =
-                  msg.uid !== props.user.uid &&
-                  props.user.preferences?.notificationsEnabled;
-                let shouldNotify = false;
-                let isPingNotif = false;
-                if (baseOk) {
-                  isPingNotif = notifMode === "ping" && isPing;
-                  shouldNotify = notifMode === "all" || isPingNotif;
-                }
-                if (shouldNotify) {
-                  let body = null;
-                  if (msg.type === "poll" && msg.pollQuestion) {
-                    body = `📊 Poll: ${msg.pollQuestion}`.slice(0, 120);
-                  } else if (msg.type === "gif") {
-                    body = msg.gif?.title
-                      ? `🎞️ GIF · ${msg.gif.title}`.slice(0, 120)
-                      : "🎞️ Sent a GIF";
-                  } else if (msg.text) {
-                    body = detokenizeMentions(msg.text).slice(0, 100);
+              if (!isDm.value && props.isActive && document.hidden) {
+                unreadCount++;
+                emit("unread-count", unreadCount);
+              }
+              if (!isDm.value) {
+                const appBackgrounded = document.hidden || !document.hasFocus();
+                if (appBackgrounded) {
+                  const notifMode =
+                    props.user.preferences?.notificationMode || "ping";
+                  const isPing = isMessagePing(msg);
+                  const baseOk = !!props.user.preferences?.notificationsEnabled;
+                  let shouldNotify = false;
+                  if (baseOk) {
+                    const isPingNotif = notifMode === "ping" && isPing;
+                    shouldNotify = notifMode === "all" || isPingNotif;
                   }
-                  if (body) {
-                    void sendSystemNotification({
-                      title: msg.displayName || "Node Chat",
-                      body,
-                      icon: "/icon.png",
-                    });
+                  if (shouldNotify) {
+                    let body = null;
+                    if (msg.type === "poll" && msg.pollQuestion) {
+                      body = `📊 Poll: ${msg.pollQuestion}`.slice(0, 120);
+                    } else if (msg.type === "gif") {
+                      body = msg.gif?.title
+                        ? `🎞️ GIF · ${msg.gif.title}`.slice(0, 120)
+                        : "🎞️ Sent a GIF";
+                    } else if (msg.text) {
+                      body = detokenizeMentions(msg.text).slice(0, 100);
+                    }
+                    if (body) {
+                      void sendSystemNotification({
+                        title: msg.displayName || "Node Chat",
+                        body,
+                        icon: "/icon.png",
+                      });
+                    }
                   }
                 }
               }
@@ -3250,8 +3174,8 @@ function subscribeMessages() {
         if (restoreScrollAnchor(container)) {
           isLoadingMore.value = false;
           shouldScrollToBottom = false;
-          if (!hasEmittedReady) {
-            hasEmittedReady = true;
+          if (!hasEmittedReady.value) {
+            hasEmittedReady.value = true;
             emit("ready");
           }
           return;
@@ -3265,15 +3189,15 @@ function subscribeMessages() {
 
         shouldScrollToBottom = false;
 
-        if (!hasEmittedReady) {
-          hasEmittedReady = true;
+        if (!hasEmittedReady.value) {
+            hasEmittedReady.value = true;
           emit("ready");
         }
       });
     },
     () => {
-      if (!hasEmittedReady) {
-        hasEmittedReady = true;
+      if (!hasEmittedReady.value) {
+            hasEmittedReady.value = true;
         emit("ready");
       }
       isLoadingMore.value = false;
@@ -3293,63 +3217,37 @@ async function loadMore() {
   subscribeMessages();
 }
 
-onMounted(async () => {
-  initBadge();
-  document.title = "Node Chat";
-  if (props.user.preferences?.notificationsEnabled) {
-    try {
-      await ensureNotificationPermission();
-    } catch {}
+function resetUnread() {
+  if (unreadCount !== 0) {
+    unreadCount = 0;
+    emit("unread-count", 0);
   }
-  document.addEventListener("visibilitychange", handleAppForeground);
-  window.addEventListener("focus", handleAppForeground);
-  document.addEventListener("click", handleClickOutside);
-  document.addEventListener("keydown", handleGlobalKeydown);
-  messageContainer.value?.addEventListener("scroll", handleMessageScroll, {
-    passive: true,
-  });
-  myTypingRef = dbRef(db, `typing/${props.user.uid}`);
-  armTypingDisconnect();
-  window.addEventListener("pagehide", handlePageHideTyping);
-  window.addEventListener("beforeunload", handlePageHideTyping);
+}
 
-  await startPresence({
-    uid: props.user.uid,
-    displayName: props.user.displayName,
-    preferences: props.user.preferences || {},
-  });
+watch(
+  () => props.isActive,
+  (active) => {
+    if (active && !document.hidden) {
+      resetUnread();
+      if (isDm.value) {
+        markDmRead(props.user.uid, props.threadId);
+        nextTick(() => focusComposer());
+      }
+    }
+  },
+);
 
-  usersListener = onValue(dbRef(db, "users"), (snap) => {
-    allUsers.value = snap.exists() ? snap.val() : {};
-  });
+function handleVisibility() {
+  if (document.hidden) return;
+  if (props.isActive) {
+    resetUnread();
+    if (isDm.value) markDmRead(props.user.uid, props.threadId);
+  }
+}
 
-  presenceListener = onValue(dbRef(db, "presence"), (snap) => {
-    presenceUsers.value = snap.exists() ? snap.val() : {};
-  });
-
-  ownerListener = onValue(dbRef(db, "owner"), (snap) => {
-    ownerUid.value = snap.exists() ? snap.val() : null;
-  });
-
-  adminsListener = onValue(dbRef(db, "admins"), (snap) => {
-    adminUsers.value = new Set(snap.exists() ? Object.keys(snap.val()) : []);
-  });
-
-  lockListener = onValue(dbRef(db, "settings/chatLocked"), (snap) => {
-    chatLocked.value = snap.val() === true;
-  });
-  muteListener = onValue(dbRef(db, `muted/${props.user.uid}`), (snap) => {
-    isMuted.value = snap.val() === true;
-  });
-  allMutedUsersListener = onValue(dbRef(db, "muted"), (snap) => {
-    const data = snap.val();
-    allMutedUsers.value = new Set(
-      data ? Object.keys(data).filter((uid) => data[uid] === true) : [],
-    );
-  });
-
+async function initMessages() {
   try {
-    const countSnap = await get(dbRef(db, "messages"));
+    const countSnap = await get(dbRef(db, messagesPath.value));
     totalCount = countSnap.exists() ? Object.keys(countSnap.val()).length : 0;
   } catch (e) {
     totalCount = 0;
@@ -3357,48 +3255,67 @@ onMounted(async () => {
   }
   hasMore.value = totalCount > messageLimit;
 
-  typingListener = onValue(dbRef(db, "typing"), (snapshot) => {
+  if (typingListener) typingListener();
+  typingListener = onValue(dbRef(db, typingPath.value), (snapshot) => {
     const data = snapshot.val();
-    if (!data) {
-      typingUsersRaw.value = {};
-      return;
-    }
-    typingUsersRaw.value = data;
+    typingUsersRaw.value = data || {};
   });
 
   subscribeMessages();
+}
+
+onMounted(async () => {
+  document.addEventListener("click", handleClickOutside);
+  document.addEventListener("keydown", handleGlobalKeydown);
+  document.addEventListener("visibilitychange", handleVisibility);
+  window.addEventListener("focus", handleVisibility);
+  messageContainer.value?.addEventListener("scroll", handleMessageScroll, {
+    passive: true,
+  });
+  myTypingRef = dbRef(db, `${typingPath.value}/${props.user.uid}`);
+  armTypingDisconnect();
+  window.addEventListener("pagehide", handlePageHideTyping);
+  window.addEventListener("beforeunload", handlePageHideTyping);
+
+  if (!isDm.value) {
+    lockListener = onValue(dbRef(db, "settings/chatLocked"), (snap) => {
+      chatLocked.value = snap.val() === true;
+    });
+  }
+
+  await initMessages();
   startLiveNowTicker();
   nextTick(resizeComposer);
 
-  const warmEmoji = () => {
-    ensureEmojiReady().catch(() => {});
-  };
-  if (typeof window.requestIdleCallback === "function") {
-    window.requestIdleCallback(warmEmoji, { timeout: 4000 });
-  } else {
-    setTimeout(warmEmoji, 2000);
+  if (isDm.value && props.isActive) {
+    nextTick(() => focusComposer());
+  }
+
+  if (!isDm.value) {
+    const warmEmoji = () => {
+      ensureEmojiReady().catch(() => {});
+    };
+    if (typeof window.requestIdleCallback === "function") {
+      window.requestIdleCallback(warmEmoji, { timeout: 4000 });
+    } else {
+      setTimeout(warmEmoji, 2000);
+    }
   }
 });
 
 onUnmounted(() => {
   stopLiveNowTicker();
-  document.removeEventListener("visibilitychange", handleAppForeground);
-  window.removeEventListener("focus", handleAppForeground);
   document.removeEventListener("click", handleClickOutside);
   document.removeEventListener("keydown", handleGlobalKeydown);
+  document.removeEventListener("visibilitychange", handleVisibility);
+  window.removeEventListener("focus", handleVisibility);
   messageContainer.value?.removeEventListener("scroll", handleMessageScroll);
   clearTimeout(typingTimeout);
   clearTimeout(copyResetTimer);
   clearTimeout(slurWarningTimer);
   if (messagesListener) messagesListener();
   if (typingListener) typingListener();
-  if (presenceListener) presenceListener();
-  if (ownerListener) ownerListener();
-  if (adminsListener) adminsListener();
-  if (usersListener) usersListener();
   if (lockListener) lockListener();
-  if (muteListener) muteListener();
-  if (allMutedUsersListener) allMutedUsersListener();
   window.removeEventListener("pagehide", handlePageHideTyping);
   window.removeEventListener("beforeunload", handlePageHideTyping);
   if (myTypingRef) {
@@ -3408,7 +3325,6 @@ onUnmounted(() => {
     remove(myTypingRef).catch(() => {});
   }
   typingDisconnectArmed = false;
-  stopPresence();
 });
 
 function copyMessageText(item) {
@@ -3513,28 +3429,36 @@ async function saveEdit(id) {
   editingId.value = null;
   editText.value = "";
   try {
-    const tokenizedText = tokenizeMentions(text);
-    const mentionFields = buildMentionFields(tokenizedText);
-    await update(dbRef(db, `messages/${id}`), {
-      text: tokenizedText,
-      editedAt: serverTimestamp(),
-      mentions: mentionFields.mentions,
-      mentionUids: mentionFields.mentionUids,
-    });
-    const snap = await get(dbRef(db, "messages"));
+    const tokenizedText = isDm.value ? text : tokenizeMentions(text);
+    const mentionFields = isDm.value
+      ? { mentions: null, mentionUids: null }
+      : buildMentionFields(tokenizedText);
+    const editPayload = isDm.value
+      ? { text: tokenizedText, editedAt: serverTimestamp() }
+      : {
+          text: tokenizedText,
+          editedAt: serverTimestamp(),
+          mentions: mentionFields.mentions,
+          mentionUids: mentionFields.mentionUids,
+        };
+    await update(dbRef(db, `${messagesPath.value}/${id}`), editPayload);
+    const snap = await get(dbRef(db, messagesPath.value));
     if (snap.exists()) {
       const msgs = snap.val();
       const updates = {};
       for (const [msgId, msg] of Object.entries(msgs)) {
         if (msg.replyTo?.id === id) {
           updates[`${msgId}/replyTo/text`] = tokenizedText;
-          updates[`${msgId}/replyTo/mentions`] = mentionFields.mentions || null;
-          updates[`${msgId}/replyTo/mentionUids`] =
-            mentionFields.mentionUids || null;
+          if (!isDm.value) {
+            updates[`${msgId}/replyTo/mentions`] =
+              mentionFields.mentions || null;
+            updates[`${msgId}/replyTo/mentionUids`] =
+              mentionFields.mentionUids || null;
+          }
         }
       }
       if (Object.keys(updates).length > 0)
-        await update(dbRef(db, "messages"), updates);
+        await update(dbRef(db, messagesPath.value), updates);
     }
   } catch (err) {
     console.error("Failed to save edit:", err);
@@ -3542,7 +3466,7 @@ async function saveEdit(id) {
 }
 
 async function markReplyRefsDeleted(id) {
-  const snap = await get(dbRef(db, "messages"));
+  const snap = await get(dbRef(db, messagesPath.value));
   if (!snap.exists()) return;
   const msgs = snap.val();
   const updates = {};
@@ -3550,14 +3474,31 @@ async function markReplyRefsDeleted(id) {
     if (msg.replyTo?.id === id) updates[`${msgId}/replyTo/deleted`] = true;
   }
   if (Object.keys(updates).length > 0)
-    await update(dbRef(db, "messages"), updates);
+    await update(dbRef(db, messagesPath.value), updates);
+}
+
+async function refreshDmPreviewAfterDelete() {
+  if (!isDm.value || !props.threadId || !props.user?.uid) return;
+  const partnerUid =
+    props.partner?.uid || partnerUidFromThread(props.threadId, props.user.uid);
+  if (!partnerUid) return;
+  await refreshDmThreadLastMessage({
+    threadId: props.threadId,
+    myUid: props.user.uid,
+    partnerUid,
+  });
+}
+
+async function deleteMessage(id) {
+  await markReplyRefsDeleted(id);
+  await remove(dbRef(db, `${messagesPath.value}/${id}`));
+  await refreshDmPreviewAfterDelete();
 }
 
 async function promptDelete(id) {
   const msg = messages.value.find((m) => m.id === id);
   if (msg?.uid === props.user.uid) {
-    await markReplyRefsDeleted(id);
-    await remove(dbRef(db, `messages/${id}`));
+    await deleteMessage(id);
     return;
   }
   deleteDialog.value = {
@@ -3574,8 +3515,7 @@ function cancelDelete() {
 async function confirmDelete() {
   const id = deleteDialog.value.id;
   deleteDialog.value = { show: false, id: null, name: "" };
-  await markReplyRefsDeleted(id);
-  await remove(dbRef(db, `messages/${id}`));
+  await deleteMessage(id);
 }
 
 function flashSlurWarning() {
@@ -3639,11 +3579,13 @@ async function sendMessage() {
   totalCount++;
   shouldScrollToBottom = true;
   const replySnapshot = replyingTo.value ? { ...replyingTo.value } : null;
-  const tokenizedText = tokenizeMentions(text);
-  const mentionFields = buildMentionFields(tokenizedText);
+  const tokenizedText = isDm.value ? text : tokenizeMentions(text);
+  const mentionFields = isDm.value
+    ? { mentions: null, mentionUids: null }
+    : buildMentionFields(tokenizedText);
   replyingTo.value = null;
   try {
-    await push(dbRef(db, "messages"), {
+    await push(dbRef(db, messagesPath.value), {
       text: tokenizedText,
       displayName: props.user.displayName,
       uid: props.user.uid,
@@ -3657,6 +3599,14 @@ async function sendMessage() {
         : {}),
       ...(replySnapshot ? { replyTo: replySnapshot } : {}),
     });
+    if (isDm.value && props.partner?.uid) {
+      await recordDmSend({
+        threadId: props.threadId,
+        myUid: props.user.uid,
+        partnerUid: props.partner.uid,
+        message: { type: "text", text: tokenizedText },
+      });
+    }
   } catch (err) {
     console.error("Failed to send message:", err);
     newMessage.value = text;
@@ -3706,11 +3656,17 @@ async function toggleReaction(messageId, emoji) {
   try {
     if (currentVal) {
       await remove(
-        dbRef(db, `messages/${messageId}/reactions/${emoji}/${myUid}`),
+        dbRef(
+          db,
+          `${messagesPath.value}/${messageId}/reactions/${emoji}/${myUid}`,
+        ),
       );
     } else {
       await set(
-        dbRef(db, `messages/${messageId}/reactions/${emoji}/${myUid}`),
+        dbRef(
+          db,
+          `${messagesPath.value}/${messageId}/reactions/${emoji}/${myUid}`,
+        ),
         true,
       );
     }
@@ -3796,28 +3752,16 @@ function handleQuickReaction(emoji) {
   if (!reactionPickerMessageId.value) return;
   toggleReaction(reactionPickerMessageId.value, emoji);
 }
-
-async function logout() {
-  showDropdown.value = false;
-  try {
-    if (myTypingRef) await remove(myTypingRef);
-    await stopPresence();
-    await logoutCurrentUser();
-  } catch (err) {
-    console.error("Failed to sign out:", err);
-  }
-}
 </script>
 
 <style scoped>
 .chat {
   display: flex;
   flex-direction: column;
-  height: 100dvh;
+  height: 100%;
   width: 100%;
   overflow: hidden;
   min-height: 0;
-  padding-bottom: env(safe-area-inset-bottom);
 }
 
 .chat-body {
@@ -3834,6 +3778,14 @@ async function logout() {
   min-height: 0;
   position: relative;
   overflow: hidden;
+}
+
+.messages-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }
 
 .header {
@@ -4085,6 +4037,49 @@ async function logout() {
   display: flex;
   flex-direction: column;
   min-height: 0;
+}
+
+.dm-intro {
+  margin-top: auto;
+  padding: 32px 4px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.dm-intro-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: 0;
+  margin-bottom: 4px;
+}
+
+.dm-intro-name {
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.6px;
+  line-height: 1.1;
+}
+
+.dm-intro-text {
+  font-size: 14px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  max-width: 520px;
+}
+
+.dm-intro-text strong {
+  color: var(--text);
+  font-weight: 600;
 }
 
 .load-more {

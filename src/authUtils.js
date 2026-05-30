@@ -326,32 +326,80 @@ export async function adminRenameUser(uid, rawName) {
   }
 }
 
+async function getDmThreadIdsForUser(uid) {
+  try {
+    const snap = await get(dbRef(db, `dms/userIndex/${uid}`));
+    if (!snap.exists()) return [];
+    return Object.keys(snap.val() || {});
+  } catch (e) {
+    return [];
+  }
+}
+
 async function batchUpdateMessageDisplayNames(uid, newDisplayName) {
-  const messagesSnap = await get(dbRef(db, "messages"));
-  if (!messagesSnap.exists()) return;
   const updates = {};
-  for (const [msgId, msg] of Object.entries(messagesSnap.val())) {
-    if (msg.uid === uid) {
-      updates[`messages/${msgId}/displayName`] = newDisplayName;
+  const messagesSnap = await get(dbRef(db, "messages"));
+  if (messagesSnap.exists()) {
+    for (const [msgId, msg] of Object.entries(messagesSnap.val())) {
+      if (msg.uid === uid) {
+        updates[`messages/${msgId}/displayName`] = newDisplayName;
+      }
+      if (msg.replyTo?.uid === uid) {
+        updates[`messages/${msgId}/replyTo/displayName`] = newDisplayName;
+      }
     }
-    if (msg.replyTo?.uid === uid) {
-      updates[`messages/${msgId}/replyTo/displayName`] = newDisplayName;
-    }
+  }
+  const threadIds = await getDmThreadIdsForUser(uid);
+  for (const threadId of threadIds) {
+    try {
+      const dmSnap = await get(dbRef(db, `dms/threads/${threadId}/messages`));
+      if (!dmSnap.exists()) continue;
+      for (const [msgId, msg] of Object.entries(dmSnap.val())) {
+        if (msg.uid === uid) {
+          updates[`dms/threads/${threadId}/messages/${msgId}/displayName`] =
+            newDisplayName;
+        }
+        if (msg.replyTo?.uid === uid) {
+          updates[
+            `dms/threads/${threadId}/messages/${msgId}/replyTo/displayName`
+          ] = newDisplayName;
+        }
+      }
+    } catch (e) {}
   }
   if (Object.keys(updates).length) await update(dbRef(db), updates);
 }
 
 async function batchUpdateMessageAvatarColor(uid, avatarColor) {
-  const messagesSnap = await get(dbRef(db, "messages"));
-  if (!messagesSnap.exists()) return;
   const updates = {};
-  for (const [msgId, msg] of Object.entries(messagesSnap.val())) {
-    if (msg.uid === uid) {
-      updates[`messages/${msgId}/avatarColor`] = avatarColor;
+  const messagesSnap = await get(dbRef(db, "messages"));
+  if (messagesSnap.exists()) {
+    for (const [msgId, msg] of Object.entries(messagesSnap.val())) {
+      if (msg.uid === uid) {
+        updates[`messages/${msgId}/avatarColor`] = avatarColor;
+      }
+      if (msg.replyTo?.uid === uid) {
+        updates[`messages/${msgId}/replyTo/avatarColor`] = avatarColor;
+      }
     }
-    if (msg.replyTo?.uid === uid) {
-      updates[`messages/${msgId}/replyTo/avatarColor`] = avatarColor;
-    }
+  }
+  const threadIds = await getDmThreadIdsForUser(uid);
+  for (const threadId of threadIds) {
+    try {
+      const dmSnap = await get(dbRef(db, `dms/threads/${threadId}/messages`));
+      if (!dmSnap.exists()) continue;
+      for (const [msgId, msg] of Object.entries(dmSnap.val())) {
+        if (msg.uid === uid) {
+          updates[`dms/threads/${threadId}/messages/${msgId}/avatarColor`] =
+            avatarColor;
+        }
+        if (msg.replyTo?.uid === uid) {
+          updates[
+            `dms/threads/${threadId}/messages/${msgId}/replyTo/avatarColor`
+          ] = avatarColor;
+        }
+      }
+    } catch (e) {}
   }
   if (Object.keys(updates).length) await update(dbRef(db), updates);
 }

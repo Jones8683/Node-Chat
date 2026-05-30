@@ -1,6 +1,6 @@
 <template>
   <div id="app">
-    <ChatRoom
+    <AppShell
       v-if="status === 'authenticated'"
       :key="user.uid"
       :user="user"
@@ -61,8 +61,8 @@ import { auth, db } from "./firebase";
 const AuthForm = defineAsyncComponent(
   () => import("./components/AuthForm.vue"),
 );
-const ChatRoom = defineAsyncComponent(
-  () => import("./components/ChatRoom.vue"),
+const AppShell = defineAsyncComponent(
+  () => import("./components/AppShell.vue"),
 );
 const SetDisplayName = defineAsyncComponent(
   () => import("./components/SetDisplayName.vue"),

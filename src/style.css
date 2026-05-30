@@ -38,6 +38,25 @@ button:not(:disabled) {
   cursor: pointer;
 }
 
+button,
+a,
+input,
+textarea,
+select,
+[role="button"],
+[tabindex],
+[contenteditable] {
+  outline: none;
+}
+
+button:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:focus-visible {
+  outline: 1px solid rgba(90, 90, 240, 0.18);
+  outline-offset: 1px;
+}
+
 html,
 body {
   height: 100%;
@@ -78,6 +97,7 @@ input:-webkit-autofill:focus {
 
 .messages::-webkit-scrollbar-button,
 .online-panel-list::-webkit-scrollbar-button,
+.sidebar::-webkit-scrollbar-button,
 textarea::-webkit-scrollbar-button,
 .composer-editor::-webkit-scrollbar-button,
 .edit-input::-webkit-scrollbar-button {
@@ -88,6 +108,7 @@ textarea::-webkit-scrollbar-button,
 
 .messages::-webkit-scrollbar,
 .online-panel-list::-webkit-scrollbar,
+.sidebar::-webkit-scrollbar,
 textarea::-webkit-scrollbar,
 .composer-editor::-webkit-scrollbar,
 .edit-input::-webkit-scrollbar {
@@ -100,6 +121,7 @@ textarea::-webkit-scrollbar,
 
 .messages::-webkit-scrollbar-track,
 .online-panel-list::-webkit-scrollbar-track,
+.sidebar::-webkit-scrollbar-track,
 textarea::-webkit-scrollbar-track,
 .composer-editor::-webkit-scrollbar-track,
 .edit-input::-webkit-scrollbar-track {
@@ -108,6 +130,7 @@ textarea::-webkit-scrollbar-track,
 
 .messages::-webkit-scrollbar-thumb,
 .online-panel-list::-webkit-scrollbar-thumb,
+.sidebar::-webkit-scrollbar-thumb,
 textarea::-webkit-scrollbar-thumb,
 .composer-editor::-webkit-scrollbar-thumb,
 .edit-input::-webkit-scrollbar-thumb {
@@ -119,11 +142,13 @@ textarea::-webkit-scrollbar-thumb,
 
 .messages::-webkit-scrollbar,
 .online-panel-list::-webkit-scrollbar,
+.sidebar::-webkit-scrollbar,
 textarea::-webkit-scrollbar,
 .composer-editor::-webkit-scrollbar,
 .edit-input::-webkit-scrollbar,
 .messages::-webkit-scrollbar-track,
 .online-panel-list::-webkit-scrollbar-track,
+.sidebar::-webkit-scrollbar-track,
 textarea::-webkit-scrollbar-track,
 .composer-editor::-webkit-scrollbar-track,
 .edit-input::-webkit-scrollbar-track {
@@ -132,6 +157,7 @@ textarea::-webkit-scrollbar-track,
 
 .messages::-webkit-scrollbar-thumb:hover,
 .online-panel-list::-webkit-scrollbar-thumb:hover,
+.sidebar::-webkit-scrollbar-thumb:hover,
 textarea::-webkit-scrollbar-thumb:hover,
 .composer-editor::-webkit-scrollbar-thumb:hover,
 .edit-input::-webkit-scrollbar-thumb:hover {
@@ -141,6 +167,7 @@ textarea::-webkit-scrollbar-thumb:hover,
 @supports (-moz-appearance: none) {
   .messages,
   .online-panel-list,
+  .sidebar,
   textarea,
   .composer-editor,
   .edit-input {
@@ -149,6 +176,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   }
   .messages:hover,
   .online-panel-list:hover,
+  .sidebar:hover,
   textarea:hover,
   .composer-editor:hover,
   .edit-input:hover {

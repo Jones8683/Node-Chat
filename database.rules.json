@@ -100,6 +100,107 @@
         ".write": "auth != null && (root.child('owner').val() === auth.uid || (root.child('admins').child(auth.uid).val() === true && root.child('owner').val() !== $uid))"
       }
     },
+    "dms": {
+      "threads": {
+        "$threadId": {
+          ".read": "auth != null && (!data.exists() || data.child('meta/members').child(auth.uid).val() === true)",
+          "meta": {
+            ".write": "auth != null && root.child('muted').child(auth.uid).val() !== true && ((!data.exists() && newData.exists() && newData.child('members').child(auth.uid).val() === true && $threadId.contains(auth.uid) && $threadId.contains('_')) || (data.exists() && data.child('members').child(auth.uid).val() === true))",
+            ".validate": "newData.hasChildren(['members'])",
+            "members": {
+              "$memberUid": {
+                ".validate": "newData.isBoolean() && newData.val() === true"
+              }
+            },
+            "createdAt": {
+              ".validate": "newData.isNumber()"
+            },
+            "lastMessageAt": {
+              ".validate": "newData.isNumber()"
+            },
+            "lastMessagePreview": {
+              ".validate": "newData.isString() && newData.val().length <= 200"
+            },
+            "lastMessageType": {
+              ".validate": "newData.isString() && (newData.val() === 'text' || newData.val() === 'gif')"
+            },
+            "lastMessageFromUid": {
+              ".validate": "newData.isString() && newData.val().length <= 64"
+            },
+            "$other": {
+              ".validate": false
+            }
+          },
+          "messages": {
+            ".indexOn": ["timestamp"],
+            "$id": {
+              ".write": "auth != null && root.child('dms/threads').child($threadId).child('meta/members').child(auth.uid).val() === true && ((!data.exists() && newData.exists() && newData.child('uid').val() === auth.uid && root.child('muted').child(auth.uid).val() !== true) || (data.exists() && newData.exists() && data.child('uid').val() === auth.uid && newData.child('uid').val() === data.child('uid').val()) || (data.exists() && !newData.exists() && data.child('uid').val() === auth.uid))",
+              "displayName": {
+                ".write": "auth != null && data.parent().child('uid').val() === auth.uid"
+              },
+              "avatarColor": {
+                ".write": "auth != null && data.parent().child('uid').val() === auth.uid"
+              },
+              "replyTo": {
+                "displayName": {
+                  ".write": "auth != null && data.parent().parent().child('uid').val() === auth.uid"
+                },
+                "avatarColor": {
+                  ".write": "auth != null && data.parent().parent().child('uid').val() === auth.uid"
+                }
+              },
+              "reactions": {
+                "$emoji": {
+                  "$reactorUid": {
+                    ".write": "auth != null && $reactorUid === auth.uid && root.child('muted').child(auth.uid).val() !== true && root.child('dms/threads').child($threadId).child('meta/members').child(auth.uid).val() === true"
+                  }
+                }
+              }
+            }
+          },
+          "typing": {
+            "$uid": {
+              ".write": "auth != null && $uid === auth.uid && root.child('dms/threads').child($threadId).child('meta/members').child(auth.uid).val() === true",
+              ".validate": "newData.hasChild('displayName')",
+              "displayName": {
+                ".validate": "newData.isString() && newData.val().length <= 64"
+              },
+              "$other": { ".validate": false }
+            }
+          }
+        }
+      },
+      "userIndex": {
+        "$uid": {
+          ".read": "auth != null && $uid === auth.uid",
+          "$threadId": {
+            ".write": "auth != null && ($uid === auth.uid || (root.child('dms/threads').child($threadId).child('meta/members').child(auth.uid).val() === true && root.child('dms/threads').child($threadId).child('meta/members').child($uid).val() === true))",
+            "lastReadAt": {
+              ".write": "auth != null && $uid === auth.uid",
+              ".validate": "newData.isNumber()"
+            },
+            "partnerUid": {
+              ".validate": "newData.isString() && newData.val().length <= 64"
+            },
+            "lastMessageAt": {
+              ".validate": "newData.isNumber()"
+            },
+            "lastMessagePreview": {
+              ".validate": "newData.isString() && newData.val().length <= 200"
+            },
+            "lastMessageType": {
+              ".validate": "newData.isString() && (newData.val() === 'text' || newData.val() === 'gif')"
+            },
+            "lastMessageFromUid": {
+              ".validate": "newData.isString() && newData.val().length <= 64"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        }
+      }
+    },
     "auditLogs": {
       ".read": "auth != null && (root.child('admins').child(auth.uid).val() === true || root.child('owner').val() === auth.uid)",
       "$actorUid": {
