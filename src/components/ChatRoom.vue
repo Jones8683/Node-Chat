@@ -49,7 +49,12 @@
                   'message--ping': isMessagePing(item),
                   'message--highlighted': highlightedMessageId === item.id,
                   'message--picker-active': reactionPickerMessageId === item.id,
+                  'message--touch-active': touchActiveMessageId === item.id,
                 }"
+                @touchstart.passive="handleMessageTouchStart(item.id, $event)"
+                @touchmove.passive="handleMessageTouchMove"
+                @touchend.passive="handleMessageTouchEnd"
+                @touchcancel.passive="handleMessageTouchEnd"
               >
                 <div
                   v-if="item.replyTo"
@@ -2865,6 +2870,12 @@ function isMessagePing(message) {
 }
 
 function handleClickOutside(e) {
+  if (touchActiveMessageId.value) {
+    const messageEl = e.target.closest?.(
+      `[data-message-id="${touchActiveMessageId.value}"]`,
+    );
+    if (!messageEl) touchActiveMessageId.value = null;
+  }
   if (reactionPickerVisible.value) {
     const pickerDom = reactionPickerEl.value;
     if (!pickerDom || !pickerDom.contains(e.target)) {
@@ -3617,6 +3628,42 @@ async function sendMessage() {
 }
 
 const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥", "🎉"];
+
+const LONG_PRESS_MS = 450;
+const LONG_PRESS_MOVE_TOLERANCE = 8;
+
+const touchActiveMessageId = ref(null);
+const longPress = { timer: null, startX: 0, startY: 0 };
+
+function cancelLongPress() {
+  clearTimeout(longPress.timer);
+  longPress.timer = null;
+}
+
+function handleMessageTouchStart(messageId, e) {
+  if (e.touches.length !== 1) return;
+  longPress.startX = e.touches[0].clientX;
+  longPress.startY = e.touches[0].clientY;
+  cancelLongPress();
+  longPress.timer = setTimeout(() => {
+    touchActiveMessageId.value = messageId;
+    if (navigator.vibrate) navigator.vibrate(10);
+  }, LONG_PRESS_MS);
+}
+
+function handleMessageTouchMove(e) {
+  if (!longPress.timer) return;
+  const dx = Math.abs(e.touches[0].clientX - longPress.startX);
+  const dy = Math.abs(e.touches[0].clientY - longPress.startY);
+  if (dx > LONG_PRESS_MOVE_TOLERANCE || dy > LONG_PRESS_MOVE_TOLERANCE) {
+    cancelLongPress();
+  }
+}
+
+function handleMessageTouchEnd() {
+  cancelLongPress();
+}
+
 const reactionPickerMessageId = ref(null);
 const reactionPickerPos = ref({ top: 0, right: 8, origin: "bottom right" });
 const reactionPickerVisible = ref(false);
@@ -6876,5 +6923,54 @@ textarea::placeholder {
 .reaction-picker-leave-to {
   opacity: 0;
   transform: scale(0.95) translateY(2px);
+}
+
+.message--touch-active {
+  background: rgba(44, 42, 39, 0.05);
+}
+.message--touch-active .msg-actions {
+  opacity: 1;
+  pointer-events: all;
+}
+
+@media (max-width: 640px) {
+  .messages {
+    padding: 12px 10px 4px;
+  }
+  .message {
+    padding: 2px 10px;
+  }
+  .msg-row {
+    gap: 10px;
+  }
+  .msg-actions {
+    right: 4px;
+  }
+  .input-wrap {
+    margin: 0 8px 8px;
+    border-radius: 12px;
+  }
+  .input-row {
+    align-items: center;
+    padding: 6px 8px;
+    gap: 6px;
+  }
+  .input-row .message-composer {
+    padding: 0;
+  }
+  .attach-btn {
+    width: 36px;
+    height: 36px;
+  }
+  .online-panel {
+    display: none;
+  }
+  .jump-to-bottom {
+    bottom: 12px;
+    right: 12px;
+  }
+  .header {
+    padding: 0 6px;
+  }
 }
 </style>

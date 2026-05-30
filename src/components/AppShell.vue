@@ -1,6 +1,15 @@
 <template>
-  <div class="shell">
+  <div class="shell" :class="{ 'sidebar-open': mobileSidebarOpen }">
     <div class="shell-header" data-tauri-drag-region>
+      <button
+        type="button"
+        class="mobile-menu-btn"
+        :aria-label="mobileSidebarOpen ? 'Close sidebar' : 'Open sidebar'"
+        :aria-expanded="mobileSidebarOpen"
+        @click="mobileSidebarOpen = !mobileSidebarOpen"
+      >
+        <Menu :size="20" stroke-width="2.2" />
+      </button>
       <div class="shell-brand">
         <img src="/icon.png" class="shell-logo" alt="" aria-hidden="true" />
         <span class="shell-wordmark">Node Chat</span>
@@ -89,8 +98,15 @@
       </div>
     </div>
 
-    <div class="shell-body">
+    <div
+      class="shell-body"
+      @touchstart.passive="handleBodyTouchStart"
+      @touchmove.passive="handleBodyTouchMove"
+      @touchend.passive="handleBodyTouchEnd"
+      @touchcancel.passive="handleBodyTouchEnd"
+    >
       <Sidebar
+        class="shell-sidebar"
         :user="user"
         :selection="selection"
         :owner-uid="ownerUid"
@@ -99,8 +115,15 @@
         :dm-index="dmIndex"
         :channel-unread="channelUnread"
         @select="handleSelect"
-        @open-new-dm="showNewDmDialog = true"
+        @open-new-dm="onOpenNewDm"
       />
+      <transition name="scrim-fade">
+        <div
+          v-if="mobileSidebarOpen"
+          class="mobile-scrim"
+          @click="mobileSidebarOpen = false"
+        ></div>
+      </transition>
       <div class="shell-main">
         <div
           class="chat-slot"
@@ -174,7 +197,7 @@ import {
 } from "vue";
 import { db } from "../firebase";
 import { ref as dbRef, onValue } from "firebase/database";
-import { Settings2, LogOut, ShieldCheck } from "lucide-vue-next";
+import { Settings2, LogOut, ShieldCheck, Menu } from "lucide-vue-next";
 import { getAvatarInitial, getAvatarStyle } from "../avatar";
 import WindowControls from "./WindowControls.vue";
 import Sidebar from "./Sidebar.vue";
@@ -215,6 +238,63 @@ const showDropdown = ref(false);
 const showNewDmDialog = ref(false);
 const onlinePanelOpen = ref(false);
 const menuRef = ref(null);
+const mobileSidebarOpen = ref(false);
+
+const SWIPE_TRIGGER_DISTANCE = 60;
+const SWIPE_HORIZONTAL_BIAS = 1.5;
+
+const touchState = {
+  startX: 0,
+  startY: 0,
+  active: false,
+  intent: null,
+};
+
+function shouldIgnoreSwipeTarget(target) {
+  return !!target?.closest?.(
+    "input, textarea, button, a, [contenteditable='true'], .gif-message, .reaction-picker, .attach-menu, .dropdown",
+  );
+}
+
+function handleBodyTouchStart(e) {
+  if (window.innerWidth > 640) return;
+  if (e.touches.length !== 1) return;
+  if (shouldIgnoreSwipeTarget(e.target)) return;
+  touchState.startX = e.touches[0].clientX;
+  touchState.startY = e.touches[0].clientY;
+  touchState.active = true;
+  touchState.intent = null;
+}
+
+function handleBodyTouchMove(e) {
+  if (!touchState.active) return;
+  const dx = e.touches[0].clientX - touchState.startX;
+  const dy = e.touches[0].clientY - touchState.startY;
+  if (touchState.intent === null) {
+    if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+    touchState.intent =
+      Math.abs(dx) > Math.abs(dy) * SWIPE_HORIZONTAL_BIAS
+        ? "horizontal"
+        : "vertical";
+  }
+  if (touchState.intent !== "horizontal") return;
+  if (!mobileSidebarOpen.value && dx > SWIPE_TRIGGER_DISTANCE) {
+    mobileSidebarOpen.value = true;
+    touchState.active = false;
+  } else if (mobileSidebarOpen.value && dx < -SWIPE_TRIGGER_DISTANCE) {
+    mobileSidebarOpen.value = false;
+    touchState.active = false;
+  }
+}
+
+function handleBodyTouchEnd() {
+  touchState.active = false;
+}
+
+function onOpenNewDm() {
+  mobileSidebarOpen.value = false;
+  showNewDmDialog.value = true;
+}
 
 const selection = ref({ kind: "channel" });
 const channelUnread = ref(0);
@@ -311,6 +391,7 @@ function handleSelect(sel) {
   } else {
     selection.value = { kind: "channel" };
   }
+  mobileSidebarOpen.value = false;
 }
 
 async function handleStartDm(partner) {
@@ -351,8 +432,9 @@ function handleClickOutside(e) {
 }
 
 function handleKeydown(e) {
-  if (e.key === "Escape" && showDropdown.value) {
-    showDropdown.value = false;
+  if (e.key === "Escape") {
+    if (showDropdown.value) showDropdown.value = false;
+    if (mobileSidebarOpen.value) mobileSidebarOpen.value = false;
   }
 }
 
@@ -494,6 +576,26 @@ onUnmounted(() => {
   flex-shrink: 0;
   background: var(--surface);
   gap: 12px;
+}
+
+.mobile-menu-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: none;
+  border: none;
+  color: var(--text);
+  border-radius: 8px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 140ms ease;
+}
+
+.mobile-menu-btn:hover,
+.mobile-menu-btn:active {
+  background: var(--surface-2);
 }
 
 .shell-brand {
@@ -801,5 +903,77 @@ onUnmounted(() => {
 .dropdown-item.admin-item:hover {
   background: rgba(34, 197, 94, 0.08);
   color: #22c55e;
+}
+
+.mobile-scrim {
+  display: none;
+}
+
+.scrim-fade-enter-active,
+.scrim-fade-leave-active {
+  transition: opacity 200ms ease;
+}
+.scrim-fade-enter-from,
+.scrim-fade-leave-to {
+  opacity: 0;
+}
+
+@media (max-width: 640px) {
+  .mobile-menu-btn {
+    display: flex;
+  }
+  .shell-header {
+    padding: 0 6px;
+    gap: 6px;
+  }
+  .shell-wordmark {
+    display: none;
+  }
+  .shell-logo {
+    width: 22px;
+    height: 22px;
+  }
+  .online-btn {
+    display: none;
+  }
+  .shell-body {
+    position: relative;
+  }
+  .shell-sidebar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 50;
+    width: 84vw;
+    max-width: 300px;
+    transform: translateX(-100%);
+    transition: transform 260ms var(--ease-out-quint);
+    will-change: transform;
+  }
+  .shell.sidebar-open .shell-sidebar {
+    transform: translateX(0);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.18);
+  }
+  .mobile-scrim {
+    display: block;
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 40;
+    -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: blur(2px);
+  }
+  .user-btn {
+    padding: 4px 6px;
+  }
+  .avatar {
+    width: 26px;
+    height: 26px;
+    font-size: 11px;
+  }
+  .chevron {
+    display: none;
+  }
 }
 </style>

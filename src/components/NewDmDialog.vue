@@ -459,4 +459,39 @@ watch(
   color: var(--text-muted);
   line-height: 1.3;
 }
+
+@media (max-width: 640px) {
+  .modal-overlay {
+    padding: 0;
+    align-items: stretch;
+    justify-content: stretch;
+  }
+  .modal-container {
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    max-height: 100%;
+    border-radius: 0;
+    border: none;
+  }
+  .modal-fade-enter-from,
+  .modal-fade-leave-to {
+    opacity: 0;
+    transform: translateY(100%) scale(1);
+  }
+  .modal-header {
+    padding: 18px 18px 14px;
+  }
+  .user-search-input {
+    font-size: 16px;
+  }
+  .member-row {
+    padding: 12px 10px;
+  }
+  .member-avatar {
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
+  }
+}
 </style>

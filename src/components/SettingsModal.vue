@@ -1391,4 +1391,28 @@ async function changePassword() {
     transition: none !important;
   }
 }
+
+@media (max-width: 640px) {
+  .modal-overlay {
+    padding: 0;
+    align-items: stretch;
+    justify-content: stretch;
+  }
+  .modal-container {
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    max-height: 100%;
+    border-radius: 0;
+    border: none;
+  }
+  .modal-fade-enter-from,
+  .modal-fade-leave-to {
+    opacity: 0;
+    transform: translateY(100%) scale(1);
+  }
+  .field input {
+    font-size: 16px;
+  }
+}
 </style>
