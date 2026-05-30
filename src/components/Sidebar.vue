@@ -209,6 +209,7 @@ function isRowActive(row) {
 }
 
 .sidebar-row {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -228,6 +229,22 @@ function isRowActive(row) {
   min-height: 38px;
 }
 
+.sidebar-row::before {
+  content: "";
+  position: absolute;
+  left: -8px;
+  top: 50%;
+  width: 3px;
+  height: 0;
+  border-radius: 0 3px 3px 0;
+  background: var(--accent);
+  transform: translateY(-50%);
+  transition:
+    height 180ms var(--ease-out-quint),
+    opacity 140ms ease;
+  opacity: 0;
+}
+
 .sidebar-row:hover {
   background: var(--surface-2);
 }
@@ -240,9 +257,15 @@ function isRowActive(row) {
   background: rgba(90, 90, 240, 0.18);
 }
 
+.sidebar-row.active::before {
+  height: 22px;
+  opacity: 1;
+}
+
 .sidebar-row.active .sidebar-row-name,
 .sidebar-row.active .dm-name {
   color: var(--text);
+  font-weight: 700;
 }
 
 .channel-logo {
