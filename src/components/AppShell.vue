@@ -20,7 +20,9 @@
           <button class="user-btn" @click="showDropdown = !showDropdown">
             <div
               class="avatar"
-              :style="getAvatarStyle(user.displayName, user.uid, userColor, ownerUid)"
+              :style="
+                getAvatarStyle(user.displayName, user.uid, userColor, ownerUid)
+              "
             >
               {{ getAvatarInitial(user.displayName, user.uid, ownerUid) }}
             </div>
@@ -46,7 +48,14 @@
               <div class="dropdown-profile">
                 <div
                   class="avatar large"
-                  :style="getAvatarStyle(user.displayName, user.uid, userColor, ownerUid)"
+                  :style="
+                    getAvatarStyle(
+                      user.displayName,
+                      user.uid,
+                      userColor,
+                      ownerUid,
+                    )
+                  "
                 >
                   {{ getAvatarInitial(user.displayName, user.uid, ownerUid) }}
                 </div>
@@ -156,14 +165,18 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch, defineAsyncComponent } from "vue";
+import {
+  ref,
+  computed,
+  onMounted,
+  onUnmounted,
+  watch,
+  defineAsyncComponent,
+} from "vue";
 import { db } from "../firebase";
 import { ref as dbRef, onValue } from "firebase/database";
 import { Settings2, LogOut, ShieldCheck } from "lucide-vue-next";
-import {
-  getAvatarInitial,
-  getAvatarStyle,
-} from "../avatar";
+import { getAvatarInitial, getAvatarStyle } from "../avatar";
 import WindowControls from "./WindowControls.vue";
 import Sidebar from "./Sidebar.vue";
 import { initBadge, updateBadge, clearBadge } from "../faviconBadge";
@@ -211,9 +224,7 @@ const hasEmittedReady = ref(false);
 const mountedDmThreads = ref([]);
 const dmPartners = ref({});
 
-const userColor = computed(
-  () => props.user?.preferences?.avatarColor || null,
-);
+const userColor = computed(() => props.user?.preferences?.avatarColor || null);
 
 const isAdmin = computed(
   () =>

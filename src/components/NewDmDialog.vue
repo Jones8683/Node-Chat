@@ -5,7 +5,9 @@
         <div class="modal-header">
           <div>
             <h2 class="modal-title">New Direct Message</h2>
-            <p class="modal-subtitle">Start a conversation with another member</p>
+            <p class="modal-subtitle">
+              Start a conversation with another member
+            </p>
           </div>
           <button type="button" class="modal-close" @click="close">
             <X :size="20" stroke-width="2" />
@@ -40,7 +42,11 @@
 
         <div class="modal-content">
           <div v-if="!filtered.length" class="empty">
-            {{ searchQuery ? `No users match "${searchQuery}"` : "No other members yet" }}
+            {{
+              searchQuery
+                ? `No users match "${searchQuery}"`
+                : "No other members yet"
+            }}
           </div>
           <button
             v-for="(row, i) in filtered"
@@ -55,7 +61,12 @@
               <div
                 class="member-avatar"
                 :style="
-                  getAvatarStyle(row.displayName, row.uid, row.avatarColor, ownerUid)
+                  getAvatarStyle(
+                    row.displayName,
+                    row.uid,
+                    row.avatarColor,
+                    ownerUid,
+                  )
                 "
               >
                 {{ getAvatarInitial(row.displayName, row.uid, ownerUid) }}
@@ -110,8 +121,7 @@ const candidates = computed(() => {
     result.push({
       uid,
       displayName: data.displayName || profile.displayName || "Unknown",
-      avatarColor:
-        data.preferences?.avatarColor || profile.avatarColor || null,
+      avatarColor: data.preferences?.avatarColor || profile.avatarColor || null,
       isOnline: userIsOnline(presence),
     });
   }
@@ -125,9 +135,7 @@ const candidates = computed(() => {
 const filtered = computed(() => {
   const q = normalize(searchQuery.value);
   if (!q) return candidates.value;
-  return candidates.value.filter((c) =>
-    normalize(c.displayName).includes(q),
-  );
+  return candidates.value.filter((c) => normalize(c.displayName).includes(q));
 });
 
 watch(filtered, () => {

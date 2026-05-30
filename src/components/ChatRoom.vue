@@ -4,481 +4,491 @@
       <div class="chat-main">
         <div class="messages-wrap">
           <div class="messages" ref="messageContainer">
-          <div
-            v-if="showDmIntro"
-            class="dm-intro"
-          >
-            <div
-              class="dm-intro-avatar"
-              :style="
-                getAvatarStyle(
-                  partner.displayName,
-                  partner.uid,
-                  partner.avatarColor,
-                  ownerUid,
-                )
-              "
-            >
-              {{ getAvatarInitial(partner.displayName, partner.uid, ownerUid) }}
-            </div>
-            <div class="dm-intro-name">{{ partner.displayName }}</div>
-            <div class="dm-intro-text">
-              This is the beginning of your message history with
-              <strong>{{ partner.displayName }}</strong>.
-            </div>
-          </div>
-          <button
-            class="load-more"
-            v-if="hasMore"
-            @click="loadMore"
-            :disabled="isLoadingMore"
-          >
-            {{ isLoadingMore ? "Loading..." : "Load previous messages" }}
-          </button>
-          <template v-for="item in groupedMessages" :key="item.id">
-            <div v-if="item.type === 'date'" class="date-separator">
-              <span class="date-label">{{ item.label }}</span>
-            </div>
-            <div
-              v-else
-              class="message"
-              :data-message-id="item.id"
-              :class="{
-                'message--editing': editingId === item.id,
-                'message--start': item.isGroupStart,
-                'message--ping': isMessagePing(item),
-                'message--highlighted': highlightedMessageId === item.id,
-                'message--picker-active': reactionPickerMessageId === item.id,
-              }"
-            >
+            <div v-if="showDmIntro" class="dm-intro">
               <div
-                v-if="item.replyTo"
-                class="reply-row"
-                @click.stop="jumpToMessage(item.replyTo.id)"
+                class="dm-intro-avatar"
+                :style="
+                  getAvatarStyle(
+                    partner.displayName,
+                    partner.uid,
+                    partner.avatarColor,
+                    ownerUid,
+                  )
+                "
               >
-                <div class="reply-connector-cell">
-                  <div class="reply-connector"></div>
-                </div>
-                <div class="reply-content">
-                  <template v-if="item.replyTo.deleted">
-                    <em class="reply-text reply-text--deleted"
-                      >Original message was deleted</em
-                    >
-                  </template>
-                  <template v-else>
-                    <div
-                      class="reply-avatar-small"
-                      :style="
-                        getAvatarStyle(
+                {{
+                  getAvatarInitial(partner.displayName, partner.uid, ownerUid)
+                }}
+              </div>
+              <div class="dm-intro-name">{{ partner.displayName }}</div>
+              <div class="dm-intro-text">
+                This is the beginning of your message history with
+                <strong>{{ partner.displayName }}</strong
+                >.
+              </div>
+            </div>
+            <button
+              class="load-more"
+              v-if="hasMore"
+              @click="loadMore"
+              :disabled="isLoadingMore"
+            >
+              {{ isLoadingMore ? "Loading..." : "Load previous messages" }}
+            </button>
+            <template v-for="item in groupedMessages" :key="item.id">
+              <div v-if="item.type === 'date'" class="date-separator">
+                <span class="date-label">{{ item.label }}</span>
+              </div>
+              <div
+                v-else
+                class="message"
+                :data-message-id="item.id"
+                :class="{
+                  'message--editing': editingId === item.id,
+                  'message--start': item.isGroupStart,
+                  'message--ping': isMessagePing(item),
+                  'message--highlighted': highlightedMessageId === item.id,
+                  'message--picker-active': reactionPickerMessageId === item.id,
+                }"
+              >
+                <div
+                  v-if="item.replyTo"
+                  class="reply-row"
+                  @click.stop="jumpToMessage(item.replyTo.id)"
+                >
+                  <div class="reply-connector-cell">
+                    <div class="reply-connector"></div>
+                  </div>
+                  <div class="reply-content">
+                    <template v-if="item.replyTo.deleted">
+                      <em class="reply-text reply-text--deleted"
+                        >Original message was deleted</em
+                      >
+                    </template>
+                    <template v-else>
+                      <div
+                        class="reply-avatar-small"
+                        :style="
+                          getAvatarStyle(
+                            resolveDisplayName(
+                              item.replyTo.uid,
+                              item.replyTo.displayName,
+                            ),
+                            item.replyTo.uid,
+                            item.replyTo.avatarColor,
+                          )
+                        "
+                      >
+                        {{
+                          getAvatarInitial(
+                            resolveDisplayName(
+                              item.replyTo.uid,
+                              item.replyTo.displayName,
+                            ),
+                            item.replyTo.uid,
+                          )
+                        }}
+                      </div>
+                      <span
+                        class="reply-name"
+                        :style="{
+                          color: getAvatarColor(
+                            resolveDisplayName(
+                              item.replyTo.uid,
+                              item.replyTo.displayName,
+                            ),
+                            item.replyTo.uid,
+                            item.replyTo.avatarColor,
+                          ),
+                        }"
+                        >{{
                           resolveDisplayName(
                             item.replyTo.uid,
                             item.replyTo.displayName,
-                          ),
-                          item.replyTo.uid,
-                          item.replyTo.avatarColor,
+                          )
+                        }}</span
+                      >
+                      <span
+                        class="reply-text"
+                        v-html="formatReplyPreview(item.replyTo)"
+                      ></span>
+                    </template>
+                  </div>
+                </div>
+
+                <div class="msg-row">
+                  <div class="msg-left">
+                    <div
+                      v-if="item.isGroupStart"
+                      class="msg-avatar"
+                      :style="
+                        getAvatarStyle(
+                          resolveDisplayName(item.uid, item.displayName),
+                          item.uid,
+                          item.avatarColor,
                         )
                       "
                     >
                       {{
                         getAvatarInitial(
-                          resolveDisplayName(
-                            item.replyTo.uid,
-                            item.replyTo.displayName,
-                          ),
-                          item.replyTo.uid,
+                          resolveDisplayName(item.uid, item.displayName),
+                          item.uid,
                         )
                       }}
                     </div>
-                    <span
-                      class="reply-name"
-                      :style="{
-                        color: getAvatarColor(
-                          resolveDisplayName(
-                            item.replyTo.uid,
-                            item.replyTo.displayName,
-                          ),
-                          item.replyTo.uid,
-                          item.replyTo.avatarColor,
-                        ),
-                      }"
-                      >{{
-                        resolveDisplayName(
-                          item.replyTo.uid,
-                          item.replyTo.displayName,
-                        )
-                      }}</span
-                    >
-                    <span
-                      class="reply-text"
-                      v-html="formatReplyPreview(item.replyTo)"
-                    ></span>
-                  </template>
-                </div>
-              </div>
-
-              <div class="msg-row">
-                <div class="msg-left">
-                  <div
-                    v-if="item.isGroupStart"
-                    class="msg-avatar"
-                    :style="
-                      getAvatarStyle(
-                        resolveDisplayName(item.uid, item.displayName),
-                        item.uid,
-                        item.avatarColor,
-                      )
-                    "
-                  >
-                    {{
-                      getAvatarInitial(
-                        resolveDisplayName(item.uid, item.displayName),
-                        item.uid,
-                      )
-                    }}
-                  </div>
-                  <span v-else-if="showTimestamps" class="msg-side-time">{{
-                    formatTimestampShort(item.timestamp)
-                  }}</span>
-                </div>
-
-                <div class="msg-right">
-                  <div v-if="item.isGroupStart" class="msg-header">
-                    <span
-                      class="msg-name"
-                      :style="{
-                        color: getAvatarColor(
-                          resolveDisplayName(item.uid, item.displayName),
-                          item.uid,
-                          item.avatarColor,
-                        ),
-                      }"
-                      >{{
-                        resolveDisplayName(item.uid, item.displayName)
-                      }}</span
-                    >
-                    <span v-if="showTimestamps" class="msg-time">{{
-                      formatTimestamp(item.timestamp)
+                    <span v-else-if="showTimestamps" class="msg-side-time">{{
+                      formatTimestampShort(item.timestamp)
                     }}</span>
                   </div>
 
-                  <template v-if="editingId === item.id">
-                    <div class="edit-area">
-                      <MessageComposer
-                        class="edit-input"
-                        ref="editInputRef"
-                        v-model="editText"
-                        :max-length="10000"
-                        :resolve-mention="resolveMentionFromText"
-                        :current-user-uid="props.user.uid"
-                        @submit="saveEdit(item.id)"
-                        @keydown="handleEditKeydown($event, item.id)"
-                        @input="handleEditInput($event, item.id)"
-                        @blur="closeMentionPicker"
-                      />
-                      <transition name="mention-fade">
-                        <div
-                          v-if="
-                            !isDm &&
-                            mentionVisible &&
-                            activeMentionTarget === `edit:${item.id}` &&
-                            mentionResults.length
-                          "
-                          class="mention-autocomplete mention-autocomplete--edit"
-                          :class="{ 'picker--keyboard': pickerKeyboardActive }"
-                          ref="mentionPickerRef"
-                          @mousemove="pickerKeyboardActive = false"
-                        >
+                  <div class="msg-right">
+                    <div v-if="item.isGroupStart" class="msg-header">
+                      <span
+                        class="msg-name"
+                        :style="{
+                          color: getAvatarColor(
+                            resolveDisplayName(item.uid, item.displayName),
+                            item.uid,
+                            item.avatarColor,
+                          ),
+                        }"
+                        >{{
+                          resolveDisplayName(item.uid, item.displayName)
+                        }}</span
+                      >
+                      <span v-if="showTimestamps" class="msg-time">{{
+                        formatTimestamp(item.timestamp)
+                      }}</span>
+                    </div>
+
+                    <template v-if="editingId === item.id">
+                      <div class="edit-area">
+                        <MessageComposer
+                          class="edit-input"
+                          ref="editInputRef"
+                          v-model="editText"
+                          :max-length="10000"
+                          :resolve-mention="resolveMentionFromText"
+                          :current-user-uid="props.user.uid"
+                          @submit="saveEdit(item.id)"
+                          @keydown="handleEditKeydown($event, item.id)"
+                          @input="handleEditInput($event, item.id)"
+                          @blur="closeMentionPicker"
+                        />
+                        <transition name="mention-fade">
                           <div
-                            v-for="(mentionUser, i) in mentionResults"
-                            :key="mentionUser.uid"
-                            class="mention-item"
+                            v-if="
+                              !isDm &&
+                              mentionVisible &&
+                              activeMentionTarget === `edit:${item.id}` &&
+                              mentionResults.length
+                            "
+                            class="mention-autocomplete mention-autocomplete--edit"
                             :class="{
-                              active: i === mentionActiveIndex,
-                              'mention-item--everyone': mentionUser.isEveryone,
+                              'picker--keyboard': pickerKeyboardActive,
                             }"
-                            @mouseenter="mentionActiveIndex = i"
-                            @mousedown.prevent="insertMention(mentionUser)"
+                            ref="mentionPickerRef"
+                            @mousemove="pickerKeyboardActive = false"
                           >
                             <div
-                              v-if="mentionUser.isEveryone"
-                              class="mention-avatar mention-avatar--everyone"
+                              v-for="(mentionUser, i) in mentionResults"
+                              :key="mentionUser.uid"
+                              class="mention-item"
+                              :class="{
+                                active: i === mentionActiveIndex,
+                                'mention-item--everyone':
+                                  mentionUser.isEveryone,
+                              }"
+                              @mouseenter="mentionActiveIndex = i"
+                              @mousedown.prevent="insertMention(mentionUser)"
                             >
-                              @
+                              <div
+                                v-if="mentionUser.isEveryone"
+                                class="mention-avatar mention-avatar--everyone"
+                              >
+                                @
+                              </div>
+                              <div
+                                v-else
+                                class="mention-avatar"
+                                :style="
+                                  getAvatarStyle(
+                                    mentionUser.displayName,
+                                    mentionUser.uid,
+                                    mentionUser.avatarColor,
+                                  )
+                                "
+                              >
+                                {{
+                                  getAvatarInitial(
+                                    mentionUser.displayName,
+                                    mentionUser.uid,
+                                  )
+                                }}
+                              </div>
+                              <span class="mention-name">{{
+                                mentionUser.displayName
+                              }}</span>
                             </div>
-                            <div
-                              v-else
-                              class="mention-avatar"
-                              :style="
-                                getAvatarStyle(
-                                  mentionUser.displayName,
-                                  mentionUser.uid,
-                                  mentionUser.avatarColor,
-                                )
+                          </div>
+                        </transition>
+                      </div>
+                    </template>
+
+                    <template v-else>
+                      <div
+                        v-if="item.type === 'poll'"
+                        class="msg-body msg-body--poll"
+                      >
+                        <div
+                          class="poll-card"
+                          :class="{ 'poll-card--closed': isPollClosed(item) }"
+                        >
+                          <div class="poll-card-header">
+                            <span class="poll-card-eyebrow">
+                              <ChartBarBig :size="12" stroke-width="2.4" />
+                              {{ isPollClosed(item) ? "Poll ended" : "Poll" }}
+                            </span>
+                            <span
+                              v-if="item.pollMulti"
+                              class="poll-card-tag"
+                              title="Multiple answers allowed"
+                              >Multiple choice</span
+                            >
+                          </div>
+                          <h4 class="poll-question">{{ item.pollQuestion }}</h4>
+                          <div class="poll-options">
+                            <button
+                              v-for="opt in getPollOptions(item)"
+                              :key="opt.key"
+                              type="button"
+                              class="poll-option"
+                              :class="{
+                                'poll-option--voted': opt.iVoted,
+                                'poll-option--leading':
+                                  opt.isLeading && pollTotalVotes(item) > 0,
+                                'poll-option--closed': isPollClosed(item),
+                              }"
+                              :disabled="
+                                isPollClosed(item) ||
+                                isMuted ||
+                                (chatLocked && !isAdmin)
                               "
+                              @click="togglePollVote(item, opt.key)"
                             >
+                              <span
+                                class="poll-option-fill"
+                                :style="{ width: opt.percent + '%' }"
+                              ></span>
+                              <span class="poll-option-content">
+                                <span class="poll-option-check">
+                                  <Check
+                                    v-if="opt.iVoted"
+                                    :size="11"
+                                    stroke-width="3.2"
+                                  />
+                                </span>
+                                <span class="poll-option-label">{{
+                                  opt.label
+                                }}</span>
+                                <span class="poll-option-stats">
+                                  <span class="poll-option-votes"
+                                    >{{ opt.votes }}
+                                    {{
+                                      opt.votes === 1 ? "vote" : "votes"
+                                    }}</span
+                                  >
+                                  <span class="poll-option-percent"
+                                    >{{ opt.percent }}%</span
+                                  >
+                                </span>
+                              </span>
+                            </button>
+                          </div>
+                          <div class="poll-card-footer">
+                            <button
+                              v-if="pollTotalVoters(item) > 0"
+                              type="button"
+                              class="poll-total poll-total--btn"
+                              @click="openViewVotes(item)"
+                            >
+                              {{ pollTotalVoters(item) }}
                               {{
-                                getAvatarInitial(
-                                  mentionUser.displayName,
-                                  mentionUser.uid,
-                                )
+                                pollTotalVoters(item) === 1 ? "vote" : "votes"
                               }}
-                            </div>
-                            <span class="mention-name">{{
-                              mentionUser.displayName
-                            }}</span>
+                            </button>
+                            <span v-else class="poll-total">
+                              {{ pollTotalVoters(item) }}
+                              {{
+                                pollTotalVoters(item) === 1 ? "vote" : "votes"
+                              }}
+                            </span>
+                            <span
+                              v-if="item.pollExpiresAt"
+                              class="poll-time-remaining"
+                              :class="{
+                                'poll-time-remaining--ended':
+                                  isPollClosed(item),
+                              }"
+                            >
+                              <span class="poll-time-dot"></span>
+                              {{ formatPollTimeRemaining(item) }}
+                            </span>
                           </div>
                         </div>
-                      </transition>
-                    </div>
-                  </template>
-
-                  <template v-else>
-                    <div
-                      v-if="item.type === 'poll'"
-                      class="msg-body msg-body--poll"
-                    >
-                      <div
-                        class="poll-card"
-                        :class="{ 'poll-card--closed': isPollClosed(item) }"
-                      >
-                        <div class="poll-card-header">
-                          <span class="poll-card-eyebrow">
-                            <ChartBarBig :size="12" stroke-width="2.4" />
-                            {{ isPollClosed(item) ? "Poll ended" : "Poll" }}
-                          </span>
-                          <span
-                            v-if="item.pollMulti"
-                            class="poll-card-tag"
-                            title="Multiple answers allowed"
-                            >Multiple choice</span
-                          >
-                        </div>
-                        <h4 class="poll-question">{{ item.pollQuestion }}</h4>
-                        <div class="poll-options">
-                          <button
-                            v-for="opt in getPollOptions(item)"
-                            :key="opt.key"
-                            type="button"
-                            class="poll-option"
-                            :class="{
-                              'poll-option--voted': opt.iVoted,
-                              'poll-option--leading':
-                                opt.isLeading && pollTotalVotes(item) > 0,
-                              'poll-option--closed': isPollClosed(item),
-                            }"
-                            :disabled="
-                              isPollClosed(item) ||
-                              isMuted ||
-                              (chatLocked && !isAdmin)
-                            "
-                            @click="togglePollVote(item, opt.key)"
-                          >
-                            <span
-                              class="poll-option-fill"
-                              :style="{ width: opt.percent + '%' }"
-                            ></span>
-                            <span class="poll-option-content">
-                              <span class="poll-option-check">
-                                <Check
-                                  v-if="opt.iVoted"
-                                  :size="11"
-                                  stroke-width="3.2"
-                                />
-                              </span>
-                              <span class="poll-option-label">{{
-                                opt.label
-                              }}</span>
-                              <span class="poll-option-stats">
-                                <span class="poll-option-votes"
-                                  >{{ opt.votes }}
-                                  {{ opt.votes === 1 ? "vote" : "votes" }}</span
-                                >
-                                <span class="poll-option-percent"
-                                  >{{ opt.percent }}%</span
-                                >
-                              </span>
-                            </span>
-                          </button>
-                        </div>
-                        <div class="poll-card-footer">
-                          <button
-                            v-if="pollTotalVoters(item) > 0"
-                            type="button"
-                            class="poll-total poll-total--btn"
-                            @click="openViewVotes(item)"
-                          >
-                            {{ pollTotalVoters(item) }}
-                            {{ pollTotalVoters(item) === 1 ? "vote" : "votes" }}
-                          </button>
-                          <span v-else class="poll-total">
-                            {{ pollTotalVoters(item) }}
-                            {{ pollTotalVoters(item) === 1 ? "vote" : "votes" }}
-                          </span>
-                          <span
-                            v-if="item.pollExpiresAt"
-                            class="poll-time-remaining"
-                            :class="{
-                              'poll-time-remaining--ended': isPollClosed(item),
-                            }"
-                          >
-                            <span class="poll-time-dot"></span>
-                            {{ formatPollTimeRemaining(item) }}
-                          </span>
-                        </div>
                       </div>
-                    </div>
-                    <div
-                      v-else-if="item.type === 'gif' && item.gif"
-                      class="msg-body msg-body--gif"
-                    >
-                      <button
-                        type="button"
-                        class="gif-message"
-                        :style="{
-                          aspectRatio: `${item.gif.width || 1} / ${item.gif.height || 1}`,
-                          maxWidth: getGifDisplayWidth(item.gif) + 'px',
-                        }"
-                        @click="openGifLightbox(item.gif, item.id)"
+                      <div
+                        v-else-if="item.type === 'gif' && item.gif"
+                        class="msg-body msg-body--gif"
                       >
-                        <img
-                          :src="item.gif.url"
-                          :alt="item.gif.title || 'GIF'"
-                          class="gif-message-img"
-                          loading="lazy"
-                          draggable="false"
-                        />
-                      </button>
-                    </div>
+                        <button
+                          type="button"
+                          class="gif-message"
+                          :style="{
+                            aspectRatio: `${item.gif.width || 1} / ${item.gif.height || 1}`,
+                            maxWidth: getGifDisplayWidth(item.gif) + 'px',
+                          }"
+                          @click="openGifLightbox(item.gif, item.id)"
+                        >
+                          <img
+                            :src="item.gif.url"
+                            :alt="item.gif.title || 'GIF'"
+                            class="gif-message-img"
+                            loading="lazy"
+                            draggable="false"
+                          />
+                        </button>
+                      </div>
 
-                    <div
-                      v-else
-                      class="msg-body"
-                      :class="{ 'msg-body--emoji': isEmojiOnly(item.text) }"
-                    >
-                      <span class="text"
-                        ><span v-html="formatMessage(item)"></span
-                        ><span v-if="item.editedAt" class="edited-label">
-                          (edited)</span
-                        ></span
+                      <div
+                        v-else
+                        class="msg-body"
+                        :class="{ 'msg-body--emoji': isEmojiOnly(item.text) }"
                       >
-                    </div>
-                    <TransitionGroup
-                      v-if="getReactionList(item).length"
-                      name="reaction-pop"
-                      tag="div"
-                      class="reactions-row"
-                    >
-                      <button
-                        v-for="r in getReactionList(item)"
-                        :key="r.emoji"
-                        type="button"
-                        class="reaction-badge"
-                        :class="{ 'reaction-badge--me': r.iReacted }"
-                        :disabled="isMuted"
-                        @click="toggleReaction(item.id, r.emoji)"
+                        <span class="text"
+                          ><span v-html="formatMessage(item)"></span
+                          ><span v-if="item.editedAt" class="edited-label">
+                            (edited)</span
+                          ></span
+                        >
+                      </div>
+                      <TransitionGroup
+                        v-if="getReactionList(item).length"
+                        name="reaction-pop"
+                        tag="div"
+                        class="reactions-row"
                       >
-                        <span
-                          class="reaction-emoji"
-                          v-html="twemojify(r.emoji)"
-                        ></span>
-                        <span class="reaction-count">{{ r.count }}</span>
-                        <span class="reaction-tooltip">{{ r.tooltip }}</span>
-                      </button>
-                      <button
-                        key="__add__"
-                        type="button"
-                        class="reaction-badge reaction-badge--add"
-                        title="Add reaction"
-                        :disabled="isMuted"
-                        @click.stop="openReactionPicker(item.id, $event)"
-                      >
-                        <SmilePlus :size="14" :stroke-width="2" />
-                      </button>
-                    </TransitionGroup>
-                    <div class="msg-actions">
-                      <button
-                        class="msg-action-btn"
-                        title="Add Reaction"
-                        :disabled="isMuted"
-                        @click.stop="openReactionPicker(item.id, $event)"
-                      >
-                        <SmilePlus :size="16" :stroke-width="2" />
-                      </button>
-                      <button
-                        v-if="item.type === 'gif' && item.gif?.url"
-                        class="msg-action-btn"
-                        :class="{ active: copiedMessageId === item.id }"
-                        @click="copyGifLink(item)"
-                        :title="
-                          copiedMessageId === item.id
-                            ? 'Link copied'
-                            : 'Copy GIF link'
-                        "
-                      >
-                        <Check
-                          v-if="copiedMessageId === item.id"
-                          :size="16"
-                          :stroke-width="2"
-                        />
-                        <Copy v-else :size="16" :stroke-width="2" />
-                      </button>
-                      <button
-                        v-else-if="item.type !== 'poll'"
-                        class="msg-action-btn"
-                        :class="{ active: copiedMessageId === item.id }"
-                        @click="copyMessageText(item)"
-                        :title="
-                          copiedMessageId === item.id
-                            ? 'Copied'
-                            : 'Copy message'
-                        "
-                      >
-                        <Check
-                          v-if="copiedMessageId === item.id"
-                          :size="16"
-                          :stroke-width="2"
-                        />
-                        <Copy v-else :size="16" :stroke-width="2" />
-                      </button>
-                      <button
-                        v-if="
-                          item.uid === user.uid &&
-                          item.type !== 'poll' &&
-                          item.type !== 'gif'
-                        "
-                        class="msg-action-btn"
-                        @click="startEdit(item)"
-                        title="Edit"
-                      >
-                        <Pencil :size="16" :stroke-width="2" />
-                      </button>
-                      <button
-                        class="msg-action-btn"
-                        @click="startReply(item)"
-                        title="Reply"
-                      >
-                        <CornerUpLeft :size="16" :stroke-width="2" />
-                      </button>
-                      <button
-                        v-if="
-                          item.uid === user.uid ||
-                          (!isDm &&
-                            isAdmin &&
-                            (ownerUid !== item.uid || user.uid === ownerUid))
-                        "
-                        class="msg-action-btn danger"
-                        @click="promptDelete(item.id)"
-                        title="Delete"
-                      >
-                        <Trash2 :size="16" :stroke-width="2" />
-                      </button>
-                    </div>
-                  </template>
+                        <button
+                          v-for="r in getReactionList(item)"
+                          :key="r.emoji"
+                          type="button"
+                          class="reaction-badge"
+                          :class="{ 'reaction-badge--me': r.iReacted }"
+                          :disabled="isMuted"
+                          @click="toggleReaction(item.id, r.emoji)"
+                        >
+                          <span
+                            class="reaction-emoji"
+                            v-html="twemojify(r.emoji)"
+                          ></span>
+                          <span class="reaction-count">{{ r.count }}</span>
+                          <span class="reaction-tooltip">{{ r.tooltip }}</span>
+                        </button>
+                        <button
+                          key="__add__"
+                          type="button"
+                          class="reaction-badge reaction-badge--add"
+                          title="Add reaction"
+                          :disabled="isMuted"
+                          @click.stop="openReactionPicker(item.id, $event)"
+                        >
+                          <SmilePlus :size="14" :stroke-width="2" />
+                        </button>
+                      </TransitionGroup>
+                      <div class="msg-actions">
+                        <button
+                          class="msg-action-btn"
+                          title="Add Reaction"
+                          :disabled="isMuted"
+                          @click.stop="openReactionPicker(item.id, $event)"
+                        >
+                          <SmilePlus :size="16" :stroke-width="2" />
+                        </button>
+                        <button
+                          v-if="item.type === 'gif' && item.gif?.url"
+                          class="msg-action-btn"
+                          :class="{ active: copiedMessageId === item.id }"
+                          @click="copyGifLink(item)"
+                          :title="
+                            copiedMessageId === item.id
+                              ? 'Link copied'
+                              : 'Copy GIF link'
+                          "
+                        >
+                          <Check
+                            v-if="copiedMessageId === item.id"
+                            :size="16"
+                            :stroke-width="2"
+                          />
+                          <Copy v-else :size="16" :stroke-width="2" />
+                        </button>
+                        <button
+                          v-else-if="item.type !== 'poll'"
+                          class="msg-action-btn"
+                          :class="{ active: copiedMessageId === item.id }"
+                          @click="copyMessageText(item)"
+                          :title="
+                            copiedMessageId === item.id
+                              ? 'Copied'
+                              : 'Copy message'
+                          "
+                        >
+                          <Check
+                            v-if="copiedMessageId === item.id"
+                            :size="16"
+                            :stroke-width="2"
+                          />
+                          <Copy v-else :size="16" :stroke-width="2" />
+                        </button>
+                        <button
+                          v-if="
+                            item.uid === user.uid &&
+                            item.type !== 'poll' &&
+                            item.type !== 'gif'
+                          "
+                          class="msg-action-btn"
+                          @click="startEdit(item)"
+                          title="Edit"
+                        >
+                          <Pencil :size="16" :stroke-width="2" />
+                        </button>
+                        <button
+                          class="msg-action-btn"
+                          @click="startReply(item)"
+                          title="Reply"
+                        >
+                          <CornerUpLeft :size="16" :stroke-width="2" />
+                        </button>
+                        <button
+                          v-if="
+                            item.uid === user.uid ||
+                            (!isDm &&
+                              isAdmin &&
+                              (ownerUid !== item.uid || user.uid === ownerUid))
+                          "
+                          class="msg-action-btn danger"
+                          @click="promptDelete(item.id)"
+                          title="Delete"
+                        >
+                          <Trash2 :size="16" :stroke-width="2" />
+                        </button>
+                      </div>
+                    </template>
+                  </div>
                 </div>
               </div>
-            </div>
-          </template>
-        </div>
+            </template>
+          </div>
 
           <transition name="jump-fade">
             <button
@@ -3190,14 +3200,14 @@ function subscribeMessages() {
         shouldScrollToBottom = false;
 
         if (!hasEmittedReady.value) {
-            hasEmittedReady.value = true;
+          hasEmittedReady.value = true;
           emit("ready");
         }
       });
     },
     () => {
       if (!hasEmittedReady.value) {
-            hasEmittedReady.value = true;
+        hasEmittedReady.value = true;
         emit("ready");
       }
       isLoadingMore.value = false;
@@ -4046,6 +4056,8 @@ function handleQuickReaction(emoji) {
   flex-direction: column;
   align-items: flex-start;
   gap: 16px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
 }
 
 .dm-intro-avatar {

@@ -364,9 +364,7 @@ function matchMentionName(rest) {
 function updateEmpty() {
   const root = rootRef.value;
   if (!root) return;
-  const hasAtomic = !!root.querySelector(
-    "[data-mention-uid], img.twemoji",
-  );
+  const hasAtomic = !!root.querySelector("[data-mention-uid], img.twemoji");
   const empty = !root.textContent && !hasAtomic;
   isEmpty.value = empty;
   if (empty && root.firstChild) {

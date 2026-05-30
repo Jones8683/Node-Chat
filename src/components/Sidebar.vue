@@ -10,7 +10,12 @@
         :class="{ active: selection.kind === 'channel' }"
         @click="$emit('select', { kind: 'channel' })"
       >
-        <img src="/favicon.png" class="channel-logo" alt="" aria-hidden="true" />
+        <img
+          src="/favicon.png"
+          class="channel-logo"
+          alt=""
+          aria-hidden="true"
+        />
         <span class="sidebar-row-name">Node Chat</span>
         <span v-if="channelUnread > 0" class="unread-count">{{
           channelUnread > 99 ? "99+" : channelUnread
@@ -31,7 +36,9 @@
           <Plus :size="14" stroke-width="2.4" />
         </button>
       </div>
-      <div v-if="!dmRows.length" class="sidebar-empty">No conversations yet</div>
+      <div v-if="!dmRows.length" class="sidebar-empty">
+        No conversations yet
+      </div>
       <button
         v-for="row in dmRows"
         :key="row.threadId"
