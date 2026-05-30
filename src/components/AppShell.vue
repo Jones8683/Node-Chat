@@ -152,7 +152,7 @@
     </div>
 
     <NewDmDialog
-      v-if="showNewDmDialog"
+      :is-open="showNewDmDialog"
       :user="user"
       :all-users="allUsers"
       :presence-users="presenceUsers"

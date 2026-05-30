@@ -1,6 +1,6 @@
 <template>
   <transition name="modal-fade" appear>
-    <div class="modal-overlay" @click="closeIfClickedOutside">
+    <div v-if="isOpen" class="modal-overlay" @click="closeIfClickedOutside">
       <div class="modal-container" role="dialog" aria-modal="true">
         <div class="modal-header">
           <div>
@@ -87,12 +87,13 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, nextTick } from "vue";
+import { ref, computed, watch, nextTick } from "vue";
 import { X, Search } from "lucide-vue-next";
 import { getAvatarInitial, getAvatarStyle } from "../avatar";
 import { userIsOnline } from "../presence";
 
 const props = defineProps({
+  isOpen: Boolean,
   user: { type: Object, required: true },
   allUsers: { type: Object, default: () => ({}) },
   presenceUsers: { type: Object, default: () => ({}) },
@@ -174,9 +175,17 @@ function handleKeydown(e) {
   }
 }
 
-onMounted(() => {
-  nextTick(() => inputRef.value?.focus());
-});
+watch(
+  () => props.isOpen,
+  (open) => {
+    if (open) {
+      searchQuery.value = "";
+      activeIndex.value = 0;
+      nextTick(() => inputRef.value?.focus());
+    }
+  },
+  { immediate: true },
+);
 </script>
 
 <style scoped>
@@ -275,8 +284,7 @@ onMounted(() => {
   transition-duration: 80ms;
 }
 
-.modal-close:focus-visible,
-.user-search-input:focus-visible {
+.modal-close:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px rgba(90, 90, 240, 0.18);
 }
