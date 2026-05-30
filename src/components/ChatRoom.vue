@@ -603,14 +603,26 @@
                 <span></span>
               </div>
               <span class="typing-names">
-                <template v-for="(name, i) in typingUsers" :key="name">
-                  <strong>{{ name }}</strong>
-                  <template v-if="i < typingUsers.length - 2">, </template>
-                  <template v-else-if="i === typingUsers.length - 2">
-                    and
+                <template v-if="typingSummary.overflow">
+                  <strong>{{ typingSummary.names[0] }}</strong>
+                  and {{ typingSummary.overflow }}
+                  {{ typingSummary.overflow === 1 ? "other" : "others" }}
+                </template>
+                <template v-else>
+                  <template
+                    v-for="(name, i) in typingSummary.names"
+                    :key="name"
+                  >
+                    <strong>{{ name }}</strong>
+                    <template v-if="i < typingSummary.names.length - 2"
+                      >,
+                    </template>
+                    <template v-else-if="i === typingSummary.names.length - 2">
+                      and
+                    </template>
                   </template>
                 </template>
-                {{ typingUsers.length === 1 ? "is" : "are" }} typing...
+                {{ typingUsers.length === 1 ? " is" : " are" }} typing...
               </span>
             </div>
           </div>
@@ -2105,6 +2117,13 @@ const typingUsers = computed(() => {
       ([uid, data]) =>
         getLatestUser(uid, data).displayName || data.displayName || "?",
     );
+});
+
+const TYPING_NAME_LIMIT = 2;
+const typingSummary = computed(() => {
+  const all = typingUsers.value;
+  if (all.length <= TYPING_NAME_LIMIT) return { names: all, overflow: 0 };
+  return { names: [all[0]], overflow: all.length - 1 };
 });
 
 function isNearBottom(scrollEl) {
@@ -4805,6 +4824,8 @@ function handleQuickReaction(emoji) {
   display: flex;
   align-items: center;
   gap: 7px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .dots {
@@ -4848,6 +4869,20 @@ function handleQuickReaction(emoji) {
 .typing-names {
   font-size: 12px;
   color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.typing-names strong {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
+  vertical-align: bottom;
+  font-weight: 600;
+  color: var(--text);
 }
 
 .chat-banner-stack {
