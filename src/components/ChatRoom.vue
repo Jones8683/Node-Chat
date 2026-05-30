@@ -3133,7 +3133,7 @@ function subscribeMessages() {
               if (isDm.value && props.isActive && !document.hidden) {
                 dmNeedsRead = true;
               }
-              if (!isDm.value && props.isActive && document.hidden) {
+              if (!isDm.value && (!props.isActive || document.hidden)) {
                 unreadCount++;
                 emit("unread-count", unreadCount);
               }

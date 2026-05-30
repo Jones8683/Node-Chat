@@ -17,9 +17,11 @@
           aria-hidden="true"
         />
         <span class="sidebar-row-name">Node Central</span>
-        <span v-if="channelUnread > 0" class="unread-count">{{
-          channelUnread > 99 ? "99+" : channelUnread
-        }}</span>
+        <span
+          v-if="channelUnread > 0"
+          class="unread-dot"
+          aria-label="Unread"
+        ></span>
       </button>
     </div>
 
@@ -344,22 +346,6 @@ function isRowActive(row) {
   overflow: hidden;
   text-overflow: ellipsis;
   line-height: 1.2;
-}
-
-.unread-count {
-  flex-shrink: 0;
-  min-width: 18px;
-  height: 18px;
-  border-radius: 999px;
-  background: var(--accent);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 6px;
-  line-height: 1;
 }
 
 .unread-dot {
