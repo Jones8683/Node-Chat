@@ -402,7 +402,8 @@ async function submitSignup() {
 }
 
 .tab-btn:focus-visible {
-  outline: none;
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .field {
@@ -428,10 +429,24 @@ async function submitSignup() {
   font-size: 15px;
   font-family: "Satoshi", sans-serif;
   outline: none;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(44, 42, 39, 0.28) transparent;
   transition:
     border-color 180ms ease,
     box-shadow 180ms ease,
     background-color 180ms ease;
+}
+
+.field input::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.field input::-webkit-scrollbar-thumb {
+  background: rgba(44, 42, 39, 0.22);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 
 .field input:hover:not(:focus):not(:disabled) {
@@ -500,7 +515,8 @@ async function submitSignup() {
 }
 
 .toggle-pw:focus-visible {
-  outline: none;
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
   border-radius: 4px;
 }
 
@@ -535,33 +551,13 @@ async function submitSignup() {
 }
 
 .submit-btn:focus-visible {
-  outline: none;
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .submit-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-.field input {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(44, 42, 39, 0.28) transparent;
-}
-
-.field input::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-.field input::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.field input::-webkit-scrollbar-thumb {
-  background: rgba(44, 42, 39, 0.22);
-  border-radius: 999px;
-  border: 2px solid transparent;
-  background-clip: padding-box;
 }
 
 @keyframes errorIn {

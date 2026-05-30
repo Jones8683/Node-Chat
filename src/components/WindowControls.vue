@@ -59,8 +59,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
 import { Minus, X } from "lucide-vue-next";
+import { useTauri } from "../tauri";
 
 defineProps({
   withDivider: {
@@ -69,52 +69,32 @@ defineProps({
   },
 });
 
-const isTauriApp = ref(false);
+const { isTauriApp } = useTauri();
+let windowApiPromise = null;
+
+function loadWindowApi() {
+  if (!windowApiPromise) {
+    windowApiPromise = import("@tauri-apps/api/window");
+  }
+  return windowApiPromise;
+}
 
 async function minimizeWindow() {
-  if (!isTauriApp.value) return;
-  try {
-    const { getCurrentWindow } = await import("@tauri-apps/api/window");
-    await getCurrentWindow().minimize();
-  } catch (e) {
-    console.error("Minimize failed:", e);
-  }
+  const { getCurrentWindow } = await loadWindowApi();
+  await getCurrentWindow().minimize();
 }
 
 async function toggleMaximize() {
-  if (!isTauriApp.value) return;
-  try {
-    const { getCurrentWindow } = await import("@tauri-apps/api/window");
-    const win = getCurrentWindow();
-    const isMaximized = await win.isMaximized();
-    if (isMaximized) {
-      await win.unmaximize();
-    } else {
-      await win.maximize();
-    }
-  } catch (e) {
-    console.error("Maximize failed:", e);
-  }
+  const { getCurrentWindow } = await loadWindowApi();
+  const win = getCurrentWindow();
+  if (await win.isMaximized()) await win.unmaximize();
+  else await win.maximize();
 }
 
 async function closeWindow() {
-  if (!isTauriApp.value) return;
-  try {
-    const { getCurrentWindow } = await import("@tauri-apps/api/window");
-    await getCurrentWindow().close();
-  } catch (e) {
-    console.error("Close failed:", e);
-  }
+  const { getCurrentWindow } = await loadWindowApi();
+  await getCurrentWindow().close();
 }
-
-onMounted(async () => {
-  try {
-    const { isTauri } = await import("@tauri-apps/api/core");
-    isTauriApp.value = await isTauri();
-  } catch {
-    isTauriApp.value = false;
-  }
-});
 </script>
 
 <style scoped>

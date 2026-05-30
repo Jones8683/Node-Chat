@@ -409,7 +409,7 @@ import {
 } from "../notifications";
 
 const props = defineProps({ isOpen: Boolean, user: Object });
-const emit = defineEmits(["close", "refreshUser"]);
+const emit = defineEmits(["close", "refresh-user"]);
 
 const AVATAR_PALETTE = [
   "#f43f5e",
@@ -737,7 +737,7 @@ async function changeUsername() {
     await changeDisplayName(props.user.uid, trimmed);
     successUsername.value = "Display name updated!";
     newUsername.value = "";
-    emit("refreshUser");
+    emit("refresh-user");
     if (usernameSuccessTimer) clearTimeout(usernameSuccessTimer);
     usernameSuccessTimer = setTimeout(() => {
       successUsername.value = "";

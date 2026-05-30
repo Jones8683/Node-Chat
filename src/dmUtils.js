@@ -34,19 +34,11 @@ export async function ensureDmThread(myUid, partnerUid) {
       createdAt: now,
     };
   });
+  await update(dbRef(db, `dms/userIndex/${myUid}/${threadId}`), {
+    partnerUid,
+    lastReadAt: now,
+  });
   return threadId;
-}
-
-export async function ensureMyDmIndexEntry(myUid, partnerUid, threadId) {
-  if (!myUid || !partnerUid || !threadId) return;
-  try {
-    const snap = await get(dbRef(db, `dms/userIndex/${myUid}/${threadId}`));
-    if (snap.exists()) return;
-    await update(dbRef(db, `dms/userIndex/${myUid}/${threadId}`), {
-      partnerUid,
-      lastReadAt: Date.now(),
-    });
-  } catch (e) {}
 }
 
 function previewForMessage(message) {
@@ -58,6 +50,12 @@ function previewForMessage(message) {
     .replace(/\s+/g, " ")
     .trim();
   return { preview: raw.slice(0, 140), type: "text" };
+}
+
+export function dmPreviewText(entry) {
+  if (!entry) return "";
+  if (entry.lastMessageType === "gif") return "🎞️ GIF";
+  return entry.lastMessagePreview || "";
 }
 
 export async function recordDmSend({ threadId, myUid, partnerUid, message }) {
@@ -98,11 +96,9 @@ export async function recordDmSend({ threadId, myUid, partnerUid, message }) {
 
 export async function markDmRead(myUid, threadId) {
   if (!myUid || !threadId) return;
-  try {
-    await update(dbRef(db, `dms/userIndex/${myUid}/${threadId}`), {
-      lastReadAt: Date.now(),
-    });
-  } catch (e) {}
+  await update(dbRef(db, `dms/userIndex/${myUid}/${threadId}`), {
+    lastReadAt: Date.now(),
+  });
 }
 
 export async function refreshDmThreadLastMessage({
@@ -117,25 +113,21 @@ export async function refreshDmThreadLastMessage({
   let lastMessageType = "text";
   let lastMessageFromUid = null;
 
-  try {
-    const latestRef = query(
-      dbRef(db, `dms/threads/${threadId}/messages`),
-      limitToLast(1),
-    );
-    const latestSnap = await get(latestRef);
-    if (latestSnap.exists()) {
-      const latestRaw = latestSnap.val() || {};
-      const latestMsg = Object.values(latestRaw)[0];
-      if (latestMsg && typeof latestMsg === "object") {
-        const summary = previewForMessage(latestMsg);
-        lastMessageAt = Number(latestMsg.timestamp || 0);
-        lastMessagePreview = summary.preview;
-        lastMessageType = summary.type;
-        lastMessageFromUid = latestMsg.uid || null;
-      }
+  const latestRef = query(
+    dbRef(db, `dms/threads/${threadId}/messages`),
+    limitToLast(1),
+  );
+  const latestSnap = await get(latestRef);
+  if (latestSnap.exists()) {
+    const latestRaw = latestSnap.val() || {};
+    const latestMsg = Object.values(latestRaw)[0];
+    if (latestMsg && typeof latestMsg === "object") {
+      const summary = previewForMessage(latestMsg);
+      lastMessageAt = Number(latestMsg.timestamp || 0);
+      lastMessagePreview = summary.preview;
+      lastMessageType = summary.type;
+      lastMessageFromUid = latestMsg.uid || null;
     }
-  } catch (e) {
-    return;
   }
 
   const metaUpdates = {

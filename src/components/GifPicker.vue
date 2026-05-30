@@ -15,7 +15,7 @@
             v-model="query"
             type="text"
             class="gif-search-input"
-            :placeholder="'Search Giphy'"
+            placeholder="Search Giphy"
             maxlength="80"
             @keydown.escape.prevent="handleEscape"
             @keydown.enter.prevent="submitSearch"
@@ -514,10 +514,6 @@ onMounted(() => {
 
 onUnmounted(() => {
   activeRequestId++;
-});
-
-defineExpose({
-  focus: () => inputRef.value?.focus(),
 });
 </script>
 

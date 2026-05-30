@@ -14,19 +14,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
 import WindowControls from "./WindowControls.vue";
+import { useTauri } from "../tauri";
 
-const isTauriApp = ref(false);
-
-onMounted(async () => {
-  try {
-    const { isTauri } = await import("@tauri-apps/api/core");
-    isTauriApp.value = await isTauri();
-  } catch {
-    isTauriApp.value = false;
-  }
-});
+const { isTauriApp } = useTauri();
 </script>
 
 <style scoped>

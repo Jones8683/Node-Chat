@@ -105,7 +105,7 @@
         <div
           class="chat-slot"
           v-show="selection.kind === 'channel'"
-          aria-hidden="selection.kind !== 'channel'"
+          :aria-hidden="selection.kind !== 'channel'"
         >
           <ChatRoom
             :user="user"
@@ -153,7 +153,6 @@
 
     <NewDmDialog
       v-if="showNewDmDialog"
-      :is-open="showNewDmDialog"
       :user="user"
       :all-users="allUsers"
       :presence-users="presenceUsers"
@@ -193,9 +192,9 @@ import {
 import { logoutCurrentUser } from "../authUtils";
 import {
   ensureDmThread,
-  ensureMyDmIndexEntry,
   partnerUidFromThread,
   markDmRead,
+  dmPreviewText,
 } from "../dmUtils";
 
 const ChatRoom = defineAsyncComponent(() => import("./ChatRoom.vue"));
@@ -219,7 +218,7 @@ const menuRef = ref(null);
 
 const selection = ref({ kind: "channel" });
 const channelUnread = ref(0);
-const knownDmThreads = ref(new Set());
+const hasLoadedDmIndex = ref(false);
 const hasEmittedReady = ref(false);
 const mountedDmThreads = ref([]);
 const dmPartners = ref({});
@@ -290,12 +289,9 @@ function buildPartnerSnapshot(partnerUid) {
 
 function ensureDmMounted(threadId, partnerUid) {
   if (!threadId || !partnerUid) return;
-  dmPartners.value = {
-    ...dmPartners.value,
-    [threadId]: buildPartnerSnapshot(partnerUid),
-  };
+  dmPartners.value[threadId] = buildPartnerSnapshot(partnerUid);
   if (!mountedDmThreads.value.includes(threadId)) {
-    mountedDmThreads.value = [...mountedDmThreads.value, threadId];
+    mountedDmThreads.value.push(threadId);
   }
 }
 
@@ -319,16 +315,10 @@ function handleSelect(sel) {
 
 async function handleStartDm(partner) {
   showNewDmDialog.value = false;
-  if (!partner?.uid) return;
-  if (partner.uid === props.user.uid) return;
-  try {
-    const threadId = await ensureDmThread(props.user.uid, partner.uid);
-    if (!threadId) return;
-    await ensureMyDmIndexEntry(props.user.uid, partner.uid, threadId);
-    handleSelect({ kind: "dm", threadId, partnerUid: partner.uid });
-  } catch (err) {
-    console.error("Failed to start DM:", err);
-  }
+  if (!partner?.uid || partner.uid === props.user.uid) return;
+  const threadId = await ensureDmThread(props.user.uid, partner.uid);
+  if (!threadId) return;
+  handleSelect({ kind: "dm", threadId, partnerUid: partner.uid });
 }
 
 function openSettings() {
@@ -343,12 +333,8 @@ function openAdmin() {
 
 async function logout() {
   showDropdown.value = false;
-  try {
-    await stopPresence();
-    await logoutCurrentUser();
-  } catch (err) {
-    console.error("Failed to sign out:", err);
-  }
+  await stopPresence();
+  await logoutCurrentUser();
 }
 
 function onChannelReady() {
@@ -370,17 +356,11 @@ function handleKeydown(e) {
   }
 }
 
-function previewBodyForDm(entry) {
-  if (!entry) return "";
-  if (entry.lastMessageType === "gif") return "🎞️ GIF";
-  return entry.lastMessagePreview || "";
-}
-
 function dmNotificationTitle(partnerUid) {
-  const u = allUsers.value[partnerUid];
-  if (u?.displayName) return u.displayName;
-  const p = presenceUsers.value[partnerUid]?.profile;
-  if (p?.displayName) return p.displayName;
+  const user = allUsers.value[partnerUid];
+  if (user?.displayName) return user.displayName;
+  const profile = presenceUsers.value[partnerUid]?.profile;
+  if (profile?.displayName) return profile.displayName;
   return "New message";
 }
 
@@ -403,9 +383,7 @@ onMounted(async () => {
   initBadge();
   document.title = "Node Chat";
   if (props.user.preferences?.notificationsEnabled) {
-    try {
-      await ensureNotificationPermission();
-    } catch {}
+    await ensureNotificationPermission();
   }
 
   document.addEventListener("click", handleClickOutside);
@@ -445,48 +423,36 @@ onMounted(async () => {
     dbRef(db, `dms/userIndex/${props.user.uid}`),
     (snap) => {
       const data = snap.exists() ? snap.val() : {};
-      const previous = knownDmThreads.value;
-      const next = new Set();
-      const isFirstLoad = previous.size === 0;
+      const isFirstLoad = !hasLoadedDmIndex.value;
+      hasLoadedDmIndex.value = true;
+      dmIndex.value = data;
+      if (isFirstLoad) return;
       for (const [threadId, entry] of Object.entries(data)) {
-        next.add(threadId);
         if (!entry) continue;
         const last = Number(entry.lastMessageAt || 0);
         const read = Number(entry.lastReadAt || 0);
-        if (
-          !isFirstLoad &&
-          last > read &&
+        const isFromOther =
           entry.lastMessageFromUid &&
-          entry.lastMessageFromUid !== props.user.uid
-        ) {
-          const onThisThread =
-            selection.value.kind === "dm" &&
-            selection.value.threadId === threadId;
-          if (onThisThread && !document.hidden) {
-            markDmRead(props.user.uid, threadId);
-          } else {
-            const shouldNotify =
-              !!props.user.preferences?.notificationsEnabled &&
-              (document.hidden || !onThisThread);
-            if (shouldNotify) {
-              const partnerUid =
-                entry.partnerUid ||
-                partnerUidFromThread(threadId, props.user.uid);
-              const title = dmNotificationTitle(partnerUid);
-              const body = previewBodyForDm(entry);
-              if (body) {
-                void sendSystemNotification({
-                  title,
-                  body,
-                  icon: "/icon.png",
-                });
-              }
-            }
-          }
+          entry.lastMessageFromUid !== props.user.uid;
+        if (last <= read || !isFromOther) continue;
+        const onThisThread =
+          selection.value.kind === "dm" &&
+          selection.value.threadId === threadId;
+        if (onThisThread && !document.hidden) {
+          markDmRead(props.user.uid, threadId);
+          continue;
         }
+        if (!props.user.preferences?.notificationsEnabled) continue;
+        const body = dmPreviewText(entry);
+        if (!body) continue;
+        const partnerUid =
+          entry.partnerUid || partnerUidFromThread(threadId, props.user.uid);
+        void sendSystemNotification({
+          title: dmNotificationTitle(partnerUid),
+          body,
+          icon: "/icon.png",
+        });
       }
-      knownDmThreads.value = next;
-      dmIndex.value = data;
     },
   );
 });

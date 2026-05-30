@@ -37,7 +37,6 @@ const props = defineProps({
   disabled: { type: Boolean, default: false },
   maxLength: { type: Number, default: 10000 },
   resolveMention: { type: Function, required: true },
-  currentUserUid: { type: String, default: "" },
 });
 
 const emit = defineEmits([
@@ -69,7 +68,6 @@ function isPill(node) {
 function createPillElement(uid, displayName) {
   const span = document.createElement("span");
   span.className = "mention";
-  if (uid === props.currentUserUid) span.className += " mention--me";
   span.setAttribute(PILL_ATTR, uid);
   span.setAttribute(PILL_NAME_ATTR, displayName);
   span.setAttribute("contenteditable", "false");
@@ -628,7 +626,6 @@ onMounted(() => {
 
 defineExpose({
   focus: focusEditor,
-  blur: () => rootRef.value?.blur(),
   getValue: serialize,
   getCaretOffset,
   getSelectionRange,
@@ -636,11 +633,6 @@ defineExpose({
   setSelectionToEnd,
   insertMentionAtRange,
   replaceRangeWithText,
-  insertTextAtCaret: (text) => {
-    insertTextAtCaret(text);
-    emitValue();
-  },
-  el: () => rootRef.value,
 });
 </script>
 
@@ -698,16 +690,6 @@ defineExpose({
 }
 
 .composer-editor :deep(.mention:hover) {
-  color: #4940da;
-  background: #ddd5ff;
-}
-
-.composer-editor :deep(.mention--me) {
-  color: #3e31bf;
-  background: #d3cbff;
-}
-
-.composer-editor :deep(.mention--me:hover) {
   color: #4940da;
   background: #ddd5ff;
 }

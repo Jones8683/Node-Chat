@@ -1,6 +1,6 @@
 <template>
   <transition name="modal-fade" appear>
-    <div v-if="isOpen" class="modal-overlay" @click="closeIfClickedOutside">
+    <div class="modal-overlay" @click="closeIfClickedOutside">
       <div class="modal-container" role="dialog" aria-modal="true">
         <div class="modal-header">
           <div>
@@ -87,13 +87,12 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
+import { ref, computed, watch, onMounted, nextTick } from "vue";
 import { X, Search } from "lucide-vue-next";
 import { getAvatarInitial, getAvatarStyle } from "../avatar";
 import { userIsOnline } from "../presence";
 
 const props = defineProps({
-  isOpen: Boolean,
   user: { type: Object, required: true },
   allUsers: { type: Object, default: () => ({}) },
   presenceUsers: { type: Object, default: () => ({}) },
@@ -142,19 +141,6 @@ watch(filtered, () => {
   activeIndex.value = 0;
 });
 
-watch(
-  () => props.isOpen,
-  (open) => {
-    if (open) {
-      searchQuery.value = "";
-      activeIndex.value = 0;
-      nextTick(() => {
-        inputRef.value?.focus();
-      });
-    }
-  },
-);
-
 function close() {
   emit("close");
 }
@@ -168,13 +154,12 @@ function select(row) {
 }
 
 function handleKeydown(e) {
-  if (!filtered.value.length) {
-    if (e.key === "Escape") {
-      e.preventDefault();
-      close();
-    }
+  if (e.key === "Escape") {
+    e.preventDefault();
+    close();
     return;
   }
+  if (!filtered.value.length) return;
   if (e.key === "ArrowDown") {
     e.preventDefault();
     activeIndex.value = (activeIndex.value + 1) % filtered.value.length;
@@ -186,22 +171,12 @@ function handleKeydown(e) {
     e.preventDefault();
     const row = filtered.value[activeIndex.value];
     if (row) select(row);
-  } else if (e.key === "Escape") {
-    e.preventDefault();
-    close();
   }
 }
 
-function onGlobalKeydown(e) {
-  if (!props.isOpen) return;
-  if (e.key === "Escape") {
-    e.preventDefault();
-    close();
-  }
-}
-
-onMounted(() => window.addEventListener("keydown", onGlobalKeydown));
-onUnmounted(() => window.removeEventListener("keydown", onGlobalKeydown));
+onMounted(() => {
+  nextTick(() => inputRef.value?.focus());
+});
 </script>
 
 <style scoped>
@@ -301,7 +276,7 @@ onUnmounted(() => window.removeEventListener("keydown", onGlobalKeydown));
 }
 
 .modal-close:focus-visible,
-.search-input:focus-visible {
+.user-search-input:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px rgba(90, 90, 240, 0.18);
 }

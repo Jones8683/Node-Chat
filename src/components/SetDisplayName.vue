@@ -42,7 +42,7 @@ const name = ref("");
 const error = ref("");
 const loading = ref(false);
 
-let previousTitle = "";
+let previousTitle = null;
 
 onMounted(() => {
   previousTitle = document.title;
@@ -50,7 +50,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  if (previousTitle) document.title = previousTitle;
+  if (previousTitle !== null) document.title = previousTitle;
 });
 
 async function submit() {
@@ -166,7 +166,7 @@ async function submit() {
   transition:
     border-color 180ms ease,
     box-shadow 180ms ease,
-    background 180ms ease;
+    background-color 180ms ease;
 }
 
 .field input:hover:not(:focus) {
@@ -213,7 +213,8 @@ async function submit() {
 }
 
 .submit-btn:focus-visible {
-  outline: none;
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .submit-btn:disabled {
@@ -228,20 +229,17 @@ async function submit() {
   text-align: center;
 }
 
-.field input,
-.auth-card {
+.field input {
   scrollbar-width: thin;
   scrollbar-color: rgba(44, 42, 39, 0.28) transparent;
 }
 
-.field input::-webkit-scrollbar,
-.auth-card::-webkit-scrollbar {
+.field input::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
-.field input::-webkit-scrollbar-thumb,
-.auth-card::-webkit-scrollbar-thumb {
+.field input::-webkit-scrollbar-thumb {
   background: rgba(44, 42, 39, 0.22);
   border-radius: 999px;
 }

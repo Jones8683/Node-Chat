@@ -106,7 +106,6 @@ textarea::-webkit-scrollbar-button,
   width: 0 !important;
 }
 
-.messages::-webkit-scrollbar,
 .online-panel-list::-webkit-scrollbar,
 .sidebar::-webkit-scrollbar,
 textarea::-webkit-scrollbar,
@@ -126,6 +125,7 @@ textarea::-webkit-scrollbar-track,
 .composer-editor::-webkit-scrollbar-track,
 .edit-input::-webkit-scrollbar-track {
   background: transparent;
+  cursor: default;
 }
 
 .messages::-webkit-scrollbar-thumb,
@@ -136,23 +136,8 @@ textarea::-webkit-scrollbar-thumb,
 .edit-input::-webkit-scrollbar-thumb {
   background: #2c2a271a;
   border-radius: 999px;
+  cursor: default;
   transition: background 160ms ease;
-  cursor: default;
-}
-
-.messages::-webkit-scrollbar,
-.online-panel-list::-webkit-scrollbar,
-.sidebar::-webkit-scrollbar,
-textarea::-webkit-scrollbar,
-.composer-editor::-webkit-scrollbar,
-.edit-input::-webkit-scrollbar,
-.messages::-webkit-scrollbar-track,
-.online-panel-list::-webkit-scrollbar-track,
-.sidebar::-webkit-scrollbar-track,
-textarea::-webkit-scrollbar-track,
-.composer-editor::-webkit-scrollbar-track,
-.edit-input::-webkit-scrollbar-track {
-  cursor: default;
 }
 
 .messages::-webkit-scrollbar-thumb:hover,

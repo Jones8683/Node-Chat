@@ -84,6 +84,7 @@ import { computed } from "vue";
 import { Plus } from "lucide-vue-next";
 import { getAvatarInitial, getAvatarStyle } from "../avatar";
 import { userIsOnline } from "../presence";
+import { dmPreviewText } from "../dmUtils";
 
 const props = defineProps({
   user: { type: Object, required: true },
@@ -96,12 +97,6 @@ const props = defineProps({
 });
 
 defineEmits(["select", "open-new-dm"]);
-
-function previewLine(entry) {
-  if (!entry) return "";
-  if (entry.lastMessageType === "gif") return "🎞️ GIF";
-  return entry.lastMessagePreview || "";
-}
 
 const dmRows = computed(() => {
   const entries = props.dmIndex || {};
@@ -128,7 +123,7 @@ const dmRows = computed(() => {
       partnerUid,
       displayName,
       avatarColor,
-      preview: previewLine(entry),
+      preview: dmPreviewText(entry),
       unread,
       isOnline,
       lastMessageAt: last,

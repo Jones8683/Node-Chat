@@ -32,7 +32,7 @@
         :is-open="showSettings"
         :user="user"
         @close="showSettings = false"
-        @refreshUser="refreshUser"
+        @refresh-user="refreshUser"
       />
 
       <AdminPanel

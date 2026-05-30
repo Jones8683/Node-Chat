@@ -41,7 +41,7 @@
         </div>
 
         <div class="modal-content">
-          <p v-if="adminActionError" class="error admin-action-error">
+          <p v-if="adminActionError" class="error">
             {{ adminActionError }}
           </p>
           <div v-if="activeTab === 'invites'">
@@ -369,11 +369,7 @@
                       <Pencil :size="13" stroke-width="2" />
                     </button>
                     <button
-                      v-if="
-                        canShowMuteButton(u.uid) &&
-                        ((isUserMuted(u.uid) && canUnmute(u.uid)) ||
-                          (!isUserMuted(u.uid) && canMute(u.uid)))
-                      "
+                      v-if="canShowMuteButton(u.uid)"
                       class="role-btn mute-btn"
                       :class="{ 'mute-btn--muted': isUserMuted(u.uid) }"
                       :disabled="mutingUid === u.uid"
@@ -1391,14 +1387,6 @@ function isUserMuted(uid) {
   return mutedUsers.value.has(uid);
 }
 
-function canMute(uid) {
-  return canShowMuteButton(uid);
-}
-
-function canUnmute(uid) {
-  return canShowMuteButton(uid);
-}
-
 function canShowMuteButton(uid) {
   if (uid === props.currentUserUid) return false;
   const currentIsOwner = isUserOwnerStatus(props.currentUserUid);
@@ -1561,13 +1549,9 @@ function startEditUsername(u) {
   editingUserName.value = u.displayName || "";
 }
 
-function clearEditUsername() {
+function cancelEditUsername() {
   editingUserId.value = null;
   editingUserName.value = "";
-}
-
-function cancelEditUsername() {
-  clearEditUsername();
 }
 
 async function saveUsername(uid) {
@@ -1577,18 +1561,18 @@ async function saveUsername(uid) {
   const oldName = u?.displayName || null;
 
   if (newName === oldName) {
-    clearEditUsername();
+    cancelEditUsername();
     return;
   }
 
   try {
     await adminRenameUser(uid, newName);
     if (u) u.displayName = newName;
-    clearEditUsername();
+    cancelEditUsername();
   } catch (e) {
     adminActionError.value =
       "Failed to update username: " + (e.message || "Unknown error");
-    clearEditUsername();
+    cancelEditUsername();
   }
 }
 </script>

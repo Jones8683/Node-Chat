@@ -24,10 +24,11 @@ function buildPattern(word) {
 }
 
 const SLUR_PATTERNS = SLUR_WORDS.map(buildPattern);
+const COMBINING_MARKS = /[̀-ͯ]/g;
 
 export function containsSlur(text) {
   if (!text) return false;
-  const normalized = text.normalize("NFKD").replace(/[̀-ͯ]/g, "");
+  const normalized = text.normalize("NFKD").replace(COMBINING_MARKS, "");
   for (const pattern of SLUR_PATTERNS) {
     if (pattern.test(normalized)) return true;
   }

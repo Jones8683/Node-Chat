@@ -169,7 +169,6 @@
                           v-model="editText"
                           :max-length="10000"
                           :resolve-mention="resolveMentionFromText"
-                          :current-user-uid="props.user.uid"
                           @submit="saveEdit(item.id)"
                           @keydown="handleEditKeydown($event, item.id)"
                           @input="handleEditInput($event, item.id)"
@@ -736,7 +735,6 @@
                 :max-length="10000"
                 :disabled="isMuted || (chatLocked && !isAdmin)"
                 :resolve-mention="resolveMentionFromText"
-                :current-user-uid="props.user.uid"
                 :placeholder="
                   isMuted
                     ? 'You are muted'
@@ -1924,7 +1922,7 @@ async function submitPoll() {
   const expiresAt = Date.now() + durationHours * 60 * 60 * 1000;
 
   try {
-    await push(dbRef(db, "messages"), {
+    await push(dbRef(db, messagesPath.value), {
       type: "poll",
       displayName: props.user.displayName,
       uid: props.user.uid,
@@ -2034,7 +2032,7 @@ async function togglePollVote(message, optionKey) {
 
   try {
     await set(
-      dbRef(db, `messages/${message.id}/pollVotes/${myUid}`),
+      dbRef(db, `${messagesPath.value}/${message.id}/pollVotes/${myUid}`),
       nextVotes,
     );
   } catch (err) {
@@ -2139,10 +2137,6 @@ function scrollToBottom() {
   setTimeout(() => {
     isScrollingSmooth.value = false;
   }, 1200);
-}
-
-function resizeComposer() {
-  return;
 }
 
 function escapeHtml(value) {
@@ -3029,14 +3023,12 @@ function handleComposerAreaMousedown(e) {
 }
 
 function handleComposerInput() {
-  resizeComposer();
   handleTyping();
   checkEmojiTrigger();
   checkMentionTrigger("composer");
 }
 
 function handleEditInput(event, id) {
-  resizeEditInput(event.target);
   checkMentionTrigger(`edit:${id}`);
 }
 
@@ -3119,12 +3111,13 @@ function subscribeMessages() {
         sorted.forEach((msg) => knownIds.add(msg.id));
         initialLoadDone = true;
       } else {
+        let dmNeedsRead = false;
         sorted.forEach((msg) => {
           if (!knownIds.has(msg.id)) {
             knownIds.add(msg.id);
             if (!isPagingHistory && msg.uid !== props.user.uid) {
               if (isDm.value && props.isActive && !document.hidden) {
-                markDmRead(props.user.uid, props.threadId);
+                dmNeedsRead = true;
               }
               if (!isDm.value && props.isActive && document.hidden) {
                 unreadCount++;
@@ -3173,6 +3166,7 @@ function subscribeMessages() {
             }
           }
         });
+        if (dmNeedsRead) markDmRead(props.user.uid, props.threadId);
       }
 
       messages.value = sorted;
@@ -3295,21 +3289,18 @@ onMounted(async () => {
 
   await initMessages();
   startLiveNowTicker();
-  nextTick(resizeComposer);
 
   if (isDm.value && props.isActive) {
     nextTick(() => focusComposer());
   }
 
-  if (!isDm.value) {
-    const warmEmoji = () => {
-      ensureEmojiReady().catch(() => {});
-    };
-    if (typeof window.requestIdleCallback === "function") {
-      window.requestIdleCallback(warmEmoji, { timeout: 4000 });
-    } else {
-      setTimeout(warmEmoji, 2000);
-    }
+  const warmEmoji = () => {
+    ensureEmojiReady().catch(() => {});
+  };
+  if (typeof window.requestIdleCallback === "function") {
+    window.requestIdleCallback(warmEmoji, { timeout: 4000 });
+  } else {
+    setTimeout(warmEmoji, 2000);
   }
 });
 
@@ -3419,10 +3410,6 @@ function startEdit(msg) {
 function cancelEdit() {
   editingId.value = null;
   editText.value = "";
-}
-
-function resizeEditInput() {
-  return;
 }
 
 async function saveEdit(id) {
@@ -3560,13 +3547,11 @@ async function sendMessage() {
   const gifUrl = parseGifUrlFromText(text);
   if (gifUrl) {
     newMessage.value = "";
-    nextTick(resizeComposer);
     clearTimeout(typingTimeout);
     if (myTypingRef) remove(myTypingRef).catch(() => {});
     const dims = await probeGifDimensions(gifUrl);
     if (!dims.width || !dims.height) {
       newMessage.value = text;
-      nextTick(resizeComposer);
       return;
     }
     await sendGif({
@@ -3582,7 +3567,6 @@ async function sendMessage() {
   }
 
   newMessage.value = "";
-  nextTick(resizeComposer);
 
   clearTimeout(typingTimeout);
   if (myTypingRef) remove(myTypingRef).catch(() => {});
@@ -3622,7 +3606,6 @@ async function sendMessage() {
     newMessage.value = text;
     replyingTo.value = replySnapshot;
     totalCount--;
-    nextTick(resizeComposer);
   }
 }
 
