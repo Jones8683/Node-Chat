@@ -20,6 +20,8 @@
             <input
               ref="inputRef"
               v-model="searchQuery"
+              id="new-dm-search"
+              name="new-dm-search"
               type="text"
               class="user-search-input"
               placeholder="Search members"

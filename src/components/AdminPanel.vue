@@ -274,6 +274,8 @@
                 />
                 <input
                   ref="userSearchInputRef"
+                  id="admin-user-search"
+                  name="admin-user-search"
                   type="text"
                   class="user-search-input"
                   placeholder="Search users"
@@ -315,6 +317,8 @@
                             <input
                               class="username-edit-input"
                               v-model="editingUserName"
+                              :id="`edit-username-${u.uid}`"
+                              :name="`edit-username-${u.uid}`"
                               @keydown.enter="saveUsername(u.uid)"
                               @keydown.escape="cancelEditUsername"
                               maxlength="12"

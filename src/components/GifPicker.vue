@@ -13,6 +13,8 @@
           <input
             ref="inputRef"
             v-model="query"
+            id="gif-search"
+            name="gif-search"
             type="text"
             class="gif-search-input"
             placeholder="Search Giphy"

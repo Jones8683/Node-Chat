@@ -911,6 +911,7 @@
               <div class="poll-input-wrap">
                 <input
                   id="poll-question-input"
+                  name="poll-question"
                   ref="pollQuestionRef"
                   v-model="pollDialog.question"
                   type="text"
@@ -936,6 +937,8 @@
                 >
                   <input
                     v-model="pollDialog.options[idx]"
+                    :id="`poll-answer-${idx}`"
+                    :name="`poll-answer-${idx}`"
                     type="text"
                     class="poll-text-input poll-text-input--answer"
                     placeholder="Type your answer"
