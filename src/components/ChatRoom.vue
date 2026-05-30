@@ -3233,6 +3233,10 @@ watch(
   (active) => {
     if (active && !document.hidden) {
       resetUnread();
+      nextTick(() => {
+        const container = messageContainer.value;
+        if (container) container.scrollTop = container.scrollHeight;
+      });
       if (isDm.value) {
         markDmRead(props.user.uid, props.threadId);
         nextTick(() => focusComposer());

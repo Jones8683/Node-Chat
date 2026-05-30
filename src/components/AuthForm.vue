@@ -402,8 +402,7 @@ async function submitSignup() {
 }
 
 .tab-btn:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline: none;
 }
 
 .field {
@@ -515,8 +514,7 @@ async function submitSignup() {
 }
 
 .toggle-pw:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline: none;
   border-radius: 4px;
 }
 
@@ -551,8 +549,7 @@ async function submitSignup() {
 }
 
 .submit-btn:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline: none;
 }
 
 .submit-btn:disabled {

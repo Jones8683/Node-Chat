@@ -16,7 +16,7 @@
           alt=""
           aria-hidden="true"
         />
-        <span class="sidebar-row-name">Node Chat</span>
+        <span class="sidebar-row-name">Node Central</span>
         <span v-if="channelUnread > 0" class="unread-count">{{
           channelUnread > 99 ? "99+" : channelUnread
         }}</span>
