@@ -107,7 +107,9 @@
           <span class="gif-spinner" aria-hidden="true"></span>
         </div>
         <div v-else-if="!gifs.length" class="gif-empty">
-          <span v-if="query.trim()">No GIFs found for "{{ query }}"</span>
+          <span v-if="committedQuery.trim()"
+            >No GIFs found for "{{ committedQuery }}"</span
+          >
           <span v-else>No GIFs to show</span>
         </div>
 
