@@ -162,6 +162,10 @@ function isRowActive(row) {
   margin-top: 6px;
 }
 
+.sidebar-section:first-child {
+  margin-top: 0;
+}
+
 .sidebar-section-head {
   display: flex;
   align-items: center;
