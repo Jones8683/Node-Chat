@@ -144,14 +144,14 @@ function isRowActive(row) {
 
 <style scoped>
 .sidebar {
-  width: 232px;
+  width: var(--sidebar-width, 232px);
   flex-shrink: 0;
   background: var(--surface);
   display: flex;
   flex-direction: column;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 4px 8px 16px;
+  padding: 4px 8px calc(16px + env(safe-area-inset-bottom));
   gap: 6px;
 }
 
@@ -357,5 +357,37 @@ function isRowActive(row) {
   height: 8px;
   border-radius: 50%;
   background: var(--accent);
+}
+
+@media (max-width: 640px) {
+  .sidebar {
+    width: 100%;
+    padding: 8px 10px calc(20px + env(safe-area-inset-bottom));
+    gap: 8px;
+  }
+
+  .sidebar-section {
+    margin-top: 8px;
+  }
+
+  .sidebar-section-head {
+    padding: 8px 10px 6px;
+  }
+
+  .sidebar-row {
+    min-height: 44px;
+    padding: 8px 10px;
+    border-radius: 10px;
+  }
+
+  .sidebar-row::before {
+    left: -10px;
+  }
+
+  .channel-logo,
+  .dm-avatar {
+    width: 32px;
+    height: 32px;
+  }
 }
 </style>

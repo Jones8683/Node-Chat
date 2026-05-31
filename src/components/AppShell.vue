@@ -26,7 +26,7 @@
           <span class="online-btn-count">{{ onlineUsers.length }} online</span>
         </button>
         <div class="user-menu" ref="menuRef">
-          <button class="user-btn" @click="showDropdown = !showDropdown">
+          <button class="user-btn" @click="toggleUserMenu">
             <div
               class="avatar"
               :style="
@@ -310,7 +310,22 @@ function onSidebarMouseLeave() {
 
 function toggleSidebar() {
   hoverExpanded.value = false;
-  sidebarOpen.value = !sidebarOpen.value;
+  const next = !sidebarOpen.value;
+  if (isMobileViewport.value && next) {
+    showDropdown.value = false;
+    onlinePanelOpen.value = false;
+  }
+  sidebarOpen.value = next;
+}
+
+function toggleUserMenu() {
+  const next = !showDropdown.value;
+  if (isMobileViewport.value && next) {
+    sidebarOpen.value = false;
+    hoverExpanded.value = false;
+    onlinePanelOpen.value = false;
+  }
+  showDropdown.value = next;
 }
 
 const SWIPE_TRIGGER_DISTANCE = 60;
@@ -666,6 +681,7 @@ onUnmounted(() => {
   overflow: hidden;
   min-height: 0;
   padding-bottom: env(safe-area-inset-bottom);
+  overscroll-behavior: none;
 }
 
 .shell-header {
@@ -769,6 +785,7 @@ onUnmounted(() => {
 
 @media (min-width: 641px) {
   .shell-sidebar {
+    --sidebar-width: 232px;
     transition: margin-left 470ms var(--ease-soft);
     will-change: margin-left;
   }
@@ -793,6 +810,7 @@ onUnmounted(() => {
   min-height: 0;
   height: 100%;
   overflow: hidden;
+  transition: filter 220ms ease;
 }
 
 .chat-slot {
@@ -1061,9 +1079,16 @@ onUnmounted(() => {
 
 @media (max-width: 640px) {
   .shell-header {
-    padding: 0 6px;
+    height: 52px;
+    min-height: 52px;
+    padding: 0 8px;
     gap: 6px;
     border-bottom: 1px solid var(--border);
+  }
+  .menu-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
   }
   .shell-divider {
     display: none;
@@ -1080,15 +1105,18 @@ onUnmounted(() => {
   }
   .shell-body {
     position: relative;
+    overscroll-behavior: contain;
   }
   .shell-sidebar {
+    --sidebar-width: 100%;
     position: absolute;
     top: 0;
     left: 0;
     bottom: 0;
     z-index: 50;
-    width: 84vw;
-    max-width: 300px;
+    width: min(88vw, 340px);
+    max-width: none;
+    border-right: 1px solid var(--border);
     transform: translateX(-100%);
     transition:
       transform 390ms var(--ease-out-quint),
@@ -1100,25 +1128,38 @@ onUnmounted(() => {
     transform: translateX(0);
     box-shadow: 4px 0 24px rgba(0, 0, 0, 0.18);
   }
+  .shell.sidebar-open .shell-main {
+    pointer-events: none;
+    filter: saturate(0.96) brightness(0.98);
+  }
   .mobile-scrim {
     display: block;
     position: absolute;
     inset: 0;
-    background: rgba(0, 0, 0, 0.4);
+    background: rgba(0, 0, 0, 0.34);
     z-index: 40;
-    -webkit-backdrop-filter: blur(2px);
-    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(3px);
+    backdrop-filter: blur(3px);
+    touch-action: none;
+  }
+  .shell-actions {
+    gap: 2px;
   }
   .user-btn {
-    padding: 4px 6px;
+    padding: 5px 7px;
   }
   .avatar {
-    width: 26px;
-    height: 26px;
+    width: 27px;
+    height: 27px;
     font-size: 11px;
   }
   .chevron {
     display: none;
+  }
+  .dropdown {
+    right: 6px;
+    top: calc(100% + 6px);
+    max-width: min(320px, calc(100vw - 12px));
   }
 }
 </style>
