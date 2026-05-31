@@ -322,6 +322,26 @@
               <div class="pref-card">
                 <div class="pref-row">
                   <div class="pref-info">
+                    <div class="pref-label">Auto sidebar behavior</div>
+                    <div class="pref-desc">
+                      When enabled, a collapsed sidebar auto-expands near the
+                      left edge and auto-closes again after you navigate.
+                    </div>
+                  </div>
+                  <button
+                    class="toggle-switch"
+                    :class="{ active: autoSidebarBehavior }"
+                    @click="toggleAutoSidebarBehavior"
+                    :aria-pressed="autoSidebarBehavior"
+                    aria-label="Toggle auto sidebar behavior"
+                  >
+                    <span class="toggle-switch__thumb"></span>
+                  </button>
+                </div>
+              </div>
+              <div class="pref-card">
+                <div class="pref-row">
+                  <div class="pref-info">
                     <div class="pref-label">Show timestamps</div>
                     <div class="pref-desc">
                       Display the time next to each message in chat.
@@ -512,6 +532,13 @@ const showTimestamps = computed(
 const timeFormat = computed(() =>
   props.user?.preferences?.timeFormat === "24h" ? "24h" : "12h",
 );
+const autoSidebarBehavior = computed(() => {
+  const prefs = props.user?.preferences || {};
+  if (typeof prefs.autoSidebarBehavior === "boolean") {
+    return prefs.autoSidebarBehavior;
+  }
+  return prefs.autoExpandSidebar === true || prefs.autoCollapseSidebar === true;
+});
 
 const notifError = ref("");
 const notifBlocked = ref(false);
@@ -598,6 +625,17 @@ async function setTimeFormat(format) {
   } catch {
     timestampError.value = "Failed to save time format preference.";
   }
+}
+
+async function toggleAutoSidebarBehavior() {
+  const next = !autoSidebarBehavior.value;
+  try {
+    await writePreferences({
+      autoSidebarBehavior: next,
+      autoExpandSidebar: next,
+      autoCollapseSidebar: next,
+    });
+  } catch {}
 }
 
 function onRevealBeforeEnter(el) {
@@ -1264,6 +1302,10 @@ async function changePassword() {
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 16px 18px;
+}
+
+.pref-card + .pref-card {
+  margin-top: 12px;
 }
 
 .pref-row {

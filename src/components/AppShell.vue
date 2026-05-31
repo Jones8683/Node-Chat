@@ -1,12 +1,12 @@
 <template>
-  <div class="shell" :class="{ 'sidebar-open': sidebarOpen }">
+  <div class="shell" :class="{ 'sidebar-open': effectiveSidebarOpen }">
     <div class="shell-header" data-tauri-drag-region>
       <button
         type="button"
         class="menu-btn"
         :aria-label="sidebarOpen ? 'Close sidebar' : 'Open sidebar'"
         :aria-expanded="sidebarOpen"
-        @click="sidebarOpen = !sidebarOpen"
+        @click="toggleSidebar"
       >
         <Menu :size="20" stroke-width="2.2" />
       </button>
@@ -106,10 +106,7 @@
       @touchcancel.passive="handleBodyTouchEnd"
     >
       <svg class="shell-divider" aria-hidden="true">
-        <path
-          d="M 0 0 H 8 A 8 8 0 0 0 0 8 Z"
-          fill="var(--surface)"
-        />
+        <path d="M 0 0 H 8 A 8 8 0 0 0 0 8 Z" fill="var(--surface)" />
         <path
           d="M 0.5 99999 V 8 Q 0.5 0.5 8 0.5 H 99999"
           fill="none"
@@ -118,6 +115,11 @@
           shape-rendering="geometricPrecision"
         />
       </svg>
+      <div
+        v-if="hoverZoneActive"
+        class="sidebar-hover-zone"
+        @mouseenter="hoverExpanded = true"
+      ></div>
       <Sidebar
         class="shell-sidebar"
         :user="user"
@@ -129,6 +131,7 @@
         :channel-unread="channelUnread"
         @select="handleSelect"
         @open-new-dm="onOpenNewDm"
+        @mouseleave="onSidebarMouseLeave"
       />
       <transition name="scrim-fade">
         <div
@@ -252,6 +255,34 @@ const showNewDmDialog = ref(false);
 const onlinePanelOpen = ref(false);
 const menuRef = ref(null);
 const sidebarOpen = ref(window.innerWidth > 640);
+const hoverExpanded = ref(false);
+
+const effectiveSidebarOpen = computed(
+  () => sidebarOpen.value || hoverExpanded.value,
+);
+
+const autoSidebarBehaviorEnabled = computed(() => {
+  const prefs = props.user?.preferences || {};
+  if (typeof prefs.autoSidebarBehavior === "boolean") {
+    return prefs.autoSidebarBehavior;
+  }
+  return prefs.autoExpandSidebar === true || prefs.autoCollapseSidebar === true;
+});
+
+const hoverZoneActive = computed(() => {
+  if (window.innerWidth <= 640) return false;
+  if (sidebarOpen.value) return false;
+  return autoSidebarBehaviorEnabled.value;
+});
+
+function onSidebarMouseLeave() {
+  if (hoverExpanded.value) hoverExpanded.value = false;
+}
+
+function toggleSidebar() {
+  hoverExpanded.value = false;
+  sidebarOpen.value = !sidebarOpen.value;
+}
 
 const SWIPE_TRIGGER_DISTANCE = 60;
 const SWIPE_HORIZONTAL_BIAS = 1.5;
@@ -305,8 +336,19 @@ function handleBodyTouchEnd() {
 }
 
 function onOpenNewDm() {
-  if (window.innerWidth <= 640) sidebarOpen.value = false;
+  if (shouldCollapseOnNavigate()) {
+    sidebarOpen.value = false;
+    hoverExpanded.value = false;
+  }
   showNewDmDialog.value = true;
+}
+
+function shouldCollapseOnNavigate() {
+  const isTouchDevice =
+    window.matchMedia?.("(pointer: coarse)")?.matches ||
+    "ontouchstart" in window;
+  if (window.innerWidth <= 640 && isTouchDevice) return true;
+  return autoSidebarBehaviorEnabled.value;
 }
 
 const selection = ref({ kind: "channel" });
@@ -404,7 +446,10 @@ function handleSelect(sel) {
   } else {
     selection.value = { kind: "channel" };
   }
-  if (window.innerWidth <= 640) sidebarOpen.value = false;
+  if (shouldCollapseOnNavigate()) {
+    sidebarOpen.value = false;
+    hoverExpanded.value = false;
+  }
 }
 
 async function handleStartDm(partner) {
@@ -667,6 +712,15 @@ onUnmounted(() => {
   pointer-events: none;
   overflow: hidden;
   z-index: 5;
+}
+
+.sidebar-hover-zone {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 12px;
+  z-index: 10;
 }
 
 @media (min-width: 641px) {
