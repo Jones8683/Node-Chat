@@ -671,14 +671,16 @@ onUnmounted(() => {
 
 @media (min-width: 641px) {
   .shell-sidebar {
-    transition: margin-left 260ms var(--ease-out-quint);
+    transition: margin-left 320ms var(--ease-soft);
+    will-change: margin-left;
   }
   .shell:not(.sidebar-open) .shell-sidebar {
     margin-left: -232px;
   }
   .shell-divider {
     left: 232px;
-    transition: left 260ms var(--ease-out-quint);
+    transition: left 320ms var(--ease-soft);
+    will-change: left;
   }
   .shell:not(.sidebar-open) .shell-divider {
     left: -8px;
