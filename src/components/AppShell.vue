@@ -4,8 +4,8 @@
       <button
         type="button"
         class="menu-btn"
-        :aria-label="sidebarOpen ? 'Close sidebar' : 'Open sidebar'"
-        :aria-expanded="sidebarOpen"
+        :aria-label="effectiveSidebarOpen ? 'Close sidebar' : 'Open sidebar'"
+        :aria-expanded="effectiveSidebarOpen"
         @click="toggleSidebar"
       >
         <Menu :size="20" stroke-width="2.2" />
@@ -254,7 +254,20 @@ const showDropdown = ref(false);
 const showNewDmDialog = ref(false);
 const onlinePanelOpen = ref(false);
 const menuRef = ref(null);
-const sidebarOpen = ref(window.innerWidth > 640);
+const MOBILE_BREAKPOINT = 640;
+const isMobileViewport = ref(window.innerWidth <= MOBILE_BREAKPOINT);
+
+function isAutoSidebarBehaviorEnabledFromPrefs() {
+  const prefs = props.user?.preferences || {};
+  if (typeof prefs.autoSidebarBehavior === "boolean") {
+    return prefs.autoSidebarBehavior;
+  }
+  return prefs.autoExpandSidebar === true || prefs.autoCollapseSidebar === true;
+}
+
+const sidebarOpen = ref(
+  !isMobileViewport.value && !isAutoSidebarBehaviorEnabledFromPrefs(),
+);
 const hoverExpanded = ref(false);
 
 const effectiveSidebarOpen = computed(
@@ -262,18 +275,34 @@ const effectiveSidebarOpen = computed(
 );
 
 const autoSidebarBehaviorEnabled = computed(() => {
-  const prefs = props.user?.preferences || {};
-  if (typeof prefs.autoSidebarBehavior === "boolean") {
-    return prefs.autoSidebarBehavior;
-  }
-  return prefs.autoExpandSidebar === true || prefs.autoCollapseSidebar === true;
+  return isAutoSidebarBehaviorEnabledFromPrefs();
 });
 
 const hoverZoneActive = computed(() => {
-  if (window.innerWidth <= 640) return false;
+  if (isMobileViewport.value) return false;
   if (sidebarOpen.value) return false;
   return autoSidebarBehaviorEnabled.value;
 });
+
+function applySidebarModeForViewport() {
+  hoverExpanded.value = false;
+  if (isMobileViewport.value) {
+    sidebarOpen.value = false;
+    return;
+  }
+  if (autoSidebarBehaviorEnabled.value) {
+    sidebarOpen.value = false;
+    return;
+  }
+  sidebarOpen.value = true;
+}
+
+function updateViewportState() {
+  const nextIsMobile = window.innerWidth <= MOBILE_BREAKPOINT;
+  if (nextIsMobile === isMobileViewport.value) return;
+  isMobileViewport.value = nextIsMobile;
+  applySidebarModeForViewport();
+}
 
 function onSidebarMouseLeave() {
   if (hoverExpanded.value) hoverExpanded.value = false;
@@ -301,7 +330,7 @@ function shouldIgnoreSwipeTarget(target) {
 }
 
 function handleBodyTouchStart(e) {
-  if (window.innerWidth > 640) return;
+  if (!isMobileViewport.value) return;
   if (e.touches.length !== 1) return;
   if (shouldIgnoreSwipeTarget(e.target)) return;
   touchState.startX = e.touches[0].clientX;
@@ -344,10 +373,7 @@ function onOpenNewDm() {
 }
 
 function shouldCollapseOnNavigate() {
-  const isTouchDevice =
-    window.matchMedia?.("(pointer: coarse)")?.matches ||
-    "ontouchstart" in window;
-  if (window.innerWidth <= 640 && isTouchDevice) return true;
+  if (isMobileViewport.value) return true;
   return autoSidebarBehaviorEnabled.value;
 }
 
@@ -407,6 +433,21 @@ function recomputeBadge() {
 }
 
 watch(dmUnreadTotal, recomputeBadge);
+
+watch(autoSidebarBehaviorEnabled, (enabled, previous) => {
+  if (enabled === previous) return;
+  if (isMobileViewport.value) {
+    hoverExpanded.value = false;
+    sidebarOpen.value = false;
+    return;
+  }
+  if (enabled) {
+    hoverExpanded.value = false;
+    sidebarOpen.value = false;
+    return;
+  }
+  sidebarOpen.value = true;
+});
 
 function buildPartnerSnapshot(partnerUid) {
   const partnerData = allUsers.value[partnerUid] || {};
@@ -529,6 +570,9 @@ onMounted(async () => {
   document.addEventListener("keydown", handleKeydown);
   document.addEventListener("visibilitychange", handleAppForeground);
   window.addEventListener("focus", handleAppForeground);
+  window.addEventListener("resize", updateViewportState);
+
+  applySidebarModeForViewport();
 
   await startPresence({
     uid: props.user.uid,
@@ -601,6 +645,7 @@ onUnmounted(() => {
   document.removeEventListener("keydown", handleKeydown);
   document.removeEventListener("visibilitychange", handleAppForeground);
   window.removeEventListener("focus", handleAppForeground);
+  window.removeEventListener("resize", updateViewportState);
   if (usersListener) usersListener();
   if (presenceListener) presenceListener();
   if (ownerListener) ownerListener();
@@ -724,7 +769,7 @@ onUnmounted(() => {
 
 @media (min-width: 641px) {
   .shell-sidebar {
-    transition: margin-left 420ms var(--ease-soft);
+    transition: margin-left 470ms var(--ease-soft);
     will-change: margin-left;
   }
   .shell:not(.sidebar-open) .shell-sidebar {
@@ -732,7 +777,7 @@ onUnmounted(() => {
   }
   .shell-divider {
     left: 232px;
-    transition: left 420ms var(--ease-soft);
+    transition: left 470ms var(--ease-soft);
     will-change: left;
   }
   .shell:not(.sidebar-open) .shell-divider {
@@ -1045,7 +1090,10 @@ onUnmounted(() => {
     width: 84vw;
     max-width: 300px;
     transform: translateX(-100%);
-    transition: transform 340ms var(--ease-out-quint);
+    transition:
+      transform 390ms var(--ease-out-quint),
+      box-shadow 390ms var(--ease-soft);
+    box-shadow: 0 0 0 rgba(0, 0, 0, 0);
     will-change: transform;
   }
   .shell.sidebar-open .shell-sidebar {
