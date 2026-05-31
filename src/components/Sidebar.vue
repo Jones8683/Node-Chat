@@ -147,7 +147,6 @@ function isRowActive(row) {
   width: 232px;
   flex-shrink: 0;
   background: var(--surface);
-  border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   overflow-y: auto;

@@ -105,6 +105,19 @@
       @touchend.passive="handleBodyTouchEnd"
       @touchcancel.passive="handleBodyTouchEnd"
     >
+      <svg class="shell-divider" aria-hidden="true">
+        <path
+          d="M 232 0 H 240 A 8 8 0 0 0 232 8 Z"
+          fill="var(--surface)"
+        />
+        <path
+          d="M 231.5 99999 V 8 Q 231.5 0.5 239 0.5 H 99999"
+          fill="none"
+          stroke="var(--border)"
+          stroke-width="1"
+          shape-rendering="geometricPrecision"
+        />
+      </svg>
       <Sidebar
         class="shell-sidebar"
         :user="user"
@@ -572,7 +585,6 @@ onUnmounted(() => {
   justify-content: space-between;
   padding: 0 8px 0 14px;
   height: 48px;
-  border-bottom: 1px solid var(--border);
   flex-shrink: 0;
   background: var(--surface);
   gap: 12px;
@@ -638,10 +650,21 @@ onUnmounted(() => {
 }
 
 .shell-body {
+  position: relative;
   display: flex;
   flex: 1;
   min-height: 0;
   overflow: hidden;
+}
+
+.shell-divider {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 5;
 }
 
 .shell-main {
@@ -925,6 +948,10 @@ onUnmounted(() => {
   .shell-header {
     padding: 0 6px;
     gap: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  .shell-divider {
+    display: none;
   }
   .shell-wordmark {
     display: none;
