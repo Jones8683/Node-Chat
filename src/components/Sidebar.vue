@@ -151,7 +151,7 @@ function isRowActive(row) {
   flex-direction: column;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 12px 8px 16px;
+  padding: 4px 8px 16px;
   gap: 6px;
 }
 

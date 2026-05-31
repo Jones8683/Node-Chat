@@ -583,7 +583,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 8px 0 14px;
+  padding: 0 8px 0 6px;
   height: 48px;
   flex-shrink: 0;
   background: var(--surface);
@@ -596,7 +596,7 @@ onUnmounted(() => {
   justify-content: center;
   width: 36px;
   height: 36px;
-  background: none;
+  background: var(--surface-2);
   border: none;
   color: var(--text);
   border-radius: 8px;
@@ -607,7 +607,7 @@ onUnmounted(() => {
 
 .menu-btn:hover,
 .menu-btn:active {
-  background: var(--surface-2);
+  background: rgba(44, 42, 39, 0.1);
 }
 
 .shell-brand {
@@ -632,7 +632,7 @@ onUnmounted(() => {
 }
 
 .shell-wordmark {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--text);
   letter-spacing: -0.2px;
