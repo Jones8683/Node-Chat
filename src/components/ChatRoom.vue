@@ -604,7 +604,7 @@
               </div>
               <span class="typing-names">
                 <template v-if="typingSummary.overflow">
-                  <strong>{{ typingSummary.names[0] }}</strong>
+                  <span class="typing-name">{{ typingSummary.names[0] }}</span>
                   and {{ typingSummary.overflow }}
                   {{ typingSummary.overflow === 1 ? "other" : "others" }}
                 </template>
@@ -613,7 +613,7 @@
                     v-for="(name, i) in typingSummary.names"
                     :key="name"
                   >
-                    <strong>{{ name }}</strong>
+                    <span class="typing-name">{{ name }}</span>
                     <template v-if="i < typingSummary.names.length - 2"
                       >,
                     </template>
@@ -4875,14 +4875,14 @@ function handleQuickReaction(emoji) {
   min-width: 0;
 }
 
-.typing-names strong {
+.typing-name {
   max-width: 140px;
   overflow: hidden;
   text-overflow: ellipsis;
   display: inline-block;
   vertical-align: bottom;
-  font-weight: 600;
-  color: var(--text);
+  font-weight: 400;
+  color: inherit;
 }
 
 .chat-banner-stack {
