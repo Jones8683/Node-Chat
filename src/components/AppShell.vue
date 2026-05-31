@@ -492,7 +492,6 @@ function handleClickOutside(e) {
 function handleKeydown(e) {
   if (e.key === "Escape") {
     if (showDropdown.value) showDropdown.value = false;
-    if (sidebarOpen.value) sidebarOpen.value = false;
   }
 }
 
@@ -725,7 +724,7 @@ onUnmounted(() => {
 
 @media (min-width: 641px) {
   .shell-sidebar {
-    transition: margin-left 320ms var(--ease-soft);
+    transition: margin-left 420ms var(--ease-soft);
     will-change: margin-left;
   }
   .shell:not(.sidebar-open) .shell-sidebar {
@@ -733,7 +732,7 @@ onUnmounted(() => {
   }
   .shell-divider {
     left: 232px;
-    transition: left 320ms var(--ease-soft);
+    transition: left 420ms var(--ease-soft);
     will-change: left;
   }
   .shell:not(.sidebar-open) .shell-divider {
@@ -1046,7 +1045,7 @@ onUnmounted(() => {
     width: 84vw;
     max-width: 300px;
     transform: translateX(-100%);
-    transition: transform 260ms var(--ease-out-quint);
+    transition: transform 340ms var(--ease-out-quint);
     will-change: transform;
   }
   .shell.sidebar-open .shell-sidebar {
