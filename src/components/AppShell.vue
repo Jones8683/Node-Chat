@@ -1,12 +1,12 @@
 <template>
-  <div class="shell" :class="{ 'sidebar-open': mobileSidebarOpen }">
+  <div class="shell" :class="{ 'sidebar-open': sidebarOpen }">
     <div class="shell-header" data-tauri-drag-region>
       <button
         type="button"
-        class="mobile-menu-btn"
-        :aria-label="mobileSidebarOpen ? 'Close sidebar' : 'Open sidebar'"
-        :aria-expanded="mobileSidebarOpen"
-        @click="mobileSidebarOpen = !mobileSidebarOpen"
+        class="menu-btn"
+        :aria-label="sidebarOpen ? 'Close sidebar' : 'Open sidebar'"
+        :aria-expanded="sidebarOpen"
+        @click="sidebarOpen = !sidebarOpen"
       >
         <Menu :size="20" stroke-width="2.2" />
       </button>
@@ -107,11 +107,11 @@
     >
       <svg class="shell-divider" aria-hidden="true">
         <path
-          d="M 232 0 H 240 A 8 8 0 0 0 232 8 Z"
+          d="M 0 0 H 8 A 8 8 0 0 0 0 8 Z"
           fill="var(--surface)"
         />
         <path
-          d="M 231.5 99999 V 8 Q 231.5 0.5 239 0.5 H 99999"
+          d="M 0.5 99999 V 8 Q 0.5 0.5 8 0.5 H 99999"
           fill="none"
           stroke="var(--border)"
           stroke-width="1"
@@ -132,9 +132,9 @@
       />
       <transition name="scrim-fade">
         <div
-          v-if="mobileSidebarOpen"
+          v-if="sidebarOpen"
           class="mobile-scrim"
-          @click="mobileSidebarOpen = false"
+          @click="sidebarOpen = false"
         ></div>
       </transition>
       <div class="shell-main">
@@ -251,7 +251,7 @@ const showDropdown = ref(false);
 const showNewDmDialog = ref(false);
 const onlinePanelOpen = ref(false);
 const menuRef = ref(null);
-const mobileSidebarOpen = ref(false);
+const sidebarOpen = ref(window.innerWidth > 640);
 
 const SWIPE_TRIGGER_DISTANCE = 60;
 const SWIPE_HORIZONTAL_BIAS = 1.5;
@@ -291,11 +291,11 @@ function handleBodyTouchMove(e) {
         : "vertical";
   }
   if (touchState.intent !== "horizontal") return;
-  if (!mobileSidebarOpen.value && dx > SWIPE_TRIGGER_DISTANCE) {
-    mobileSidebarOpen.value = true;
+  if (!sidebarOpen.value && dx > SWIPE_TRIGGER_DISTANCE) {
+    sidebarOpen.value = true;
     touchState.active = false;
-  } else if (mobileSidebarOpen.value && dx < -SWIPE_TRIGGER_DISTANCE) {
-    mobileSidebarOpen.value = false;
+  } else if (sidebarOpen.value && dx < -SWIPE_TRIGGER_DISTANCE) {
+    sidebarOpen.value = false;
     touchState.active = false;
   }
 }
@@ -305,7 +305,7 @@ function handleBodyTouchEnd() {
 }
 
 function onOpenNewDm() {
-  mobileSidebarOpen.value = false;
+  if (window.innerWidth <= 640) sidebarOpen.value = false;
   showNewDmDialog.value = true;
 }
 
@@ -404,7 +404,7 @@ function handleSelect(sel) {
   } else {
     selection.value = { kind: "channel" };
   }
-  mobileSidebarOpen.value = false;
+  if (window.innerWidth <= 640) sidebarOpen.value = false;
 }
 
 async function handleStartDm(partner) {
@@ -447,7 +447,7 @@ function handleClickOutside(e) {
 function handleKeydown(e) {
   if (e.key === "Escape") {
     if (showDropdown.value) showDropdown.value = false;
-    if (mobileSidebarOpen.value) mobileSidebarOpen.value = false;
+    if (sidebarOpen.value) sidebarOpen.value = false;
   }
 }
 
@@ -590,8 +590,8 @@ onUnmounted(() => {
   gap: 12px;
 }
 
-.mobile-menu-btn {
-  display: none;
+.menu-btn {
+  display: flex;
   align-items: center;
   justify-content: center;
   width: 36px;
@@ -605,8 +605,8 @@ onUnmounted(() => {
   transition: background 140ms ease;
 }
 
-.mobile-menu-btn:hover,
-.mobile-menu-btn:active {
+.menu-btn:hover,
+.menu-btn:active {
   background: var(--surface-2);
 }
 
@@ -647,6 +647,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 4px;
   flex-shrink: 0;
+  margin-left: auto;
 }
 
 .shell-body {
@@ -659,12 +660,29 @@ onUnmounted(() => {
 
 .shell-divider {
   position: absolute;
-  inset: 0;
+  left: 0;
+  top: 0;
   width: 100%;
   height: 100%;
   pointer-events: none;
   overflow: hidden;
   z-index: 5;
+}
+
+@media (min-width: 641px) {
+  .shell-sidebar {
+    transition: margin-left 260ms var(--ease-out-quint);
+  }
+  .shell:not(.sidebar-open) .shell-sidebar {
+    margin-left: -232px;
+  }
+  .shell-divider {
+    left: 232px;
+    transition: left 260ms var(--ease-out-quint);
+  }
+  .shell:not(.sidebar-open) .shell-divider {
+    left: -8px;
+  }
 }
 
 .shell-main {
@@ -942,9 +960,6 @@ onUnmounted(() => {
 }
 
 @media (max-width: 640px) {
-  .mobile-menu-btn {
-    display: flex;
-  }
   .shell-header {
     padding: 0 6px;
     gap: 6px;
