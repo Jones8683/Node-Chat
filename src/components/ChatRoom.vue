@@ -3270,9 +3270,9 @@ watch(
         const container = messageContainer.value;
         if (container) container.scrollTop = container.scrollHeight;
       });
+      nextTick(() => focusComposer());
       if (isDm.value) {
         markDmRead(props.user.uid, props.threadId);
-        nextTick(() => focusComposer());
       }
     }
   },
@@ -3327,7 +3327,7 @@ onMounted(async () => {
   await initMessages();
   startLiveNowTicker();
 
-  if (isDm.value && props.isActive) {
+  if (props.isActive && !document.hidden) {
     nextTick(() => focusComposer());
   }
 
