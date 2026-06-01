@@ -1159,8 +1159,8 @@ onUnmounted(() => {
     border-right: 1px solid var(--border);
     transform: translateX(-100%);
     transition:
-      transform 390ms var(--ease-out-quint),
-      box-shadow 390ms var(--ease-soft);
+      transform 280ms var(--ease-out-quint),
+      box-shadow 280ms var(--ease-soft);
     box-shadow: 0 0 0 rgba(0, 0, 0, 0);
     will-change: transform;
   }
@@ -1170,16 +1170,15 @@ onUnmounted(() => {
   }
   .shell.sidebar-open .shell-main {
     pointer-events: none;
-    filter: saturate(0.96) brightness(0.98);
   }
   .mobile-scrim {
     display: block;
     position: absolute;
     inset: 0;
-    background: rgba(0, 0, 0, 0.34);
+    background: rgba(0, 0, 0, 0.28);
     z-index: 40;
-    -webkit-backdrop-filter: blur(3px);
-    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
     touch-action: none;
   }
   .shell-actions {
@@ -1187,6 +1186,12 @@ onUnmounted(() => {
   }
   .user-btn {
     padding: 5px 7px;
+  }
+  .menu-btn,
+  .user-btn,
+  .online-btn,
+  .dropdown-item {
+    touch-action: manipulation;
   }
   .avatar {
     width: 27px;

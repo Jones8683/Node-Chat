@@ -389,5 +389,10 @@ function isRowActive(row) {
     width: 32px;
     height: 32px;
   }
+
+  .sidebar-row,
+  .sidebar-add-btn {
+    touch-action: manipulation;
+  }
 }
 </style>
