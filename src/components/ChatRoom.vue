@@ -6753,9 +6753,9 @@ textarea::placeholder {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  height: 24px;
-  padding: 0 7px;
+  gap: 4px;
+  height: 28px;
+  padding: 0 6px;
   border-radius: 8px;
   border: 1px solid transparent;
   background: rgba(44, 42, 39, 0.06);
@@ -6828,7 +6828,7 @@ textarea::placeholder {
 .reaction-emoji {
   display: inline-flex;
   align-items: center;
-  font-size: 16px;
+  font-size: 20px;
   line-height: 1;
 }
 

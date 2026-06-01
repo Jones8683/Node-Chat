@@ -189,10 +189,18 @@ img.twemoji {
   margin: 0 1px;
 }
 
+.reaction-emoji {
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .reaction-emoji img.twemoji {
   height: 16px;
   width: 16px;
-  vertical-align: -3px;
+  vertical-align: 0;
 }
 
 .reaction-picker-btn img.twemoji {
