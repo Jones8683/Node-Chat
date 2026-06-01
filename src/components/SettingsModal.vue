@@ -342,6 +342,26 @@
               <div class="pref-card">
                 <div class="pref-row">
                   <div class="pref-info">
+                    <div class="pref-label">Show DM previews</div>
+                    <div class="pref-desc">
+                      Display the latest text from direct messages in the
+                      sidebar.
+                    </div>
+                  </div>
+                  <button
+                    class="toggle-switch"
+                    :class="{ active: showDmPreviews }"
+                    @click="toggleShowDmPreviews"
+                    :aria-pressed="showDmPreviews"
+                    aria-label="Toggle DM previews in the sidebar"
+                  >
+                    <span class="toggle-switch__thumb"></span>
+                  </button>
+                </div>
+              </div>
+              <div class="pref-card">
+                <div class="pref-row">
+                  <div class="pref-info">
                     <div class="pref-label">Show timestamps</div>
                     <div class="pref-desc">
                       Display the time next to each message in chat.
@@ -529,6 +549,9 @@ const notificationMode = computed(
 const showTimestamps = computed(
   () => props.user?.preferences?.showTimestamps !== false,
 );
+const showDmPreviews = computed(
+  () => props.user?.preferences?.showDmPreviews !== false,
+);
 const timeFormat = computed(() =>
   props.user?.preferences?.timeFormat === "24h" ? "24h" : "12h",
 );
@@ -615,6 +638,12 @@ async function toggleShowTimestamps() {
   } catch {
     timestampError.value = "Failed to save timestamp preference.";
   }
+}
+
+async function toggleShowDmPreviews() {
+  try {
+    await writePreferences({ showDmPreviews: !showDmPreviews.value });
+  } catch {}
 }
 
 async function setTimeFormat(format) {

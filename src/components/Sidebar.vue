@@ -73,7 +73,9 @@
         </div>
         <div class="dm-text">
           <div class="dm-name">{{ row.displayName }}</div>
-          <div class="dm-preview">{{ row.preview }}</div>
+          <div v-if="showDmPreviews" class="dm-preview">
+            {{ row.preview }}
+          </div>
         </div>
         <span v-if="row.unread" class="unread-dot" aria-label="Unread"></span>
       </button>
@@ -134,6 +136,10 @@ const dmRows = computed(() => {
   rows.sort((a, b) => b.lastMessageAt - a.lastMessageAt);
   return rows;
 });
+
+const showDmPreviews = computed(
+  () => props.user?.preferences?.showDmPreviews !== false,
+);
 
 function isRowActive(row) {
   return (
