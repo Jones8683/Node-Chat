@@ -4213,7 +4213,7 @@ function handleQuickReaction(emoji) {
 
 .jump-to-bottom {
   position: absolute;
-  bottom: 88px;
+  bottom: 20px;
   right: 20px;
   width: 38px;
   height: 38px;
