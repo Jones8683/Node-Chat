@@ -763,7 +763,7 @@ onUnmounted(() => {
 
 .shell-wordmark {
   font-family: var(--font-brand);
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 800;
   color: var(--text);
   letter-spacing: -0.01em;
