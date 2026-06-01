@@ -487,6 +487,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 import { auth, db } from "../firebase";
 import copy from "clipboard-copy";
+import { getAvatarInitial } from "../avatar";
 import {
   X,
   Copy,
@@ -1120,10 +1121,6 @@ function formatRemaining(timestamp) {
   } catch (e) {
     return formatDate(timestamp);
   }
-}
-
-function getAvatarInitial(name) {
-  return (name && name[0]?.toUpperCase()) || "?";
 }
 
 function resolveLiveActorName(ev) {
