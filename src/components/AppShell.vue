@@ -4,11 +4,22 @@
       <button
         type="button"
         class="menu-btn"
-        :aria-label="effectiveSidebarOpen ? 'Close sidebar' : 'Open sidebar'"
+        :aria-label="
+          effectiveSidebarOpen
+            ? 'Close sidebar'
+            : unreadTotal > 0
+              ? 'Open sidebar. You have unread chats.'
+              : 'Open sidebar'
+        "
         :aria-expanded="effectiveSidebarOpen"
         @click="toggleSidebar"
       >
         <Menu :size="20" stroke-width="2.2" />
+        <span
+          v-if="unreadTotal > 0"
+          class="menu-unread-dot"
+          aria-hidden="true"
+        ></span>
       </button>
       <div class="shell-brand">
         <img src="/icon.png" class="shell-logo" alt="" aria-hidden="true" />
@@ -441,8 +452,10 @@ const dmUnreadTotal = computed(() => {
   return total;
 });
 
+const unreadTotal = computed(() => channelUnread.value + dmUnreadTotal.value);
+
 function recomputeBadge() {
-  const total = channelUnread.value + dmUnreadTotal.value;
+  const total = unreadTotal.value;
   if (total > 0) updateBadge(total);
   else clearBadge();
 }
@@ -699,6 +712,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
   width: 36px;
   height: 36px;
   background: var(--surface-2);
@@ -713,6 +727,17 @@ onUnmounted(() => {
 .menu-btn:hover,
 .menu-btn:active {
   background: rgba(44, 42, 39, 0.1);
+}
+
+.menu-unread-dot {
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: var(--accent);
+  pointer-events: none;
 }
 
 .shell-brand {
@@ -1091,6 +1116,13 @@ onUnmounted(() => {
     width: 40px;
     height: 40px;
     border-radius: 10px;
+  }
+
+  .menu-unread-dot {
+    top: 0;
+    right: 0;
+    width: 8px;
+    height: 8px;
   }
   .shell-divider {
     display: none;
