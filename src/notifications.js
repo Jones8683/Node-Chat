@@ -23,17 +23,6 @@ async function getTauriNotificationModule() {
   return tauriNotificationModulePromise;
 }
 
-async function isWindowsTauri() {
-  if (!isTauri()) return false;
-  if (typeof navigator === "undefined") return false;
-  const uaData = navigator.userAgentData;
-  if (uaData && typeof uaData.platform === "string") {
-    return uaData.platform.toLowerCase().includes("win");
-  }
-  const ua = String(navigator.userAgent || "").toLowerCase();
-  return ua.includes("windows");
-}
-
 export function notificationsSupported() {
   if (isTauri()) return true;
   return typeof window !== "undefined" && "Notification" in window;
@@ -105,12 +94,10 @@ async function sendTauriNotification({ title, body, icon }) {
       return false;
     }
 
-    const nativeSoundEnabled = await isWindowsTauri();
-
     await notification.sendNotification({
       title: title.slice(0, 256),
       body: body.slice(0, 256),
-      silent: !nativeSoundEnabled,
+      silent: true,
       ...(icon ? { icon } : {}),
     });
 
