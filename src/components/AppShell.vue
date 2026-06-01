@@ -409,6 +409,7 @@ const hasLoadedDmIndex = ref(false);
 const hasEmittedReady = ref(false);
 const mountedDmThreads = ref([]);
 const dmPartners = ref({});
+const isAppVisible = ref(!document.hidden);
 
 const userColor = computed(() => props.user?.preferences?.avatarColor || null);
 
@@ -442,7 +443,11 @@ const dmUnreadTotal = computed(() => {
   let total = 0;
   const entries = dmIndex.value || {};
   for (const [threadId, entry] of Object.entries(entries)) {
-    if (selection.value.kind === "dm" && selection.value.threadId === threadId)
+    if (
+      isAppVisible.value &&
+      selection.value.kind === "dm" &&
+      selection.value.threadId === threadId
+    )
       continue;
     if (!entry) continue;
     const last = Number(entry.lastMessageAt || 0);
@@ -573,6 +578,7 @@ function dmNotificationTitle(partnerUid) {
 }
 
 function handleAppForeground() {
+  isAppVisible.value = !document.hidden;
   if (document.hidden) return;
   document.title = "Node Chat";
   if (selection.value.kind === "dm") {
