@@ -30,7 +30,7 @@ on:
         required: true
 
 concurrency:
-  group: tauri-installer-${{ github.ref }}
+  group: build-node-chat-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
