@@ -178,7 +178,7 @@ function detachWindowListeners() {
 
 export async function startPresence(user) {
   if (!user || !user.uid) return;
-  if (currentUid && currentUid !== user.uid) {
+  if (currentUid || connectedUnsub || heartbeatTimer) {
     await stopPresence();
   }
   currentUid = user.uid;

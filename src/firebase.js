@@ -1,5 +1,9 @@
-import { initializeApp } from "firebase/app";
-import { browserLocalPersistence, initializeAuth } from "firebase/auth";
+import { getApp, getApps, initializeApp } from "firebase/app";
+import {
+  browserLocalPersistence,
+  getAuth,
+  initializeAuth,
+} from "firebase/auth";
 import { getDatabase } from "firebase/database";
 
 const firebaseConfig = {
@@ -12,9 +16,20 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-const app = initializeApp(firebaseConfig);
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
-export const auth = initializeAuth(app, {
-  persistence: browserLocalPersistence,
-});
+function createAuth() {
+  try {
+    return initializeAuth(app, {
+      persistence: browserLocalPersistence,
+    });
+  } catch (error) {
+    if (error?.code === "auth/already-initialized") {
+      return getAuth(app);
+    }
+    throw error;
+  }
+}
+
+export const auth = createAuth();
 export const db = getDatabase(app);

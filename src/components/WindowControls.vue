@@ -127,6 +127,7 @@ async function closeWindow() {
     background 0.15s ease,
     color 0.15s ease;
   padding: 0;
+  -webkit-user-select: none;
   user-select: none;
   line-height: 1;
   flex-shrink: 0;

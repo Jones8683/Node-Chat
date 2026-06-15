@@ -31,13 +31,20 @@
           class="online-btn"
           :class="{ active: onlinePanelOpen }"
           title="Members"
+          aria-label="Toggle online members"
+          :aria-expanded="onlinePanelOpen"
           @click="onlinePanelOpen = !onlinePanelOpen"
         >
           <span class="online-btn-dot"></span>
           <span class="online-btn-count">{{ onlineUsers.length }} online</span>
         </button>
         <div class="user-menu" ref="menuRef">
-          <button class="user-btn" @click="toggleUserMenu">
+          <button
+            class="user-btn"
+            aria-label="Open account menu"
+            :aria-expanded="showDropdown"
+            @click="toggleUserMenu"
+          >
             <div
               class="avatar"
               :style="
@@ -229,10 +236,7 @@ import { getAvatarInitial, getAvatarStyle } from "../avatar";
 import WindowControls from "./WindowControls.vue";
 import Sidebar from "./Sidebar.vue";
 import { initBadge, updateBadge, clearBadge } from "../faviconBadge";
-import {
-  ensureNotificationPermission,
-  sendSystemNotification,
-} from "../notifications";
+import { sendSystemNotification } from "../notifications";
 import {
   startPresence,
   stopPresence,
@@ -596,9 +600,6 @@ watch(
 onMounted(async () => {
   initBadge();
   document.title = "Node Chat";
-  if (props.user.preferences?.notificationsEnabled) {
-    await ensureNotificationPermission();
-  }
 
   document.addEventListener("click", handleClickOutside);
   document.addEventListener("keydown", handleKeydown);
@@ -752,8 +753,8 @@ onUnmounted(() => {
   gap: 9px;
   flex-shrink: 0;
   pointer-events: none;
-  user-select: none;
   -webkit-user-select: none;
+  user-select: none;
 }
 
 .shell-logo {
@@ -763,8 +764,8 @@ onUnmounted(() => {
   flex-shrink: 0;
   pointer-events: none;
   -webkit-user-drag: none;
-  user-select: none;
   -webkit-user-select: none;
+  user-select: none;
 }
 
 .shell-wordmark {
@@ -776,8 +777,8 @@ onUnmounted(() => {
   line-height: 1;
   white-space: nowrap;
   pointer-events: none;
-  user-select: none;
   -webkit-user-select: none;
+  user-select: none;
 }
 
 .shell-actions {

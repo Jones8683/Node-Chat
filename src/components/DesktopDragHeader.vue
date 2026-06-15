@@ -37,8 +37,8 @@ const { isTauriApp } = useTauri();
   align-items: center;
   gap: 8px;
   pointer-events: none;
-  user-select: none;
   -webkit-user-select: none;
+  user-select: none;
 }
 
 .desktop-titlebar-logo {
@@ -47,8 +47,8 @@ const { isTauriApp } = useTauri();
   object-fit: contain;
   pointer-events: none;
   -webkit-user-drag: none;
-  user-select: none;
   -webkit-user-select: none;
+  user-select: none;
 }
 
 .desktop-titlebar-wordmark {
@@ -58,7 +58,7 @@ const { isTauriApp } = useTauri();
   color: var(--text);
   white-space: nowrap;
   pointer-events: none;
-  user-select: none;
   -webkit-user-select: none;
+  user-select: none;
 }
 </style>

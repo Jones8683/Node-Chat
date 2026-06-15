@@ -286,8 +286,8 @@ function isRowActive(row) {
   object-fit: contain;
   flex-shrink: 0;
   -webkit-user-drag: none;
-  user-select: none;
   -webkit-user-select: none;
+  user-select: none;
   pointer-events: none;
 }
 

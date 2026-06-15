@@ -7,7 +7,12 @@
             <h2 class="modal-title">Settings</h2>
             <p class="modal-subtitle">Account and profile</p>
           </div>
-          <button type="button" class="modal-close" @click="close">
+          <button
+            type="button"
+            class="modal-close"
+            aria-label="Close settings"
+            @click="close"
+          >
             <X :size="20" stroke-width="2" />
           </button>
         </div>

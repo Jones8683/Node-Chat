@@ -173,6 +173,7 @@
                           ref="editInputRef"
                           v-model="editText"
                           :max-length="10000"
+                          aria-label="Edit message"
                           :resolve-mention="resolveMentionFromText"
                           @submit="saveEdit(item.id)"
                           @keydown="handleEditKeydown($event, item.id)"
@@ -750,6 +751,7 @@
                 v-model="newMessage"
                 class="message-composer"
                 :max-length="10000"
+                :aria-label="isDm ? 'Direct message' : 'Message Node Central'"
                 :disabled="isMuted || (chatLocked && !isAdmin)"
                 :resolve-mention="resolveMentionFromText"
                 :placeholder="
@@ -3872,8 +3874,8 @@ function handleQuickReaction(emoji) {
   gap: 9px;
   flex-shrink: 0;
   pointer-events: none;
-  user-select: none;
   -webkit-user-select: none;
+  user-select: none;
 }
 
 .header-logo {
@@ -3883,8 +3885,8 @@ function handleQuickReaction(emoji) {
   flex-shrink: 0;
   pointer-events: none;
   -webkit-user-drag: none;
-  user-select: none;
   -webkit-user-select: none;
+  user-select: none;
 }
 
 .header-wordmark {
@@ -3894,8 +3896,8 @@ function handleQuickReaction(emoji) {
   letter-spacing: -0.2px;
   white-space: nowrap;
   pointer-events: none;
-  user-select: none;
   -webkit-user-select: none;
+  user-select: none;
 }
 
 .header-actions {
@@ -6043,8 +6045,9 @@ textarea::placeholder {
   border-radius: 12px;
   background: transparent;
   box-shadow: none;
-  user-select: none;
   -webkit-user-drag: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .gif-lightbox-close {
@@ -6488,6 +6491,7 @@ textarea::placeholder {
   justify-content: space-between;
   gap: 12px;
   cursor: pointer;
+  -webkit-user-select: none;
   user-select: none;
   flex: 1;
   min-width: 0;

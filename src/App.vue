@@ -57,6 +57,7 @@ import {
 import { onAuthStateChanged } from "firebase/auth";
 import { ref as dbRef, onValue } from "firebase/database";
 import { auth, db } from "./firebase";
+import { stopPresence } from "./presence";
 
 const AuthForm = defineAsyncComponent(
   () => import("./components/AuthForm.vue"),
@@ -106,7 +107,11 @@ let initialAdminStatus = null;
 function applyUser(authUser, data) {
   const displayName = (data?.displayName || authUser.displayName || "").trim();
   user.value = {
-    ...authUser,
+    uid: authUser.uid,
+    email: authUser.email || data?.email || "",
+    emailVerified: authUser.emailVerified === true,
+    photoURL: authUser.photoURL || null,
+    providerId: authUser.providerId || null,
     displayName,
     preferences: data?.preferences || {},
   };
@@ -168,6 +173,7 @@ onMounted(() => {
     chatReady.value = false;
 
     if (!authUser) {
+      void stopPresence();
       user.value = null;
       status.value = "unauthenticated";
       return;

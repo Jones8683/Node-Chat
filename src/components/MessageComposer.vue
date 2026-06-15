@@ -10,10 +10,10 @@
     :contenteditable="disabled ? 'false' : 'true'"
     spellcheck="true"
     autocorrect="off"
-    autocapitalize="sentences"
     enterkeyhint="send"
     role="textbox"
     aria-multiline="true"
+    :aria-label="ariaLabel"
     @input="onInput"
     @keydown="onKeydown"
     @beforeinput="onBeforeInput"
@@ -34,6 +34,7 @@ import { twemojifyNode, isTwemojiImg } from "../twemoji";
 const props = defineProps({
   modelValue: { type: String, default: "" },
   placeholder: { type: String, default: "" },
+  ariaLabel: { type: String, default: "Message text" },
   disabled: { type: Boolean, default: false },
   maxLength: { type: Number, default: 10000 },
   resolveMention: { type: Function, required: true },
@@ -682,8 +683,8 @@ defineExpose({
   text-decoration: none;
   cursor: pointer;
   vertical-align: baseline;
-  user-select: none;
   -webkit-user-select: none;
+  user-select: none;
   transition:
     background 0.12s ease,
     color 0.12s ease;

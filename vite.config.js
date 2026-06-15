@@ -2,6 +2,9 @@ import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 
 const host = process.env.TAURI_DEV_HOST;
+const securityHeaders = {
+  "X-Content-Type-Options": "nosniff",
+};
 
 export default defineConfig({
   plugins: [vue()],
@@ -10,12 +13,16 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     host: host || "localhost",
+    headers: securityHeaders,
     hmr: host
       ? { protocol: "ws", host, port: 5174 }
       : { host: "localhost", port: 5173 },
     watch: {
       ignored: ["**/src-tauri/**"],
     },
+  },
+  preview: {
+    headers: securityHeaders,
   },
   envPrefix: ["VITE_", "TAURI_ENV_*"],
   optimizeDeps: {
