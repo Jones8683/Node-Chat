@@ -502,7 +502,7 @@ import {
   MicOff,
   Mic,
   Search,
-} from "lucide-vue-next";
+} from "@lucide/vue";
 import {
   ref as dbRef,
   query,

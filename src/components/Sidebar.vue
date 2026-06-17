@@ -85,7 +85,7 @@
 
 <script setup>
 import { computed } from "vue";
-import { Plus } from "lucide-vue-next";
+import { Plus } from "@lucide/vue";
 import { getAvatarInitial, getAvatarStyle } from "../avatar";
 import { userIsOnline } from "../presence";
 import { dmPreviewText } from "../dmUtils";

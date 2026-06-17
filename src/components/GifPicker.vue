@@ -147,7 +147,7 @@
 
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from "vue";
-import { Search, X, Clock } from "lucide-vue-next";
+import { Search, X, Clock } from "@lucide/vue";
 
 const props = defineProps({
   isOpen: { type: Boolean, default: false },

@@ -31,7 +31,7 @@ export default defineConfig({
       "firebase/app",
       "firebase/auth",
       "firebase/database",
-      "lucide-vue-next",
+      "@lucide/vue",
       "clipboard-copy",
       "crypto-random-string",
     ],
@@ -46,7 +46,7 @@ export default defineConfig({
           if (id.includes("node_modules/firebase")) return "firebase";
           if (id.includes("node_modules/@emoji-mart/data")) return "emoji-data";
           if (id.includes("node_modules/emoji-mart")) return "emoji-lib";
-          if (id.includes("node_modules/lucide-vue-next")) return "icons";
+          if (id.includes("node_modules/@lucide/vue")) return "icons";
           if (id.includes("node_modules/@tauri-apps")) return "tauri";
         },
       },

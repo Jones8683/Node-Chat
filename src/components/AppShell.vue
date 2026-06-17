@@ -231,7 +231,7 @@ import {
 } from "vue";
 import { db } from "../firebase";
 import { ref as dbRef, onValue } from "firebase/database";
-import { Settings2, LogOut, ShieldCheck, Menu } from "lucide-vue-next";
+import { Settings2, LogOut, ShieldCheck, Menu } from "@lucide/vue";
 import { getAvatarInitial, getAvatarStyle } from "../avatar";
 import WindowControls from "./WindowControls.vue";
 import Sidebar from "./Sidebar.vue";

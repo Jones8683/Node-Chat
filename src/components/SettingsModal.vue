@@ -441,7 +441,7 @@ import { ref, watch, onMounted, onUnmounted, computed } from "vue";
 import { auth, db } from "../firebase";
 import { reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth";
 import { ref as dbRef, update } from "firebase/database";
-import { X, Eye, EyeOff } from "lucide-vue-next";
+import { X, Eye, EyeOff } from "@lucide/vue";
 import {
   changeAvatarColor,
   changeDisplayName,

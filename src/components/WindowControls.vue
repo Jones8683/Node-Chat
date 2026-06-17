@@ -59,7 +59,7 @@
 </template>
 
 <script setup>
-import { Minus, X } from "lucide-vue-next";
+import { Minus, X } from "@lucide/vue";
 import { useTauri } from "../tauri";
 
 defineProps({

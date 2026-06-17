@@ -129,7 +129,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from "vue";
 import { loginWithPassword, signupWithToken } from "../authUtils";
-import { Eye, EyeOff } from "lucide-vue-next";
+import { Eye, EyeOff } from "@lucide/vue";
 import DesktopDragHeader from "./DesktopDragHeader.vue";
 
 const isLogin = ref(true);

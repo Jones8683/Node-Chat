@@ -90,7 +90,7 @@
 
 <script setup>
 import { ref, computed, watch, nextTick } from "vue";
-import { X, Search } from "lucide-vue-next";
+import { X, Search } from "@lucide/vue";
 import { getAvatarInitial, getAvatarStyle } from "../avatar";
 import { userIsOnline } from "../presence";
 

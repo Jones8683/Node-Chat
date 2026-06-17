@@ -1222,7 +1222,7 @@ import {
   ChartBarBig,
   Film,
   SmilePlus,
-} from "lucide-vue-next";
+} from "@lucide/vue";
 import { twemojify } from "../twemoji";
 const GifPicker = defineAsyncComponent(() => import("./GifPicker.vue"));
 
