@@ -13,7 +13,7 @@
     "windows": [
       {
         "title": "Node Chat",
-        "theme": "Dark",
+        "theme": "Light",
         "width": 950,
         "height": 700,
         "minWidth": 450,
