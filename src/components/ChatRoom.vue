@@ -3496,6 +3496,9 @@ async function saveEdit(id) {
       if (Object.keys(updates).length > 0)
         await update(dbRef(db, messagesPath.value), updates);
     }
+    if (isDm.value) {
+      await refreshDmPreviewAfterEdit();
+    }
   } catch (err) {
     console.error("Failed to save edit:", err);
   }
@@ -3514,6 +3517,18 @@ async function markReplyRefsDeleted(id) {
 }
 
 async function refreshDmPreviewAfterDelete() {
+  if (!isDm.value || !props.threadId || !props.user?.uid) return;
+  const partnerUid =
+    props.partner?.uid || partnerUidFromThread(props.threadId, props.user.uid);
+  if (!partnerUid) return;
+  await refreshDmThreadLastMessage({
+    threadId: props.threadId,
+    myUid: props.user.uid,
+    partnerUid,
+  });
+}
+
+async function refreshDmPreviewAfterEdit() {
   if (!isDm.value || !props.threadId || !props.user?.uid) return;
   const partnerUid =
     props.partner?.uid || partnerUidFromThread(props.threadId, props.user.uid);
