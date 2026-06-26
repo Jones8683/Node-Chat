@@ -5,7 +5,6 @@
         <div class="modal-header">
           <div>
             <h2 class="modal-title">Settings</h2>
-            <p class="modal-subtitle">Account and profile</p>
           </div>
           <button
             type="button"
@@ -957,12 +956,6 @@ async function changePassword() {
   font-weight: 700;
   color: var(--text);
   margin: 0 0 4px 0;
-}
-
-.modal-subtitle {
-  font-size: 13px;
-  color: var(--text-muted);
-  margin: 0;
 }
 
 .modal-close {
