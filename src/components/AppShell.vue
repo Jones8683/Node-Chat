@@ -833,6 +833,7 @@ onUnmounted(() => {
   }
   .shell:not(.sidebar-open) .shell-divider {
     left: -8px;
+    width: calc(100% + 8px);
   }
 }
 
