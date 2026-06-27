@@ -110,24 +110,17 @@
                 <div class="control-card-top" style="flex: 1; min-width: 0">
                   <div class="control-title">Lock Chat</div>
                   <div class="control-desc">
-                    Prevent non-admins from sending messages.
+                    When locked, only admins can send messages.
                   </div>
                 </div>
                 <button
-                  class="lock-toggle-btn"
-                  :class="{ 'lock-toggle-btn--locked': chatLocked }"
+                  class="toggle-switch"
+                  :class="{ active: chatLocked }"
                   @click="toggleChatLock"
-                  :disabled="lockLoading"
+                  :aria-pressed="chatLocked"
+                  aria-label="Toggle chat lock"
                 >
-                  <Lock v-if="!chatLocked" :size="12" stroke-width="2.5" />
-                  <Unlock v-else :size="12" stroke-width="2.5" />
-                  {{
-                    lockLoading
-                      ? "..."
-                      : chatLocked
-                        ? "Unlock Chat"
-                        : "Lock Chat"
-                  }}
+                  <span class="toggle-switch__thumb"></span>
                 </button>
               </div>
               <div
@@ -135,11 +128,26 @@
                 :class="{ 'lock-status--locked': chatLocked }"
               >
                 <span class="lock-status-dot"></span>
-                <span>{{
-                  chatLocked
-                    ? "Chat is locked — only admins can send messages"
-                    : "Chat is open — all users can send messages"
-                }}</span>
+                <span>{{ chatLocked ? "Locked • admins only" : "Open" }}</span>
+              </div>
+            </div>
+
+            <div class="control-card-flat">
+              <div class="lock-row">
+                <div class="control-card-top" style="flex: 1; min-width: 0">
+                  <div class="control-title">Force Refresh</div>
+                  <div class="control-desc">
+                    Reload the app for all connected users immediately.
+                  </div>
+                </div>
+                <button
+                  class="control-action-btn"
+                  @click="forceRefreshAll"
+                  :disabled="forceRefreshing"
+                >
+                  <RefreshCw :size="12" stroke-width="2.5" />
+                  {{ forceRefreshing ? "..." : "Refresh All" }}
+                </button>
               </div>
             </div>
 
@@ -497,8 +505,7 @@ import {
   AlertTriangle,
   ChevronDown,
   Check,
-  Lock,
-  Unlock,
+  RefreshCw,
   MicOff,
   Mic,
   Search,
@@ -570,6 +577,7 @@ const purgeDropdownRef = ref(null);
 
 const chatLocked = ref(false);
 const lockLoading = ref(false);
+const forceRefreshing = ref(false);
 let settingsListener = null;
 
 const mutedUsers = ref(new Set());
@@ -1155,6 +1163,7 @@ function formatAuditAction(action) {
     demote: "User demoted",
     lock_chat: "Chat locked",
     unlock_chat: "Chat unlocked",
+    force_refresh: "Force refresh",
     purge_messages: "Messages purged",
     invite_create: "Invite created",
     invite_delete: "Invite deleted",
@@ -1188,6 +1197,8 @@ function formatAuditText(ev) {
       return `${actor} locked the chat${details}`;
     case "unlock_chat":
       return `${actor} unlocked the chat${details}`;
+    case "force_refresh":
+      return `${actor} force refreshed all clients`;
     case "purge_messages":
       return `${actor} purged messages${details}`;
     case "invite_create":
@@ -1454,6 +1465,23 @@ async function toggleChatLock() {
       : "Failed to unlock the chat.";
   } finally {
     lockLoading.value = false;
+  }
+}
+
+async function forceRefreshAll() {
+  if (!canUseAdminPanel.value) return;
+  forceRefreshing.value = true;
+  adminActionError.value = "";
+  try {
+    await set(dbRef(db, "settings/forceRefreshAt"), {
+      at: Date.now(),
+      by: auth.currentUser?.uid || null,
+    });
+    queueAuditEvent({ action: "force_refresh" });
+  } catch (e) {
+    adminActionError.value = "Failed to send refresh signal.";
+  } finally {
+    forceRefreshing.value = false;
   }
 }
 
@@ -2461,6 +2489,39 @@ async function saveUsername(uid) {
 }
 
 .lock-toggle-btn {
+  display: none; /* replaced by toggle-switch */
+}
+
+.lock-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-2);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.lock-status--locked {
+  background: rgba(245, 158, 11, 0.07);
+  color: #92400e;
+  border-top-color: rgba(245, 158, 11, 0.18);
+}
+
+.lock-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #22c55e;
+  flex-shrink: 0;
+}
+
+.lock-status--locked .lock-status-dot {
+  background: #f59e0b;
+}
+
+.control-action-btn {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -2478,55 +2539,20 @@ async function saveUsername(uid) {
   transition: all 0.2s;
 }
 
-.lock-toggle-btn:hover:not(:disabled) {
+.control-action-btn:hover:not(:disabled) {
   border-color: rgba(44, 42, 39, 0.22);
   color: var(--text);
+  background: var(--surface-2);
 }
 
-.lock-toggle-btn--locked {
-  background: rgba(192, 57, 43, 0.08);
-  border-color: rgba(192, 57, 43, 0.3);
-  color: var(--danger);
+.control-action-btn:active:not(:disabled) {
+  transform: translateY(1px);
+  transition-duration: 80ms;
 }
 
-.lock-toggle-btn--locked:hover:not(:disabled) {
-  background: rgba(192, 57, 43, 0.13);
-  border-color: var(--danger);
-  color: var(--danger);
-}
-
-.lock-toggle-btn:disabled {
+.control-action-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-.lock-status {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 18px;
-  border-top: 1px solid var(--border);
-  background: var(--surface-2);
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
-.lock-status--locked {
-  background: rgba(192, 57, 43, 0.04);
-  color: var(--danger);
-  border-top-color: rgba(192, 57, 43, 0.12);
-}
-
-.lock-status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #22c55e;
-  flex-shrink: 0;
-}
-
-.lock-status--locked .lock-status-dot {
-  background: var(--danger);
 }
 
 .muted-badge {
@@ -2768,7 +2794,8 @@ async function saveUsername(uid) {
 
 .custom-select-menu {
   position: absolute;
-  top: calc(100% + 6px);
+  bottom: calc(100% + 6px);
+  top: auto;
   left: 0;
   min-width: 100%;
   background: var(--surface);

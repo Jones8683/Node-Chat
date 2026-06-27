@@ -437,6 +437,8 @@ let adminsListener = null;
 let muteListener = null;
 let allMutedUsersListener = null;
 let dmIndexListener = null;
+let forceRefreshListener = null;
+let knownForceRefreshAt = undefined;
 
 function onChannelUnreadCount(n) {
   channelUnread.value = n || 0;
@@ -673,6 +675,25 @@ onMounted(async () => {
       }
     },
   );
+
+  forceRefreshListener = onValue(
+    dbRef(db, "settings/forceRefreshAt"),
+    (snap) => {
+      const val = snap.exists() ? snap.val() : null;
+      const at = val?.at ?? val ?? null;
+      if (knownForceRefreshAt === undefined) {
+        // First load — record current value, don't reload
+        knownForceRefreshAt = at;
+        return;
+      }
+      if (at !== knownForceRefreshAt) {
+        knownForceRefreshAt = at;
+        // Skip if this client triggered it
+        if (val?.by && val.by === props.user.uid) return;
+        window.location.reload();
+      }
+    },
+  );
 });
 
 onUnmounted(() => {
@@ -688,6 +709,7 @@ onUnmounted(() => {
   if (muteListener) muteListener();
   if (allMutedUsersListener) allMutedUsersListener();
   if (dmIndexListener) dmIndexListener();
+  if (forceRefreshListener) forceRefreshListener();
   stopPresence();
 });
 </script>

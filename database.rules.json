@@ -92,6 +92,9 @@
       ".read": "auth != null",
       "chatLocked": {
         ".write": "auth != null && (root.child('admins').child(auth.uid).val() === true || root.child('owner').val() === auth.uid)"
+      },
+      "forceRefreshAt": {
+        ".write": "auth != null && (root.child('admins').child(auth.uid).val() === true || root.child('owner').val() === auth.uid)"
       }
     },
     "muted": {
