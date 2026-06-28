@@ -997,7 +997,7 @@ async function changePassword() {
 .modal-tabs {
   display: flex;
   gap: 8px;
-  padding: 14px 14px 0 14px;
+  padding: 14px 14px 2px 14px;
   flex-shrink: 0;
 }
 
