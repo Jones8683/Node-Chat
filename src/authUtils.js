@@ -91,9 +91,7 @@ async function consumeInviteToken(token, uid) {
     usedAt: now,
     usedByUid: uid,
   });
-  try {
-    await remove(dbRef(db, path));
-  } catch (e) {}
+  remove(dbRef(db, path)).catch(() => {});
 }
 
 async function reserveUsername(nameKey, uid) {
@@ -142,14 +140,10 @@ export async function signupWithToken(rawToken, email, password) {
       preferences: { showTimestamps: true },
       pendingInviteToken: token,
     });
-
     await consumeInviteToken(token, uid);
-
     return userCred.user;
   } catch (error) {
-    try {
-      await remove(dbRef(db, `users/${uid}`));
-    } catch (e) {}
+    remove(dbRef(db, `users/${uid}`)).catch(() => {});
     throw error;
   }
 }
@@ -183,7 +177,7 @@ export async function recordAuditEvent({
       } catch (e) {}
     }
     if (!name) name = (user && user.displayName) || uid;
-    const event = {
+    await push(dbRef(db, `auditLogs/${uid}`), {
       action: action || "unknown",
       actorUid: uid,
       actorName: name,
@@ -191,8 +185,7 @@ export async function recordAuditEvent({
       targetName: targetName || null,
       details: details || null,
       ts: Date.now(),
-    };
-    await push(dbRef(db, `auditLogs/${uid}`), event);
+    });
   } catch (e) {}
 }
 
@@ -226,28 +219,26 @@ export async function changeDisplayName(uid, rawName) {
       userUpdate.inviteToken = null;
     }
     await update(dbRef(db, `users/${uid}`), userUpdate);
-    try {
-      await update(dbRef(db, `presence/${uid}/profile`), {
-        displayName: newName,
-      });
-    } catch (e) {}
+    update(dbRef(db, `presence/${uid}/profile`), {
+      displayName: newName,
+    }).catch(() => {});
     if (oldKey && oldKey !== newKey) await releaseUsername(oldKey, uid);
-    await batchUpdateMessageDisplayNames(uid, newName);
-    if (isFirstTimeSet) {
-      recordAuditEvent({
-        action: "signup",
-        actorUid: uid,
-        actorName: newName,
-        details: inviteToken,
-      });
-    } else {
-      recordAuditEvent({
-        action: "display_name_changed",
-        actorUid: uid,
-        actorName: newName,
-        details: oldName,
-      });
-    }
+    batchUpdateMessageFields(uid, { displayName: newName }).catch(() => {});
+    recordAuditEvent(
+      isFirstTimeSet
+        ? {
+            action: "signup",
+            actorUid: uid,
+            actorName: newName,
+            details: inviteToken,
+          }
+        : {
+            action: "display_name_changed",
+            actorUid: uid,
+            actorName: newName,
+            details: oldName,
+          },
+    );
   } catch (error) {
     await releaseUsername(newKey, uid);
     throw error;
@@ -255,15 +246,12 @@ export async function changeDisplayName(uid, rawName) {
 }
 
 export async function changeAvatarColor(uid, avatarColor) {
-  await update(dbRef(db, `users/${uid}/preferences`), {
-    avatarColor: avatarColor ?? null,
-  });
-  try {
-    await update(dbRef(db, `presence/${uid}/profile`), {
-      avatarColor: avatarColor ?? null,
-    });
-  } catch (e) {}
-  await batchUpdateMessageAvatarColor(uid, avatarColor ?? null);
+  const color = avatarColor ?? null;
+  await update(dbRef(db, `users/${uid}/preferences`), { avatarColor: color });
+  update(dbRef(db, `presence/${uid}/profile`), { avatarColor: color }).catch(
+    () => {},
+  );
+  batchUpdateMessageFields(uid, { avatarColor: color }).catch(() => {});
 }
 
 export async function changeUserPassword(newPassword) {
@@ -293,37 +281,32 @@ export async function adminRenameUser(uid, rawName) {
 
   await set(dbRef(db, `usernames/${newKey}`), uid);
   if (oldKey && oldKey !== newKey) {
-    try {
-      await remove(dbRef(db, `usernames/${oldKey}`));
-    } catch (e) {}
+    remove(dbRef(db, `usernames/${oldKey}`)).catch(() => {});
   }
 
   await update(dbRef(db, `users/${uid}`), { displayName: newName });
-  try {
-    await update(dbRef(db, `presence/${uid}/profile`), {
-      displayName: newName,
-    });
-  } catch (e) {}
-
-  await batchUpdateMessageDisplayNames(uid, newName);
+  update(dbRef(db, `presence/${uid}/profile`), { displayName: newName }).catch(
+    () => {},
+  );
+  batchUpdateMessageFields(uid, { displayName: newName }).catch(() => {});
 
   const actingUid = auth.currentUser?.uid || null;
   const isSelfRename = actingUid && actingUid === uid;
-  if (isSelfRename) {
-    recordAuditEvent({
-      action: "display_name_changed",
-      actorUid: uid,
-      actorName: newName,
-      details: oldName || null,
-    });
-  } else {
-    recordAuditEvent({
-      action: "name_renamed",
-      targetUid: uid,
-      targetName: newName,
-      details: oldName || null,
-    });
-  }
+  recordAuditEvent(
+    isSelfRename
+      ? {
+          action: "display_name_changed",
+          actorUid: uid,
+          actorName: newName,
+          details: oldName || null,
+        }
+      : {
+          action: "name_renamed",
+          targetUid: uid,
+          targetName: newName,
+          details: oldName || null,
+        },
+  );
 }
 
 async function getDmThreadIdsForUser(uid) {
@@ -336,53 +319,25 @@ async function getDmThreadIdsForUser(uid) {
   }
 }
 
-async function batchUpdateMessageDisplayNames(uid, newDisplayName) {
+async function batchUpdateMessageFields(uid, fields) {
   const updates = {};
-  const messagesSnap = await get(dbRef(db, "messages"));
-  if (messagesSnap.exists()) {
-    for (const [msgId, msg] of Object.entries(messagesSnap.val())) {
-      if (msg.uid === uid) {
-        updates[`messages/${msgId}/displayName`] = newDisplayName;
-      }
-      if (msg.replyTo?.uid === uid) {
-        updates[`messages/${msgId}/replyTo/displayName`] = newDisplayName;
-      }
-    }
-  }
-  const threadIds = await getDmThreadIdsForUser(uid);
-  for (const threadId of threadIds) {
-    try {
-      const dmSnap = await get(dbRef(db, `dms/threads/${threadId}/messages`));
-      if (!dmSnap.exists()) continue;
-      for (const [msgId, msg] of Object.entries(dmSnap.val())) {
-        if (msg.uid === uid) {
-          updates[`dms/threads/${threadId}/messages/${msgId}/displayName`] =
-            newDisplayName;
-        }
-        if (msg.replyTo?.uid === uid) {
-          updates[
-            `dms/threads/${threadId}/messages/${msgId}/replyTo/displayName`
-          ] = newDisplayName;
-        }
-      }
-    } catch (e) {}
-  }
-  if (Object.keys(updates).length) await update(dbRef(db), updates);
-}
 
-async function batchUpdateMessageAvatarColor(uid, avatarColor) {
-  const updates = {};
   const messagesSnap = await get(dbRef(db, "messages"));
   if (messagesSnap.exists()) {
     for (const [msgId, msg] of Object.entries(messagesSnap.val())) {
       if (msg.uid === uid) {
-        updates[`messages/${msgId}/avatarColor`] = avatarColor;
+        for (const [field, value] of Object.entries(fields)) {
+          updates[`messages/${msgId}/${field}`] = value;
+        }
       }
       if (msg.replyTo?.uid === uid) {
-        updates[`messages/${msgId}/replyTo/avatarColor`] = avatarColor;
+        for (const [field, value] of Object.entries(fields)) {
+          updates[`messages/${msgId}/replyTo/${field}`] = value;
+        }
       }
     }
   }
+
   const threadIds = await getDmThreadIdsForUser(uid);
   for (const threadId of threadIds) {
     try {
@@ -390,17 +345,22 @@ async function batchUpdateMessageAvatarColor(uid, avatarColor) {
       if (!dmSnap.exists()) continue;
       for (const [msgId, msg] of Object.entries(dmSnap.val())) {
         if (msg.uid === uid) {
-          updates[`dms/threads/${threadId}/messages/${msgId}/avatarColor`] =
-            avatarColor;
+          for (const [field, value] of Object.entries(fields)) {
+            updates[`dms/threads/${threadId}/messages/${msgId}/${field}`] =
+              value;
+          }
         }
         if (msg.replyTo?.uid === uid) {
-          updates[
-            `dms/threads/${threadId}/messages/${msgId}/replyTo/avatarColor`
-          ] = avatarColor;
+          for (const [field, value] of Object.entries(fields)) {
+            updates[
+              `dms/threads/${threadId}/messages/${msgId}/replyTo/${field}`
+            ] = value;
+          }
         }
       }
     } catch (e) {}
   }
+
   if (Object.keys(updates).length) await update(dbRef(db), updates);
 }
 

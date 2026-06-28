@@ -146,10 +146,10 @@
               },
               "replyTo": {
                 "displayName": {
-                  ".write": "auth != null && data.parent().parent().child('uid').val() === auth.uid"
+                  ".write": "auth != null && (data.parent().parent().child('uid').val() === auth.uid || data.parent().child('uid').val() === auth.uid)"
                 },
                 "avatarColor": {
-                  ".write": "auth != null && data.parent().parent().child('uid').val() === auth.uid"
+                  ".write": "auth != null && (data.parent().parent().child('uid').val() === auth.uid || data.parent().child('uid').val() === auth.uid)"
                 }
               },
               "reactions": {
