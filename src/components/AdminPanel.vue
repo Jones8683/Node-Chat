@@ -1674,16 +1674,20 @@ async function saveUsername(uid) {
   -webkit-app-region: no-drag;
 }
 
-.modal-fade-enter-active,
+.modal-fade-enter-active {
+  transition:
+    opacity 220ms ease,
+    transform 260ms var(--ease-out-quint);
+}
 .modal-fade-leave-active {
   transition:
-    opacity 200ms ease,
-    transform 200ms ease;
+    opacity 160ms ease,
+    transform 200ms cubic-bezier(0.4, 0, 1, 1);
 }
 .modal-fade-enter-from,
 .modal-fade-leave-to {
   opacity: 0;
-  transform: translateY(-6px) scale(0.998);
+  transform: translateY(-6px) scale(0.985);
 }
 .modal-fade-enter-to,
 .modal-fade-leave-from {
@@ -1735,14 +1739,14 @@ async function saveUsername(uid) {
 .modal-tabs {
   display: flex;
   gap: 8px;
-  padding: 14px 14px 2px 14px;
+  padding: 14px 14px 0 14px;
   flex-shrink: 0;
 }
 
 .tab-btn {
   flex: 1;
-  background: rgba(44, 42, 39, 0.03);
-  border: 1px solid rgba(44, 42, 39, 0.08);
+  background: var(--bg);
+  border: 1px solid var(--border);
   border-radius: 999px;
   color: var(--text-muted);
   cursor: pointer;
@@ -1750,7 +1754,7 @@ async function saveUsername(uid) {
   font-size: 14px;
   font-weight: 600;
   font-family: "Satoshi", sans-serif;
-  transition: all 0.2s;
+  transition: all 120ms ease;
 }
 
 .tab-btn:hover {

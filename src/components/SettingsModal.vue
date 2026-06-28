@@ -907,6 +907,7 @@ async function changePassword() {
   overflow-y: auto;
   -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
+  -webkit-app-region: no-drag;
 }
 
 .modal-container {
@@ -919,6 +920,7 @@ async function changePassword() {
   display: flex;
   flex-direction: column;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  -webkit-app-region: no-drag;
 }
 
 .modal-fade-enter-active {
@@ -946,16 +948,16 @@ async function changePassword() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 24px;
+  padding: 20px 24px;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
 
 .modal-title {
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--text);
-  margin: 0 0 4px 0;
+  margin: 0;
 }
 
 .modal-close {
@@ -996,7 +998,6 @@ async function changePassword() {
   display: flex;
   gap: 8px;
   padding: 14px 14px 0 14px;
-  border-bottom: 1px solid transparent;
   flex-shrink: 0;
 }
 
