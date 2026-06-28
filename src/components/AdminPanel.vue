@@ -74,12 +74,9 @@
                   :key="invite.token"
                 >
                   <div class="invite-info">
-                    <div class="invite-token-row">
-                      <div class="invite-token">{{ invite.token }}</div>
-                      <span class="invite-state">Active</span>
-                    </div>
+                    <div class="invite-token">{{ invite.token }}</div>
                     <div class="invite-expires">
-                      Expires: {{ formatRemaining(invite.expiresAt) }}
+                      Expires in {{ formatRemaining(invite.expiresAt) }}
                     </div>
                   </div>
                   <div class="invite-actions">
@@ -702,12 +699,16 @@ function ensureInvitesListener() {
     dbRef(db, "invites"),
     (snap) => {
       const now = Date.now();
-      invites.value = snap.exists()
-        ? Object.entries(snap.val())
-            .filter(([, data]) => !data.used && data.expiresAt > now)
-            .map(([token, data]) => ({ token, ...data }))
-            .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
-        : [];
+      const all = snap.exists() ? Object.entries(snap.val()) : [];
+      for (const [token, data] of all) {
+        if (!data.used && data.expiresAt <= now) {
+          deleteInviteToken(token).catch(() => {});
+        }
+      }
+      invites.value = all
+        .filter(([, data]) => !data.used && data.expiresAt > now)
+        .map(([token, data]) => ({ token, ...data }))
+        .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
       loadingInvites.value = false;
       errorInvite.value = "";
     },
@@ -1147,25 +1148,14 @@ function formatRemaining(timestamp) {
     const diff = timestamp - (now.value || Date.now());
     if (diff <= 0) return "Expired";
     const sec = Math.floor(diff / 1000);
-    const days = Math.floor(sec / 86400);
-    const hours = Math.floor((sec % 86400) / 3600);
+    const hours = Math.floor(sec / 3600);
     const minutes = Math.floor((sec % 3600) / 60);
     const seconds = sec % 60;
-
-    function pad(n) {
-      return String(n).padStart(2, "0");
-    }
-
-    if (days > 0) {
-      const totalHours = days * 24 + hours;
-      return `${totalHours}:${pad(minutes)}:${pad(seconds)}`;
-    }
-    if (hours > 0) {
-      return `${hours}:${pad(minutes)}:${pad(seconds)}`;
-    }
-    return `${minutes}:${pad(seconds)}`;
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    if (minutes > 0) return `${minutes}m ${seconds}s`;
+    return `${seconds}s`;
   } catch (e) {
-    return formatDate(timestamp);
+    return "";
   }
 }
 
@@ -1888,14 +1878,8 @@ async function saveUsername(uid) {
   min-width: 0;
 }
 
-.invite-token-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
 .invite-token {
+  display: inline-block;
   font-size: 13px;
   font-family: monospace;
   font-weight: 700;
@@ -1904,18 +1888,6 @@ async function saveUsername(uid) {
   border: 1px solid rgba(44, 42, 39, 0.06);
   border-radius: 999px;
   padding: 7px 12px;
-}
-
-.invite-state {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.8px;
-  text-transform: uppercase;
-  color: var(--accent);
-  background: rgba(90, 90, 240, 0.09);
-  border: 1px solid rgba(90, 90, 240, 0.14);
-  border-radius: 999px;
-  padding: 5px 9px;
 }
 
 .invite-expires {
@@ -2531,7 +2503,7 @@ async function saveUsername(uid) {
 }
 
 .lock-toggle-btn {
-  display: none; /* replaced by toggle-switch */
+  display: none;
 }
 
 .lock-status {
@@ -2835,7 +2807,6 @@ async function saveUsername(uid) {
 }
 
 .custom-select-menu {
-  /* position + coords injected via :style when teleported */
   min-width: 148px;
   background: var(--surface);
   border: 1px solid var(--border);
