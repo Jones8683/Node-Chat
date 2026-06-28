@@ -204,10 +204,11 @@
                   ref="purgeDropdownRef"
                 >
                   <button
+                    ref="purgeSelectBtnRef"
                     class="custom-select-btn"
                     type="button"
                     :disabled="purging"
-                    @click="purgeDropdownOpen = !purgeDropdownOpen"
+                    @click="openPurgeDropdown"
                   >
                     <span>{{
                       purgeOptions.find((o) => o.value === purgeAmount)?.label
@@ -218,29 +219,36 @@
                       class="custom-select-chevron"
                     />
                   </button>
-                  <transition name="dropdown-pop">
-                    <div v-if="purgeDropdownOpen" class="custom-select-menu">
-                      <button
-                        v-for="opt in purgeOptions"
-                        :key="opt.value"
-                        type="button"
-                        class="custom-select-option"
-                        :class="{ selected: purgeAmount === opt.value }"
-                        @click="
-                          purgeAmount = opt.value;
-                          purgeDropdownOpen = false;
-                        "
+                  <teleport to="body">
+                    <transition name="dropdown-pop">
+                      <div
+                        v-if="purgeDropdownOpen"
+                        ref="purgeMenuRef"
+                        class="custom-select-menu"
+                        :style="purgeMenuStyle"
                       >
-                        <span>{{ opt.label }}</span>
-                        <Check
-                          v-if="purgeAmount === opt.value"
-                          :size="12"
-                          stroke-width="3"
-                          class="option-check"
-                        />
-                      </button>
-                    </div>
-                  </transition>
+                        <button
+                          v-for="opt in purgeOptions"
+                          :key="opt.value"
+                          type="button"
+                          class="custom-select-option"
+                          :class="{ selected: purgeAmount === opt.value }"
+                          @click="
+                            purgeAmount = opt.value;
+                            purgeDropdownOpen = false;
+                          "
+                        >
+                          <span>{{ opt.label }}</span>
+                          <Check
+                            v-if="purgeAmount === opt.value"
+                            :size="12"
+                            stroke-width="3"
+                            class="option-check"
+                          />
+                        </button>
+                      </div>
+                    </transition>
+                  </teleport>
                 </div>
                 <button
                   class="purge-btn"
@@ -492,7 +500,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from "vue";
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from "vue";
 import { auth, db } from "../firebase";
 import copy from "clipboard-copy";
 import { getAvatarInitial } from "../avatar";
@@ -574,6 +582,9 @@ const purging = ref(false);
 const purgeError = ref("");
 const purgeDropdownOpen = ref(false);
 const purgeDropdownRef = ref(null);
+const purgeSelectBtnRef = ref(null);
+const purgeMenuRef = ref(null);
+const purgeMenuStyle = ref({});
 
 const chatLocked = ref(false);
 const lockLoading = ref(false);
@@ -892,6 +903,7 @@ watch(
       userSearchQuery.value = "";
     }
     if (!isOpen || !canUsePanel) {
+      purgeDropdownOpen.value = false;
       stopInvitesListener();
       stopUsersListener();
       stopAuditListener();
@@ -909,7 +921,10 @@ watch(
     else stopAuditListener();
 
     if (tab === "controls") ensureMessagesCountListener();
-    else stopMessagesCountListener();
+    else {
+      stopMessagesCountListener();
+      purgeDropdownOpen.value = false;
+    }
   },
   { immediate: true },
 );
@@ -956,9 +971,32 @@ function onKeyDown(e) {
   close();
 }
 
+function openPurgeDropdown() {
+  if (purging.value) return;
+  const next = !purgeDropdownOpen.value;
+  purgeDropdownOpen.value = next;
+  if (next) {
+    nextTick(() => {
+      if (!purgeSelectBtnRef.value) return;
+      const rect = purgeSelectBtnRef.value.getBoundingClientRect();
+      purgeMenuStyle.value = {
+        position: "fixed",
+        top: `${rect.bottom + 6}px`,
+        left: `${rect.left}px`,
+        minWidth: `${rect.width}px`,
+        zIndex: "9999",
+      };
+    });
+  }
+}
+
 function onOutsideClick(e) {
   if (!props.isOpen || !purgeDropdownOpen.value) return;
-  if (purgeDropdownRef.value && !purgeDropdownRef.value.contains(e.target)) {
+  const clickedSelect =
+    purgeDropdownRef.value && purgeDropdownRef.value.contains(e.target);
+  const clickedMenu =
+    purgeMenuRef.value && purgeMenuRef.value.contains(e.target);
+  if (!clickedSelect && !clickedMenu) {
     purgeDropdownOpen.value = false;
   }
 }
@@ -2793,11 +2831,8 @@ async function saveUsername(uid) {
 }
 
 .custom-select-menu {
-  position: absolute;
-  bottom: calc(100% + 6px);
-  top: auto;
-  left: 0;
-  min-width: 100%;
+  /* position + coords injected via :style when teleported */
+  min-width: 148px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -2805,7 +2840,6 @@ async function saveUsername(uid) {
   box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.12),
     0 2px 8px rgba(0, 0, 0, 0.06);
-  z-index: 100;
   overflow: hidden;
 }
 
@@ -2858,7 +2892,7 @@ async function saveUsername(uid) {
 }
 .dropdown-pop-leave-to {
   opacity: 0;
-  transform: translateY(-3px) scale(0.98);
+  transform: translateY(-2px) scale(0.98);
 }
 
 .purge-btn {
