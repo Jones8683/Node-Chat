@@ -34,6 +34,7 @@ export default defineConfig({
       "@lucide/vue",
       "clipboard-copy",
       "crypto-random-string",
+      "twemoji",
     ],
     exclude: ["@emoji-mart/data", "emoji-mart"],
   },

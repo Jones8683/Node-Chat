@@ -1,5 +1,10 @@
 <template>
-  <div v-if="isTauriApp" class="desktop-titlebar" data-tauri-drag-region>
+  <div
+    v-if="isTauriApp"
+    class="desktop-titlebar"
+    @mousedown="onDragStart"
+    @dblclick="onDblClick"
+  >
     <div class="desktop-titlebar-brand">
       <img
         src="/icon.png"
@@ -18,6 +23,45 @@ import WindowControls from "./WindowControls.vue";
 import { useTauri } from "../tauri";
 
 const { isTauriApp } = useTauri();
+
+let windowApiPromise = null;
+
+function loadWindowApi() {
+  if (!windowApiPromise) {
+    windowApiPromise = import("@tauri-apps/api/window");
+  }
+  return windowApiPromise;
+}
+
+function onDragStart(e) {
+  if (e.button !== 0) return;
+  if (e.target.closest("button")) return;
+  const startX = e.clientX;
+  const startY = e.clientY;
+  const onMove = async (moveE) => {
+    if (Math.hypot(moveE.clientX - startX, moveE.clientY - startY) < 4) return;
+    cleanup();
+    const { getCurrentWindow } = await loadWindowApi();
+    getCurrentWindow()
+      .startDragging()
+      .catch(() => {});
+  };
+  const onUp = () => cleanup();
+  const cleanup = () => {
+    window.removeEventListener("mousemove", onMove);
+    window.removeEventListener("mouseup", onUp);
+  };
+  window.addEventListener("mousemove", onMove);
+  window.addEventListener("mouseup", onUp);
+}
+
+async function onDblClick(e) {
+  if (e.target.closest("button")) return;
+  const { getCurrentWindow } = await loadWindowApi();
+  const win = getCurrentWindow();
+  if (await win.isMaximized()) win.unmaximize();
+  else win.maximize();
+}
 </script>
 
 <style scoped>

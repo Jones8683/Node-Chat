@@ -163,6 +163,8 @@ async function submit() {
   font-size: 15px;
   font-family: "Satoshi", sans-serif;
   outline: none;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(44, 42, 39, 0.28) transparent;
   transition:
     border-color 180ms ease,
     box-shadow 180ms ease,
@@ -226,11 +228,6 @@ async function submit() {
   font-size: 13px;
   margin-top: 10px;
   text-align: center;
-}
-
-.field input {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(44, 42, 39, 0.28) transparent;
 }
 
 .field input::-webkit-scrollbar {
