@@ -74,6 +74,8 @@ async function onDblClick(e) {
   border-bottom: 1px solid var(--border);
   background: var(--surface);
   flex-shrink: 0;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .desktop-titlebar-brand {

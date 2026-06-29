@@ -776,6 +776,8 @@ onUnmounted(() => {
   flex-shrink: 0;
   background: var(--surface);
   gap: 12px;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .menu-btn {
