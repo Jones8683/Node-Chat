@@ -25,7 +25,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' https://api.fontshare.com 'unsafe-inline'; font-src 'self' https://api.fontshare.com https://cdn.fontshare.com data:; img-src 'self' data: blob: https://*.giphy.com; connect-src 'self' https://*.firebaseio.com wss://*.firebaseio.com https://*.firebasedatabase.app wss://*.firebasedatabase.app https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com https://www.gstatic.com https://firebasestorage.googleapis.com https://api.giphy.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none';"
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' https://api.fontshare.com 'unsafe-inline'; font-src 'self' https://api.fontshare.com https://cdn.fontshare.com data:; img-src 'self' data: blob: https://*.giphy.com https://cdn.jsdelivr.net; connect-src 'self' https://*.firebaseio.com wss://*.firebaseio.com https://*.firebasedatabase.app wss://*.firebasedatabase.app https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com https://www.gstatic.com https://firebasestorage.googleapis.com https://api.giphy.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none';"
     }
   },
   "bundle": {

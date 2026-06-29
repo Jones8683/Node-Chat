@@ -13,12 +13,16 @@ const BASE = {
 
 const STRING_OPTIONS = {
   ...BASE,
-  attributes: () => ({ draggable: "false" }),
+  attributes: () => ({ draggable: "false", decoding: "async" }),
 };
 
 const NODE_OPTIONS = {
   ...BASE,
-  attributes: () => ({ draggable: "false", contenteditable: "false" }),
+  attributes: () => ({
+    draggable: "false",
+    contenteditable: "false",
+    decoding: "async",
+  }),
 };
 
 export function twemojify(input) {
