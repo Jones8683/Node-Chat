@@ -1,8 +1,8 @@
-# Node Chat
+![node-chat](https://socialify.git.ci/jones8683/node-chat/image?custom_language=Vue&description=1&font=Inter&issues=1&language=1&logo=https%3A%2F%2Fraw.githubusercontent.com%2FJones8683%2FNode-Chat%2Fmain%2Fpublic%2Ffavicon.png&name=1&owner=1&pattern=Diagonal+Stripes&stargazers=1&theme=Dark)
 
-A private, invite-only chat app built with Vue 3 and Firebase. Runs in the browser or as a Windows desktop app via Tauri.
-
----
+<p align="center">
+ A private, invite-only chat app built with Vue 3 and Firebase. Runs in the browser or as a Windows desktop app via Tauri.
+</p>
 
 ## Setup
 
