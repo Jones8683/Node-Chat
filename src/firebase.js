@@ -16,6 +16,19 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
+const missing = [
+  "VITE_FIREBASE_PROJECT_ID",
+  "VITE_FIREBASE_API_KEY",
+  "VITE_FIREBASE_AUTH_DOMAIN",
+  "VITE_FIREBASE_DATABASE_URL",
+].filter((key) => !import.meta.env[key]);
+
+if (missing.length) {
+  throw new Error(
+    `Missing Firebase config: ${missing.join(", ")}. Copy .env.example to .env and fill in your values.`,
+  );
+}
+
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
 function createAuth() {
