@@ -8,6 +8,9 @@ const securityHeaders = {
 
 export default defineConfig({
   plugins: [vue()],
+  define: {
+    __APP_VERSION__: JSON.stringify(process.env.npm_package_version),
+  },
   clearScreen: false,
   server: {
     port: 5173,

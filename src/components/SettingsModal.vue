@@ -5,6 +5,9 @@
         <div class="modal-header">
           <div>
             <h2 class="modal-title">Settings</h2>
+            <button class="app-version" @click="copyVersion">
+              Node Chat v{{ version }}
+            </button>
           </div>
           <button
             type="button"
@@ -452,8 +455,19 @@ import {
   ensureNotificationPermission,
 } from "../notifications";
 
+import { showToast } from "../toast";
+
 const props = defineProps({ isOpen: Boolean, user: Object });
 const emit = defineEmits(["close", "refresh-user"]);
+
+const version = __APP_VERSION__;
+
+async function copyVersion() {
+  try {
+    await navigator.clipboard.writeText(version);
+    showToast("Copied!");
+  } catch {}
+}
 
 const AVATAR_PALETTE = [
   "#f43f5e",
@@ -1484,5 +1498,22 @@ async function changePassword() {
   .field input {
     font-size: 16px;
   }
+}
+.app-version {
+  background: none;
+  border: none;
+  font-size: 12px;
+  font-family: "Satoshi", sans-serif;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+  display: block;
+  margin-top: 3px;
+  opacity: 0.7;
+  transition: opacity 160ms ease;
+}
+
+.app-version:hover {
+  opacity: 1;
 }
 </style>

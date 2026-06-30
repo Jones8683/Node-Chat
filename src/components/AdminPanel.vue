@@ -489,8 +489,6 @@
             </div>
           </transition>
         </teleport>
-
-        <div v-if="copyFeedback" class="copy-feedback">Copied!</div>
       </div>
     </div>
   </transition>
@@ -499,6 +497,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from "vue";
 import { auth, db } from "../firebase";
+import { showToast } from "../toast";
 import copy from "clipboard-copy";
 import { getAvatarInitial } from "../avatar";
 import {
@@ -564,8 +563,6 @@ const adminCount = ref(0);
 const totalMessagesCount = ref(null);
 const loadingMessagesCount = ref(false);
 const adminActionError = ref("");
-
-const copyFeedback = ref(false);
 
 const editingUserId = ref(null);
 const editingUserName = ref("");
@@ -812,7 +809,6 @@ onUnmounted(() => {
   if (auditListener) auditListener();
   if (messagesListener) messagesListener();
   if (inviteInterval) clearInterval(inviteInterval);
-  if (copyFeedbackTimer) clearTimeout(copyFeedbackTimer);
 });
 
 function stopUsersListener() {
@@ -1025,16 +1021,8 @@ async function generateInvite() {
   }
 }
 
-let copyFeedbackTimer = null;
 function copyToClipboard(token) {
-  copy(token).then(() => {
-    copyFeedback.value = true;
-    if (copyFeedbackTimer) clearTimeout(copyFeedbackTimer);
-    copyFeedbackTimer = setTimeout(() => {
-      copyFeedback.value = false;
-      copyFeedbackTimer = null;
-    }, 2000);
-  });
+  copy(token).then(() => showToast("Copied!"));
 }
 
 async function deleteInvite(token) {
@@ -2416,21 +2404,6 @@ async function saveUsername(uid) {
     opacity: 0;
     transform: scale(0.98);
   }
-}
-
-.copy-feedback {
-  position: fixed;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--text);
-  color: var(--bg);
-  padding: 10px 20px;
-  border-radius: var(--radius);
-  font-size: 13px;
-  font-weight: 600;
-  z-index: 400;
-  pointer-events: none;
 }
 
 .audit-list {

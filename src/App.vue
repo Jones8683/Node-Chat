@@ -42,6 +42,8 @@
         @close="showAdmin = false"
       />
     </template>
+
+    <Toast />
   </div>
 </template>
 
@@ -58,6 +60,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import { ref as dbRef, onValue } from "firebase/database";
 import { auth, db } from "./firebase";
 import { stopPresence } from "./presence";
+import Toast from "./components/Toast.vue";
 
 const AuthForm = defineAsyncComponent(
   () => import("./components/AuthForm.vue"),
