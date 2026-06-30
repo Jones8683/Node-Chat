@@ -2,7 +2,7 @@
   <teleport to="body">
     <transition name="toast">
       <div v-if="toastVisible" class="toast" role="status" aria-live="polite">
-        <span class="toast-check">✓</span>
+        <Copy :size="13" stroke-width="2.5" />
         {{ toastMessage }}
       </div>
     </transition>
@@ -10,6 +10,7 @@
 </template>
 
 <script setup>
+import { Copy } from "@lucide/vue";
 import { toastMessage, toastVisible } from "../toast";
 </script>
 
@@ -35,11 +36,6 @@ import { toastMessage, toastVisible } from "../toast";
   box-shadow:
     0 4px 16px rgba(0, 0, 0, 0.18),
     0 1px 4px rgba(0, 0, 0, 0.1);
-}
-
-.toast-check {
-  font-size: 12px;
-  opacity: 0.7;
 }
 
 .toast-enter-active {
