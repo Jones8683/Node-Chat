@@ -84,6 +84,6 @@ jobs:
       - name: Upload installer artifact
         uses: actions/upload-artifact@v6
         with:
-          name: node-chat-windows-installer-v${{ steps.version.outputs.version }}
+          name: node-chat-windows-v${{ steps.version.outputs.version }}
           path: src-tauri/target/release/bundle/nsis/*.exe
           if-no-files-found: error
