@@ -1239,7 +1239,6 @@ import {
   remove,
   get,
 } from "firebase/database";
-import copy from "clipboard-copy";
 import { userIsOnline } from "../presence";
 import { sendSystemNotification } from "../notifications";
 import MessageComposer from "./MessageComposer.vue";
@@ -1855,7 +1854,7 @@ async function sendGif(gif) {
 
 async function copyWithFeedback(text, itemId, errorLabel) {
   try {
-    await copy(text);
+    await navigator.clipboard.writeText(text);
     copiedMessageId.value = itemId;
     clearTimeout(copyResetTimer);
     copyResetTimer = setTimeout(() => {

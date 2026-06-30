@@ -17,7 +17,6 @@
     "@lucide/vue": "^1.21.0",
     "@tauri-apps/api": "^2.11.1",
     "@tauri-apps/plugin-notification": "^2.3.3",
-    "clipboard-copy": "^4.0.1",
     "crypto-random-string": "^5.0.0",
     "emoji-mart": "^5.6.0",
     "firebase": "^12.15.0",

@@ -35,7 +35,6 @@ export default defineConfig({
       "firebase/auth",
       "firebase/database",
       "@lucide/vue",
-      "clipboard-copy",
       "crypto-random-string",
       "twemoji",
     ],

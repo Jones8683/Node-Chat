@@ -498,7 +498,6 @@
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from "vue";
 import { auth, db } from "../firebase";
 import { showToast } from "../toast";
-import copy from "clipboard-copy";
 import { getAvatarInitial } from "../avatar";
 import {
   X,
@@ -1021,8 +1020,11 @@ async function generateInvite() {
   }
 }
 
-function copyToClipboard(token) {
-  copy(token).then(() => showToast("Copied!"));
+async function copyToClipboard(token) {
+  try {
+    await navigator.clipboard.writeText(token);
+    showToast("Copied!");
+  } catch {}
 }
 
 async function deleteInvite(token) {
