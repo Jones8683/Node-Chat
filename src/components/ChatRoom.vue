@@ -2381,7 +2381,7 @@ function formatReplyPreview(messageOrText) {
 function isEmojiOnly(text) {
   if (!text?.trim()) return false;
   const stripped = text.replace(
-    /[\p{Emoji_Presentation}\p{Extended_Pictographic}\uFE0F\u200D\u20E3\s]/gu,
+    /\p{Emoji_Presentation}|\p{Extended_Pictographic}|\uFE0F|\u200D|\u20E3|\s/gu,
     "",
   );
   if (stripped.length > 0) return false;
