@@ -1318,7 +1318,7 @@ function getAvatarStyle(name, uid = null, storedColor = null) {
 }
 
 function getLatestUser(uid, fallback = {}) {
-  return { ...fallback, ...(allUsers.value[uid] || {}) };
+  return { ...fallback, ...allUsers.value[uid] };
 }
 
 function resolveDisplayName(uid, fallback = "") {
@@ -2042,11 +2042,11 @@ async function togglePollVote(message, optionKey) {
 
   let nextVotes;
   if (alreadyVoted) {
-    nextVotes = { ...(currentVotes || {}) };
+    nextVotes = { ...currentVotes };
     delete nextVotes[optionKey];
     if (Object.keys(nextVotes).length === 0) nextVotes = null;
   } else if (multi) {
-    nextVotes = { ...(currentVotes || {}), [optionKey]: true };
+    nextVotes = { ...currentVotes, [optionKey]: true };
   } else {
     nextVotes = { [optionKey]: true };
   }
