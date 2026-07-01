@@ -1264,7 +1264,10 @@ function formatAuditText(ev) {
         : `${actor} signed up`,
   };
 
-  return (handlers[ev.action] || (() => formatAuditDefaultText(actor, ev, target, details)))();
+  return (
+    handlers[ev.action] ||
+    (() => formatAuditDefaultText(actor, ev, target, details))
+  )();
 }
 
 function formatDateTime(ts) {
