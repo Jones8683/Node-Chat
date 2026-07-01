@@ -890,40 +890,48 @@ function stopMessagesCountListener() {
 watch(
   [() => props.isOpen, () => activeTab.value, canUseAdminPanel],
   ([isOpen, tab, canUsePanel], prev) => {
-    const prevIsOpen = prev ? prev[0] : null;
-    const prevTab = prev ? prev[1] : null;
-    if (
-      prevIsOpen !== isOpen ||
-      (prevTab !== tab && (prevTab === "users" || tab !== "users"))
-    ) {
-      userSearchQuery.value = "";
-    }
-    if (!isOpen || !canUsePanel) {
-      purgeDropdownOpen.value = false;
-      stopInvitesListener();
-      stopUsersListener();
-      stopAuditListener();
-      stopMessagesCountListener();
-      return;
-    }
-
-    if (tab === "invites") ensureInvitesListener();
-    else stopInvitesListener();
-
-    if (tab === "users") loadUsers();
-    else stopUsersListener();
-
-    if (tab === "audit") ensureAuditListener();
-    else stopAuditListener();
-
-    if (tab === "controls") ensureMessagesCountListener();
-    else {
-      stopMessagesCountListener();
-      purgeDropdownOpen.value = false;
-    }
+    syncAdminPanelSearchState(prev, isOpen, tab);
+    syncAdminPanelListeners(isOpen, canUsePanel, tab);
   },
   { immediate: true },
 );
+
+function syncAdminPanelSearchState(prev, isOpen, tab) {
+  const prevIsOpen = prev ? prev[0] : null;
+  const prevTab = prev ? prev[1] : null;
+  if (
+    prevIsOpen !== isOpen ||
+    (prevTab !== tab && (prevTab === "users" || tab !== "users"))
+  ) {
+    userSearchQuery.value = "";
+  }
+}
+
+function syncAdminPanelListeners(isOpen, canUsePanel, tab) {
+  if (!isOpen || !canUsePanel) {
+    purgeDropdownOpen.value = false;
+    stopInvitesListener();
+    stopUsersListener();
+    stopAuditListener();
+    stopMessagesCountListener();
+    return;
+  }
+
+  if (tab === "invites") ensureInvitesListener();
+  else stopInvitesListener();
+
+  if (tab === "users") loadUsers();
+  else stopUsersListener();
+
+  if (tab === "audit") ensureAuditListener();
+  else stopAuditListener();
+
+  if (tab === "controls") ensureMessagesCountListener();
+  else {
+    stopMessagesCountListener();
+    purgeDropdownOpen.value = false;
+  }
+}
 
 function closeIfClickedOutside(e) {
   if (e.target === e.currentTarget) close();
@@ -1194,6 +1202,42 @@ function formatAuditAction(action) {
   return action.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+function formatAuditInviteText(actor, details, action) {
+  if (details) {
+    return `${actor} ${action} invite code ${escapeHtml(details)}`;
+  }
+  return `${actor} ${action} an invite code`;
+}
+
+function formatAuditNameRenamedText(actor, ev, targetNameRaw) {
+  const oldName = ev.details;
+  const newName = ev.targetName || targetNameRaw;
+  const isSelf = ev.actorUid && ev.actorUid === ev.targetUid;
+
+  if (isSelf) {
+    return oldName && newName
+      ? `${actor} changed their display name from ${escapeHtml(oldName)} to ${escapeHtml(newName)}`
+      : `${actor} changed their display name`;
+  }
+
+  const targetLabel = escapeHtml(newName || ev.targetUid || "a user");
+  return oldName
+    ? `${actor} renamed ${escapeHtml(oldName)} to ${targetLabel}`
+    : `${actor} renamed ${targetLabel}`;
+}
+
+function formatAuditDisplayNameChangedText(actor, ev) {
+  const oldName = ev.details;
+  const newName = ev.actorName;
+  return oldName && newName
+    ? `${actor} changed their display name from ${escapeHtml(oldName)} to ${escapeHtml(newName)}`
+    : `${actor} changed their display name`;
+}
+
+function formatAuditDefaultText(actor, ev, target, details) {
+  return `${actor} performed ${escapeHtml(ev.action || "an action")}${target}${details}`;
+}
+
 function formatAuditText(ev) {
   const actorRaw = resolveLiveActorName(ev);
   const actor = `<strong>${escapeHtml(actorRaw)}</strong>`;
@@ -1201,60 +1245,26 @@ function formatAuditText(ev) {
   const target =
     ev.targetUid || ev.targetName ? ` ${escapeHtml(targetNameRaw)}` : "";
   const details = ev.details ? ` - ${escapeHtml(ev.details)}` : "";
-
-  switch (ev.action) {
-    case "mute":
-      return `${actor} muted${target}${details}`;
-    case "unmute":
-      return `${actor} unmuted${target}${details}`;
-    case "promote":
-      return `${actor} promoted${target} to admin${details}`;
-    case "demote":
-      return `${actor} demoted${target} from admin${details}`;
-    case "lock_chat":
-      return `${actor} locked the chat${details}`;
-    case "unlock_chat":
-      return `${actor} unlocked the chat${details}`;
-    case "force_refresh":
-      return `${actor} force refreshed all clients`;
-    case "purge_messages":
-      return `${actor} purged messages${details}`;
-    case "invite_create":
-      return ev.details
-        ? `${actor} created invite code ${escapeHtml(ev.details)}`
-        : `${actor} created an invite code`;
-    case "invite_delete":
-      return ev.details
-        ? `${actor} deleted invite code ${escapeHtml(ev.details)}`
-        : `${actor} deleted an invite code`;
-    case "name_renamed": {
-      const oldName = ev.details;
-      const newName = ev.targetName || targetNameRaw;
-      const isSelf = ev.actorUid && ev.actorUid === ev.targetUid;
-      if (isSelf) {
-        return oldName && newName
-          ? `${actor} changed their display name from ${escapeHtml(oldName)} to ${escapeHtml(newName)}`
-          : `${actor} changed their display name`;
-      }
-      const targetLabel = escapeHtml(newName || ev.targetUid || "a user");
-      return oldName
-        ? `${actor} renamed ${escapeHtml(oldName)} to ${targetLabel}`
-        : `${actor} renamed ${targetLabel}`;
-    }
-    case "display_name_changed": {
-      const oldName = ev.details;
-      const newName = ev.actorName;
-      return oldName && newName
-        ? `${actor} changed their display name from ${escapeHtml(oldName)} to ${escapeHtml(newName)}`
-        : `${actor} changed their display name`;
-    }
-    case "signup":
-      return ev.details
+  const handlers = {
+    mute: () => `${actor} muted${target}${details}`,
+    unmute: () => `${actor} unmuted${target}${details}`,
+    promote: () => `${actor} promoted${target} to admin${details}`,
+    demote: () => `${actor} demoted${target} from admin${details}`,
+    lock_chat: () => `${actor} locked the chat${details}`,
+    unlock_chat: () => `${actor} unlocked the chat${details}`,
+    force_refresh: () => `${actor} force refreshed all clients`,
+    purge_messages: () => `${actor} purged messages${details}`,
+    invite_create: () => formatAuditInviteText(actor, ev.details, "created"),
+    invite_delete: () => formatAuditInviteText(actor, ev.details, "deleted"),
+    name_renamed: () => formatAuditNameRenamedText(actor, ev, targetNameRaw),
+    display_name_changed: () => formatAuditDisplayNameChangedText(actor, ev),
+    signup: () =>
+      ev.details
         ? `${actor} signed up with invite code ${escapeHtml(ev.details)}`
-        : `${actor} signed up`;
-    default:
-      return `${actor} performed ${escapeHtml(ev.action || "an action")}${target}${details}`;
-  }
+        : `${actor} signed up`,
+  };
+
+  return (handlers[ev.action] || (() => formatAuditDefaultText(actor, ev, target, details)))();
 }
 
 function formatDateTime(ts) {
