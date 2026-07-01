@@ -1011,7 +1011,7 @@ async function changePassword() {
 .modal-tabs {
   display: flex;
   gap: 8px;
-  padding: 14px 14px 2px 14px;
+  padding: 14px 14px 2px;
   flex-shrink: 0;
 }
 
@@ -1079,7 +1079,7 @@ async function changePassword() {
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 1px;
-  margin: 0 0 20px 0;
+  margin: 0 0 20px;
 }
 
 .profile-header {
@@ -1330,13 +1330,13 @@ async function changePassword() {
 .error {
   color: var(--danger);
   font-size: 13px;
-  margin: 12px 0 0 0;
+  margin: 12px 0 0;
 }
 
 .success {
   color: var(--accent);
   font-size: 13px;
-  margin: 12px 0 0 0;
+  margin: 12px 0 0;
 }
 
 .pref-card {
@@ -1376,7 +1376,7 @@ async function changePassword() {
 }
 
 .pref-message {
-  margin: 12px 0 0 0;
+  margin: 12px 0 0;
   font-size: 12.5px;
   line-height: 1.45;
 }

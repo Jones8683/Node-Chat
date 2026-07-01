@@ -252,7 +252,7 @@ watch(
   font-size: 17px;
   font-weight: 700;
   color: var(--text);
-  margin: 0 0 4px 0;
+  margin: 0 0 4px;
 }
 
 .modal-subtitle {

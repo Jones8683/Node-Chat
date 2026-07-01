@@ -1719,7 +1719,7 @@ async function saveUsername(uid) {
 .modal-tabs {
   display: flex;
   gap: 8px;
-  padding: 14px 14px 2px 14px;
+  padding: 14px 14px 2px;
   flex-shrink: 0;
 }
 
@@ -1787,7 +1787,7 @@ async function saveUsername(uid) {
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 1px;
-  margin: 0 0 14px 0;
+  margin: 0 0 14px;
 }
 
 .action-btn {
@@ -1827,7 +1827,7 @@ async function saveUsername(uid) {
 }
 
 .users-error {
-  margin: 0 0 16px 0;
+  margin: 0 0 16px;
 }
 
 .loading,

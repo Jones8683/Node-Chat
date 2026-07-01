@@ -4030,7 +4030,7 @@ function handleQuickReaction(emoji) {
   display: flex;
   align-items: center;
   gap: 11px;
-  padding: 10px 10px 10px 10px;
+  padding: 10px;
   background: var(--surface-2);
   border-radius: 8px;
   margin-bottom: 4px;
@@ -4681,13 +4681,13 @@ function handleQuickReaction(emoji) {
   font-size: 15px;
   font-weight: 700;
   color: var(--text);
-  margin: 0 0 8px 0;
+  margin: 0 0 8px;
 }
 
 .delete-box p {
   font-size: 14px;
   color: var(--text-muted);
-  margin: 0 0 20px 0;
+  margin: 0 0 20px;
   line-height: 1.5;
 }
 
