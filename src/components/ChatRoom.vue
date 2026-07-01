@@ -2507,9 +2507,10 @@ function getMentionQuery(text, cursor) {
 
   const query = beforeCursor.slice(at + 1);
   if (query.includes("\n") || query.length > 32) return null;
+  if (/\s/.test(query)) return null;
   if (/[:`]/.test(query)) return null;
 
-  return { start: at, query: query.trimStart().toLowerCase() };
+  return { start: at, query: query.toLowerCase() };
 }
 
 function normalizeMentionSearch(value) {
@@ -2585,6 +2586,11 @@ function checkMentionTrigger(target) {
   const text = getTextForMentionTarget(target);
   const trigger = getMentionQuery(text, editor.getCaretOffset());
   if (!trigger) {
+    if (activeMentionTarget.value === target) closeMentionPicker();
+    return;
+  }
+
+  if (editor.isAtomicOffset?.(trigger.start)) {
     if (activeMentionTarget.value === target) closeMentionPicker();
     return;
   }

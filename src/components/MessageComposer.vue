@@ -193,6 +193,77 @@ function offsetOfPoint(root, container, offset) {
   return total;
 }
 
+function getNodeAtOffset(target) {
+  const root = rootRef.value;
+  if (!root) return null;
+
+  let remaining = target;
+  let match = null;
+
+  function record(node, atomic, offset = 0) {
+    match = { node, atomic, offset };
+  }
+
+  function walk(node) {
+    if (match) return;
+
+    if (node.nodeType === 3) {
+      const len = (node.textContent || "").length;
+      if (remaining <= len) {
+        record(node, false, remaining);
+        return;
+      }
+      remaining -= len;
+      return;
+    }
+
+    if (node.nodeType === 1) {
+      if (isPill(node)) {
+        const name = node.getAttribute(PILL_NAME_ATTR) || "";
+        const len = `@${name}`.length;
+        if (remaining < len) {
+          record(node, true, remaining);
+          return;
+        }
+        remaining -= len;
+        return;
+      }
+
+      if (isTwemojiImg(node)) {
+        const len = (node.getAttribute("alt") || "").length;
+        if (remaining < len) {
+          record(node, true, remaining);
+          return;
+        }
+        remaining -= len;
+        return;
+      }
+
+      if (node.tagName === "BR") {
+        if (remaining === 0) {
+          record(node, true, 0);
+          return;
+        }
+        remaining -= 1;
+        return;
+      }
+
+      for (const child of Array.from(node.childNodes)) {
+        walk(child);
+        if (match) return;
+      }
+    }
+  }
+
+  walk(root);
+  return match;
+}
+
+function isAtomicOffset(target) {
+  const hit = getNodeAtOffset(target);
+  return !!hit?.atomic;
+}
+
 function setCaretOffset(target) {
   const root = rootRef.value;
   if (!root) return;
@@ -630,6 +701,7 @@ defineExpose({
   getValue: serialize,
   getCaretOffset,
   getSelectionRange,
+  isAtomicOffset,
   setCaretOffset,
   setSelectionToEnd,
   insertMentionAtRange,
