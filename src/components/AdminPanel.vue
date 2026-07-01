@@ -2008,7 +2008,7 @@ async function saveUsername(uid) {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  border: none;
+  margin: 0 0 14px;
   background: rgba(44, 42, 39, 0.1);
   color: var(--text-muted);
   cursor: pointer;
@@ -2276,13 +2276,13 @@ async function saveUsername(uid) {
   font-size: 15px;
   font-weight: 700;
   color: var(--text);
-  margin: 0 0 8px 0;
+  margin: 0 0 8px;
 }
 
 .confirmation-box p {
   font-size: 14px;
   color: var(--text-muted);
-  margin: 0 0 20px 0;
+  margin: 0 0 20px;
   line-height: 1.5;
 }
 
