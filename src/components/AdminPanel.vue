@@ -1974,7 +1974,7 @@ async function saveUsername(uid) {
   border: 1px solid rgba(44, 42, 39, 0.1);
   border-radius: 999px;
   padding: 8px 12px 8px 14px;
-  margin: 0 0 14px 0;
+  margin: 0 0 14px;
 }
 
 .user-search-icon {
