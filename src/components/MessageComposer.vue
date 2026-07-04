@@ -169,38 +169,44 @@ function forEachLeaf(root, visitor) {
   return walk(root);
 }
 
+function subtreeLength(node) {
+  if (node.nodeType === 3) return (node.textContent || "").length;
+  if (node.nodeType !== 1) return 0;
+  const atomic = getAtomicInfo(node);
+  if (atomic) return atomic.length;
+  let sum = 0;
+  for (const child of node.childNodes) sum += subtreeLength(child);
+  return sum;
+}
+
 function offsetOfPoint(root, container, offset) {
   let total = 0;
   let done = false;
 
+  function handleContainer(node) {
+    if (node.nodeType === 3) {
+      total += offset;
+    } else if (getAtomicInfo(node)) {
+      if (offset > 0) total += subtreeLength(node);
+    } else {
+      for (let i = 0; i < offset; i++) {
+        total += subtreeLength(node.childNodes[i]);
+      }
+    }
+    done = true;
+  }
+
   function walk(node) {
     if (done) return;
-    if (node === container && node.nodeType === 3) {
-      total += offset;
-      done = true;
+    if (node === container) {
+      handleContainer(node);
       return;
     }
-    if (node.nodeType === 3) {
-      total += (node.textContent || "").length;
+    if (node.nodeType === 3 || getAtomicInfo(node)) {
+      total += subtreeLength(node);
       return;
     }
     if (node.nodeType !== 1) return;
-
-    const atomic = getAtomicInfo(node);
-    if (atomic) {
-      if (node !== container || offset > 0) total += atomic.length;
-      if (node === container) done = true;
-      return;
-    }
-
-    if (node === container) {
-      for (let i = 0; i < offset && !done; i++) {
-        walk(node.childNodes[i]);
-      }
-      done = true;
-      return;
-    }
-
     for (const child of node.childNodes) {
       walk(child);
       if (done) return;
