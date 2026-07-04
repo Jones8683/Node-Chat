@@ -139,56 +139,74 @@ function getSelectionRange() {
   return start <= end ? { start, end } : { start: end, end: start };
 }
 
-function offsetOfPoint(root, container, offset) {
-  let total = 0;
+function getAtomicInfo(node) {
+  if (isPill(node)) {
+    const name = node.getAttribute(PILL_NAME_ATTR) || "";
+    return { length: `@${name}`.length };
+  }
+  if (isTwemojiImg(node)) {
+    return { length: (node.getAttribute("alt") || "").length };
+  }
+  if (node.tagName === "BR") {
+    return { length: 1 };
+  }
+  return null;
+}
+
+function forEachLeaf(root, visitor) {
   function walk(node) {
-    if (node === container && node.nodeType === 3) {
-      total += offset;
-      return true;
-    }
     if (node.nodeType === 3) {
-      total += (node.textContent || "").length;
-      return false;
+      return visitor(node, "text", (node.textContent || "").length);
     }
-    if (node.nodeType === 1) {
-      if (isPill(node)) {
-        if (node === container) {
-          if (offset === 0) return true;
-          const name = node.getAttribute(PILL_NAME_ATTR) || "";
-          total += `@${name}`.length;
-          return true;
-        }
-        const name = node.getAttribute(PILL_NAME_ATTR) || "";
-        total += `@${name}`.length;
-        return false;
-      }
-      if (isTwemojiImg(node)) {
-        const altLen = (node.getAttribute("alt") || "").length;
-        if (node === container) {
-          if (offset === 0) return true;
-          total += altLen;
-          return true;
-        }
-        total += altLen;
-        return false;
-      }
-      if (node.tagName === "BR") {
-        if (node === container) return true;
-        total += 1;
-        return false;
-      }
-      if (node === container) {
-        for (let i = 0; i < offset; i++) {
-          if (walk(node.childNodes[i])) return true;
-        }
-        return true;
-      }
-      for (const child of node.childNodes) {
-        if (walk(child)) return true;
-      }
+    if (node.nodeType !== 1) return false;
+    const atomic = getAtomicInfo(node);
+    if (atomic) return visitor(node, "atomic", atomic.length);
+    for (const child of Array.from(node.childNodes)) {
+      if (walk(child)) return true;
     }
     return false;
   }
+  return walk(root);
+}
+
+function offsetOfPoint(root, container, offset) {
+  let total = 0;
+  let done = false;
+
+  function walk(node) {
+    if (done) return;
+    if (node === container && node.nodeType === 3) {
+      total += offset;
+      done = true;
+      return;
+    }
+    if (node.nodeType === 3) {
+      total += (node.textContent || "").length;
+      return;
+    }
+    if (node.nodeType !== 1) return;
+
+    const atomic = getAtomicInfo(node);
+    if (atomic) {
+      if (node !== container || offset > 0) total += atomic.length;
+      if (node === container) done = true;
+      return;
+    }
+
+    if (node === container) {
+      for (let i = 0; i < offset && !done; i++) {
+        walk(node.childNodes[i]);
+      }
+      done = true;
+      return;
+    }
+
+    for (const child of node.childNodes) {
+      walk(child);
+      if (done) return;
+    }
+  }
+
   walk(root);
   return total;
 }
@@ -200,62 +218,20 @@ function getNodeAtOffset(target) {
   let remaining = target;
   let match = null;
 
-  function record(node, atomic, offset = 0) {
-    match = { node, atomic, offset };
-  }
-
-  function walk(node) {
-    if (match) return;
-
-    if (node.nodeType === 3) {
-      const len = (node.textContent || "").length;
+  forEachLeaf(root, (node, kind, len) => {
+    if (kind === "text") {
       if (remaining <= len) {
-        record(node, false, remaining);
-        return;
+        match = { node, atomic: false, offset: remaining };
+        return true;
       }
-      remaining -= len;
-      return;
+    } else if (remaining < len) {
+      match = { node, atomic: true, offset: remaining };
+      return true;
     }
+    remaining -= len;
+    return false;
+  });
 
-    if (node.nodeType === 1) {
-      if (isPill(node)) {
-        const name = node.getAttribute(PILL_NAME_ATTR) || "";
-        const len = `@${name}`.length;
-        if (remaining < len) {
-          record(node, true, remaining);
-          return;
-        }
-        remaining -= len;
-        return;
-      }
-
-      if (isTwemojiImg(node)) {
-        const len = (node.getAttribute("alt") || "").length;
-        if (remaining < len) {
-          record(node, true, remaining);
-          return;
-        }
-        remaining -= len;
-        return;
-      }
-
-      if (node.tagName === "BR") {
-        if (remaining === 0) {
-          record(node, true, 0);
-          return;
-        }
-        remaining -= 1;
-        return;
-      }
-
-      for (const child of Array.from(node.childNodes)) {
-        walk(child);
-        if (match) return;
-      }
-    }
-  }
-
-  walk(root);
   return match;
 }
 
@@ -279,71 +255,29 @@ function setCaretOffset(target) {
     placed = true;
   }
 
-  function walk(node) {
-    if (placed) return;
-    if (node.nodeType === 3) {
-      const len = (node.textContent || "").length;
-      if (remaining <= len) {
-        place(node, remaining);
-        return;
-      }
-      remaining -= len;
-      return;
-    }
-    if (node.nodeType === 1) {
-      if (isPill(node)) {
-        const name = node.getAttribute(PILL_NAME_ATTR) || "";
-        const len = `@${name}`.length;
-        if (remaining <= 0) {
-          const parent = node.parentNode;
-          const idx = Array.prototype.indexOf.call(parent.childNodes, node);
-          place(parent, idx);
-          return;
-        }
-        if (remaining < len) {
-          const parent = node.parentNode;
-          const idx = Array.prototype.indexOf.call(parent.childNodes, node);
-          place(parent, idx + 1);
-          return;
-        }
-        remaining -= len;
-        return;
-      }
-      if (isTwemojiImg(node)) {
-        const len = (node.getAttribute("alt") || "").length;
-        if (remaining <= 0) {
-          const parent = node.parentNode;
-          const idx = Array.prototype.indexOf.call(parent.childNodes, node);
-          place(parent, idx);
-          return;
-        }
-        if (remaining < len) {
-          const parent = node.parentNode;
-          const idx = Array.prototype.indexOf.call(parent.childNodes, node);
-          place(parent, idx + 1);
-          return;
-        }
-        remaining -= len;
-        return;
-      }
-      if (node.tagName === "BR") {
-        if (remaining <= 0) {
-          const parent = node.parentNode;
-          const idx = Array.prototype.indexOf.call(parent.childNodes, node);
-          place(parent, idx);
-          return;
-        }
-        remaining -= 1;
-        return;
-      }
-      for (const child of Array.from(node.childNodes)) {
-        if (placed) return;
-        walk(child);
-      }
-    }
+  function placeAroundAtomic(node, before) {
+    const parent = node.parentNode;
+    const idx = Array.prototype.indexOf.call(parent.childNodes, node);
+    place(parent, before ? idx : idx + 1);
   }
 
-  walk(root);
+  forEachLeaf(root, (node, kind, len) => {
+    if (kind === "text") {
+      if (remaining <= len) {
+        place(node, remaining);
+        return true;
+      }
+    } else if (remaining <= 0) {
+      placeAroundAtomic(node, true);
+      return true;
+    } else if (remaining < len) {
+      placeAroundAtomic(node, false);
+      return true;
+    }
+    remaining -= len;
+    return false;
+  });
+
   if (!placed) {
     range.selectNodeContents(root);
     range.collapse(false);
