@@ -24,7 +24,7 @@ function buildPattern(word) {
 }
 
 const SLUR_PATTERNS = SLUR_WORDS.map(buildPattern);
-const COMBINING_MARKS = /[̀-ͯ]/g;
+const COMBINING_MARKS = /\p{M}/gu;
 
 export function containsSlur(text) {
   if (!text) return false;
