@@ -1,4 +1,5 @@
 const SLUR_WORDS = [
+  "Africoon",
   "chink",
   "cunt",
   "fag",
